@@ -147,13 +147,25 @@ Cria o torneio unificado `mata-mata-clubes-2026` (`format='knockout'`, `has_simu
 
 ---
 
-## 11. Índice de arquivos
+## 11. Correções pós‑auditoria
+
+### 🔴 P0 — Escalada de privilégio via `profiles` (`20260728000005_secure_profiles_privileged_columns.sql`)
+| Como estava | O que mudou |
+|---|---|
+| A policy de UPDATE de `profiles` só checava `auth.uid() = id`, e o role `authenticated` tinha `UPDATE` na tabela inteira. Como o RLS não compara `OLD`/`NEW`, **qualquer usuário podia gravar `is_admin = true` na própria linha** (e mexer em `total_money`/`total_points`/`exact_matches`) por uma requisição direta ao PostgREST — virando admin e passando por todas as policies administrativas. | Correção **no banco**, em duas camadas: **(1) privilégio por coluna** — `REVOKE UPDATE ON profiles FROM authenticated/anon/PUBLIC` e `GRANT UPDATE (username, avatar_url) TO authenticated` (as funções `SECURITY DEFINER` de pontuação/prêmios rodam como dono e não são afetadas); **(2) trigger `protect_profile_privileged_columns`** (defesa em profundidade) que bloqueia mudança de `is_admin`/`total_money`/`total_points`/`exact_matches` quando a chamada vem dos roles de cliente (`authenticated`/`anon`) e zera essas colunas num INSERT feito por cliente. |
+
+Colunas que o usuário legitimamente edita (confirmado no código): `avatar_url` (`updateProfileAvatar`) e `username` (cadastro). Nada de frontend foi usado como proteção — o bloqueio é do banco. Observação: o tipo TS ainda expõe `is_admin` como gravável em `profiles.Update`, mas isso é cosmético (tipos gerados); a barreira real é o banco.
+
+---
+
+## 12. Índice de arquivos
 
 **Novos**
 - `supabase/migrations/20260728000001_matches_competition_legs.sql`
 - `supabase/migrations/20260728000002_create_ties_bracket.sql`
 - `supabase/migrations/20260728000003_podium_per_competition.sql`
 - `supabase/migrations/20260728000004_tournament_has_simulator.sql`
+- `supabase/migrations/20260728000005_secure_profiles_privileged_columns.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
