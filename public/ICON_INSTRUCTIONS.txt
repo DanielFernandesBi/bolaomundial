@@ -1,0 +1,16 @@
+
+# Instruções para criar ícones do PWA
+
+Os ícones devem ser criados nas seguintes dimensões:
+- icon-192x192.png (192x192 pixels)
+- icon-512x512.png (512x512 pixels)
+
+Você pode:
+1. Usar um gerador online como https://realfavicongenerator.net/
+2. Criar manualmente com um editor de imagens
+3. Usar o SVG gerado (icon-192x192.svg e icon-512x512.svg) e converter para PNG
+
+O ícone deve ter:
+- Fundo amarelo (#EAB308) ou azul escuro (#020617)
+- Um troféu ou logo do "Bolão Mundial"
+- Formato quadrado com cantos arredondados (opcional)

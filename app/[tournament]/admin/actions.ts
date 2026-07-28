@@ -1,0 +1,785 @@
+'use server';
+
+import { createServerSupabaseClient } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
+import { brasiliaLocalInputToISO } from '@/lib/utils/datetime';
+import { advanceBracketForMatch } from '@/lib/bracket';
+import { COMPETITIONS } from '@/lib/competitions';
+
+export async function checkAdminAccess() {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { isAdmin: false, error: 'Usuário não autenticado' };
+  }
+
+  // Buscar perfil do usuário
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || !profile.is_admin) {
+    return { isAdmin: false, error: 'Acesso negado. Apenas administradores podem acessar esta página.' };
+  }
+
+  return { isAdmin: true, userId: user.id };
+}
+
+export async function getAdminMatches(tournamentSlug: string) {
+  // Verificar acesso de admin primeiro
+  const accessCheck = await checkAdminAccess();
+
+  if (!accessCheck.isAdmin) {
+    return { matches: [], error: accessCheck.error || 'Acesso negado' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  // Buscar o torneio pelo slug
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { matches: [], error: 'Torneio não encontrado' };
+  }
+
+  // Buscar todos os jogos do torneio ordenados por data
+  const { data: matches, error } = await supabase
+    .from('matches')
+    .select('*')
+    .eq('tournament_id', tournament.id)
+    .order('match_date', { ascending: true });
+
+  if (error) {
+    return { matches: [], error: error.message };
+  }
+
+  return { matches: matches || [], error: null };
+}
+
+interface KnockoutResult {
+  extraTimeResult?: 'home' | 'draw' | 'away' | null;
+  penHome?: number | null;
+  penAway?: number | null;
+}
+
+export async function updateMatchScore(
+  matchId: number,
+  scoreHome: number | null,
+  scoreAway: number | null,
+  status: string,
+  tournamentSlug: string,
+  knockout?: KnockoutResult
+) {
+  // Verificar acesso de admin primeiro
+  const accessCheck = await checkAdminAccess();
+
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  // Validar dados
+  if (status === 'FINISHED' && (scoreHome === null || scoreAway === null)) {
+    return { error: 'Para finalizar um jogo, é necessário informar o placar' };
+  }
+
+  // Buscar o jogo para saber se é mata-mata
+  const { data: existing } = await supabase
+    .from('matches')
+    .select('is_knockout')
+    .eq('id', matchId)
+    .single();
+
+  const updatePayload: Record<string, unknown> = {
+    score_home: scoreHome,
+    score_away: scoreAway,
+    status: status,
+  };
+
+  // Resultado de prorrogação/pênaltis só faz sentido em jogos de mata-mata.
+  // NULL nesses campos = "não houve" (e os palpites eventuais são ignorados).
+  if (existing?.is_knockout) {
+    updatePayload.extra_time_result = knockout?.extraTimeResult ?? null;
+    updatePayload.pen_home = knockout?.penHome ?? null;
+    updatePayload.pen_away = knockout?.penAway ?? null;
+  }
+
+  const { error } = await supabase.from('matches').update(updatePayload).eq('id', matchId);
+
+  if (error) {
+    return { error: error.message || 'Erro ao atualizar jogo' };
+  }
+
+  // Auto-progressão do chaveamento: se este jogo faz parte de um confronto (tie) e
+  // as duas pernas terminaram, calcula o classificado e gera a próxima fase.
+  let bracketWarning: string | undefined;
+  let bracketInfo: string | undefined;
+  if (status === 'FINISHED') {
+    try {
+      const result = await advanceBracketForMatch(supabase, matchId);
+      bracketWarning = result.warning;
+      bracketInfo = result.info;
+    } catch (e: any) {
+      bracketWarning = `Placar salvo, mas houve um erro ao processar o chaveamento: ${e?.message || e}`;
+    }
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+  revalidatePath(`/${tournamentSlug}/ranking`);
+  revalidatePath('/profile');
+
+  return { success: true, bracketWarning, bracketInfo };
+}
+
+export async function createMatch(
+  teamHome: string,
+  teamAway: string,
+  homeIso: string,
+  awayIso: string,
+  matchDate: string,
+  tournamentSlug: string,
+  phase?: string | null,
+  isKnockout?: boolean,
+  competition?: string | null,
+  leg?: string | null,
+  hasExtraTime?: boolean
+) {
+  // Verificar acesso de admin primeiro
+  const accessCheck = await checkAdminAccess();
+
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  // Validar dados (a data é opcional: pode ser criada "a definir")
+  if (!teamHome || !teamAway || !homeIso || !awayIso) {
+    return { error: 'Times e escudos são obrigatórios' };
+  }
+
+  // Validar ISO: pode ser código (mínimo 2 caracteres) ou URL (deve começar com http)
+  const isHomeIsoUrl = homeIso.trim().toLowerCase().startsWith('http');
+  const isAwayIsoUrl = awayIso.trim().toLowerCase().startsWith('http');
+
+  if (!isHomeIsoUrl && homeIso.trim().length < 2) {
+    return { error: 'O código ISO da casa deve ter pelo menos 2 caracteres ou ser uma URL válida' };
+  }
+
+  if (!isAwayIsoUrl && awayIso.trim().length < 2) {
+    return { error: 'O código ISO do visitante deve ter pelo menos 2 caracteres ou ser uma URL válida' };
+  }
+
+  // O input datetime-local ("YYYY-MM-DDTHH:mm") é horário de Brasília (UTC-3).
+  // Data vazia => match_date NULL ("a definir").
+  let matchDateISO: string | null = null;
+  if (matchDate && matchDate.trim()) {
+    matchDateISO = brasiliaLocalInputToISO(matchDate);
+    if (!matchDateISO) {
+      return { error: 'Data inválida' };
+    }
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  // Buscar o torneio pelo slug
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id, format')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { error: 'Torneio não encontrado' };
+  }
+
+  // Inserir novo jogo
+  // Se for URL, manter como está; se for código ISO, converter para lowercase
+  const homeIsoFinal = isHomeIsoUrl ? homeIso.trim() : homeIso.trim().toLowerCase();
+  const awayIsoFinal = isAwayIsoUrl ? awayIso.trim() : awayIso.trim().toLowerCase();
+
+  const phaseValue = phase?.trim() || null;
+  // Default do mata-mata: torneio 'knockout' => true; senão usa o que veio (ex.: 'mixed')
+  const knockoutValue = isKnockout ?? tournament.format === 'knockout';
+  const competitionValue = competition?.trim() || null;
+  const legValue = leg?.trim() || null;
+
+  const { error } = await supabase
+    .from('matches')
+    .insert({
+      team_home: teamHome.trim(),
+      team_away: teamAway.trim(),
+      home_iso: homeIsoFinal,
+      away_iso: awayIsoFinal,
+      match_date: matchDateISO,
+      status: 'SCHEDULED',
+      tournament_id: tournament.id,
+      is_knockout: knockoutValue,
+      ...(hasExtraTime !== undefined && { has_extra_time: hasExtraTime }),
+      ...(competitionValue !== null && { competition: competitionValue }),
+      ...(legValue !== null && { leg: legValue }),
+      ...(phaseValue !== null && { phase: phaseValue }),
+    });
+
+  if (error) {
+    return { error: error.message || 'Erro ao criar jogo' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+
+  return { success: true };
+}
+
+export async function updateMatch(
+  matchId: number,
+  teamHome: string,
+  teamAway: string,
+  homeIso: string,
+  awayIso: string,
+  matchDate: string,
+  tournamentSlug: string,
+  phase?: string | null,
+  isKnockout?: boolean,
+  competition?: string | null,
+  leg?: string | null,
+  hasExtraTime?: boolean
+) {
+  // Verificar acesso de admin primeiro
+  const accessCheck = await checkAdminAccess();
+
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  // Validar dados (a data é opcional: pode ficar "a definir")
+  if (!teamHome || !teamAway || !homeIso || !awayIso) {
+    return { error: 'Times e escudos são obrigatórios' };
+  }
+
+  // Validar ISO: pode ser código (mínimo 2 caracteres) ou URL (deve começar com http)
+  const isHomeIsoUrl = homeIso.trim().toLowerCase().startsWith('http');
+  const isAwayIsoUrl = awayIso.trim().toLowerCase().startsWith('http');
+
+  if (!isHomeIsoUrl && homeIso.trim().length < 2) {
+    return { error: 'O código ISO da casa deve ter pelo menos 2 caracteres ou ser uma URL válida' };
+  }
+
+  if (!isAwayIsoUrl && awayIso.trim().length < 2) {
+    return { error: 'O código ISO do visitante deve ter pelo menos 2 caracteres ou ser uma URL válida' };
+  }
+
+  // O input datetime-local ("YYYY-MM-DDTHH:mm") é horário de Brasília (UTC-3).
+  // Data vazia => match_date NULL ("a definir").
+  let matchDateISO: string | null = null;
+  if (matchDate && matchDate.trim()) {
+    matchDateISO = brasiliaLocalInputToISO(matchDate);
+    if (!matchDateISO) {
+      return { error: 'Data inválida' };
+    }
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  // Verificar se o jogo existe e pertence ao torneio
+  const { data: existingMatch, error: matchError } = await supabase
+    .from('matches')
+    .select('id, tournament_id')
+    .eq('id', matchId)
+    .single();
+
+  if (matchError || !existingMatch) {
+    return { error: 'Jogo não encontrado' };
+  }
+
+  // Buscar o torneio pelo slug para validar
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { error: 'Torneio não encontrado' };
+  }
+
+  // Verificar se o jogo pertence ao torneio correto
+  if (existingMatch.tournament_id !== tournament.id) {
+    return { error: 'Jogo não pertence a este torneio' };
+  }
+
+  // Se for URL, manter como está; se for código ISO, converter para lowercase
+  // (isHomeIsoUrl e isAwayIsoUrl já foram declaradas acima na validação)
+  const homeIsoFinal = isHomeIsoUrl ? homeIso.trim() : homeIso.trim().toLowerCase();
+  const awayIsoFinal = isAwayIsoUrl ? awayIso.trim() : awayIso.trim().toLowerCase();
+
+  const updatePayload: Record<string, unknown> = {
+    team_home: teamHome.trim(),
+    team_away: teamAway.trim(),
+    home_iso: homeIsoFinal,
+    away_iso: awayIsoFinal,
+    match_date: matchDateISO,
+  };
+  const phaseValue = phase !== undefined ? (phase?.trim() || null) : undefined;
+  if (phaseValue !== undefined) {
+    updatePayload.phase = phaseValue;
+  }
+  if (isKnockout !== undefined) {
+    updatePayload.is_knockout = isKnockout;
+  }
+  if (competition !== undefined) {
+    updatePayload.competition = competition?.trim() || null;
+  }
+  if (leg !== undefined) {
+    updatePayload.leg = leg?.trim() || null;
+  }
+  if (hasExtraTime !== undefined) {
+    updatePayload.has_extra_time = hasExtraTime;
+  }
+
+  const { error } = await supabase
+    .from('matches')
+    .update(updatePayload)
+    .eq('id', matchId);
+
+  if (error) {
+    return { error: error.message || 'Erro ao atualizar jogo' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+
+  return { success: true };
+}
+
+// ============================================
+// PÓDIO REAL (lançado pelo admin ao encerrar o torneio)
+// ============================================
+interface PodiumResult {
+  championTeam: string | null;
+  championIso: string | null;
+  runnerUpTeam: string | null;
+  runnerUpIso: string | null;
+  thirdPlaceTeam: string | null;
+  thirdPlaceIso: string | null;
+}
+
+export async function getAdminTournamentInfo(tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' } as const;
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament, error } = await supabase
+    .from('tournaments')
+    .select(
+      'id, name, slug, format, active, logo_url, prize_first, prize_second, prize_third, champion_team, champion_iso, runner_up_team, runner_up_iso, third_place_team, third_place_iso'
+    )
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (error || !tournament) {
+    return { error: 'Torneio não encontrado' } as const;
+  }
+
+  const { data: matches } = await supabase
+    .from('matches')
+    .select('team_home, home_iso, team_away, away_iso')
+    .eq('tournament_id', tournament.id);
+
+  const teamsMap = new Map<string, { name: string; iso: string | null }>();
+  (matches || []).forEach((m: any) => {
+    if (m.team_home && !teamsMap.has(m.team_home)) teamsMap.set(m.team_home, { name: m.team_home, iso: m.home_iso });
+    if (m.team_away && !teamsMap.has(m.team_away)) teamsMap.set(m.team_away, { name: m.team_away, iso: m.away_iso });
+  });
+  const teams = Array.from(teamsMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+  return { error: null, tournament, teams } as const;
+}
+
+export async function setTournamentPodium(tournamentSlug: string, podium: PodiumResult) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const picked = [podium.championTeam, podium.runnerUpTeam, podium.thirdPlaceTeam].filter(Boolean) as string[];
+  if (new Set(picked).size !== picked.length) {
+    return { error: 'Campeão, vice e terceiro devem ser times diferentes.' };
+  }
+
+  // O trigger process_tournament_podium recalcula os pontos de pódio de todos.
+  const { error } = await supabase
+    .from('tournaments')
+    .update({
+      champion_team: podium.championTeam,
+      champion_iso: podium.championIso,
+      runner_up_team: podium.runnerUpTeam,
+      runner_up_iso: podium.runnerUpIso,
+      third_place_team: podium.thirdPlaceTeam,
+      third_place_iso: podium.thirdPlaceIso,
+    })
+    .eq('slug', tournamentSlug);
+
+  if (error) {
+    return { error: error.message || 'Erro ao lançar o pódio' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/ranking`);
+  revalidatePath('/ranking-geral');
+  return { success: true };
+}
+
+// ============================================
+// PÓDIO REAL POR COMPETIÇÃO (bolão unificado de clubes)
+// ============================================
+
+export async function getAdminCompetitionResults(tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' } as const;
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament, error } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (error || !tournament) {
+    return { error: 'Torneio não encontrado' } as const;
+  }
+
+  const { data: matches } = await supabase
+    .from('matches')
+    .select('competition, team_home, home_iso, team_away, away_iso')
+    .eq('tournament_id', tournament.id);
+
+  const byComp = new Map<string, Map<string, { name: string; iso: string | null }>>();
+  (matches || []).forEach((m: any) => {
+    if (!m.competition) return;
+    if (!byComp.has(m.competition)) byComp.set(m.competition, new Map());
+    const teams = byComp.get(m.competition)!;
+    if (m.team_home && !teams.has(m.team_home)) teams.set(m.team_home, { name: m.team_home, iso: m.home_iso });
+    if (m.team_away && !teams.has(m.team_away)) teams.set(m.team_away, { name: m.team_away, iso: m.away_iso });
+  });
+
+  const { data: results } = await supabase
+    .from('tournament_competition_results')
+    .select('*')
+    .eq('tournament_id', tournament.id);
+
+  const competitions = COMPETITIONS.filter((c) => byComp.has(c.key)).map((c) => {
+    const teams = Array.from(byComp.get(c.key)!.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const res = (results || []).find((r: any) => r.competition === c.key) || null;
+    return { key: c.key, name: c.name, teams, result: res };
+  });
+
+  return { error: null, competitions } as const;
+}
+
+interface CompetitionResultInput {
+  championTeam: string | null;
+  championIso: string | null;
+  runnerUpTeam: string | null;
+  runnerUpIso: string | null;
+}
+
+export async function setTournamentCompetitionResult(
+  tournamentSlug: string,
+  competition: string,
+  result: CompetitionResultInput
+) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  if (result.championTeam && result.runnerUpTeam && result.championTeam === result.runnerUpTeam) {
+    return { error: 'Campeão e vice devem ser times diferentes.' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament, error: tErr } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tErr || !tournament) {
+    return { error: 'Torneio não encontrado' };
+  }
+
+  // O trigger trg_recompute_competition_podium recalcula o pódio de todos.
+  const { error } = await supabase.from('tournament_competition_results').upsert(
+    {
+      tournament_id: tournament.id,
+      competition,
+      champion_team: result.championTeam,
+      champion_iso: result.championIso,
+      runner_up_team: result.runnerUpTeam,
+      runner_up_iso: result.runnerUpIso,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'tournament_id,competition' }
+  );
+
+  if (error) {
+    return { error: error.message || 'Erro ao lançar o resultado da competição' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/ranking`);
+  revalidatePath('/ranking-geral');
+  return { success: true };
+}
+
+export async function updateTournament(
+  tournamentSlug: string,
+  data: { name?: string; logoUrl?: string | null; format?: 'groups' | 'knockout' | 'mixed'; active?: boolean }
+) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const payload: Record<string, unknown> = {};
+  if (data.name !== undefined) {
+    if (!data.name.trim()) return { error: 'O nome não pode ficar vazio' };
+    payload.name = data.name.trim();
+  }
+  if (data.logoUrl !== undefined) payload.logo_url = data.logoUrl?.trim() || null;
+  if (data.format !== undefined) payload.format = data.format;
+  if (data.active !== undefined) payload.active = data.active;
+
+  if (Object.keys(payload).length === 0) {
+    return { error: 'Nada para atualizar' };
+  }
+
+  const { error } = await supabase.from('tournaments').update(payload).eq('slug', tournamentSlug);
+
+  if (error) {
+    return { error: error.message || 'Erro ao atualizar torneio' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function setTournamentPrizes(
+  tournamentSlug: string,
+  prizes: { first: number; second: number; third: number }
+) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  const clean = (v: number) => (isNaN(v) || v < 0 ? 0 : v);
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from('tournaments')
+    .update({
+      prize_first: clean(prizes.first),
+      prize_second: clean(prizes.second),
+      prize_third: clean(prizes.third),
+    })
+    .eq('slug', tournamentSlug);
+
+  if (error) {
+    return { error: error.message || 'Erro ao salvar a premiação' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+  revalidatePath(`/${tournamentSlug}/ranking`);
+  return { success: true };
+}
+
+export async function distributePrizes(tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament, error: tErr } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tErr || !tournament) {
+    return { error: 'Torneio não encontrado' };
+  }
+
+  const { error } = await supabase.rpc('distribute_tournament_prizes', {
+    p_tournament_id: tournament.id,
+  });
+
+  if (error) {
+    return { error: error.message || 'Erro ao distribuir os prêmios' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/ranking`);
+  revalidatePath('/ranking-geral');
+  revalidatePath('/hall-of-fame');
+  return { success: true };
+}
+
+export async function createTournament(
+  name: string,
+  slug: string,
+  format: 'groups' | 'knockout' | 'mixed',
+  logoUrl?: string | null
+) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  if (!name?.trim() || !slug?.trim()) {
+    return { error: 'Nome e slug são obrigatórios' };
+  }
+
+  const normalizedSlug = slug
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  if (!normalizedSlug) {
+    return { error: 'Slug inválido' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const { error } = await supabase.from('tournaments').insert({
+    name: name.trim(),
+    slug: normalizedSlug,
+    format,
+    active: true,
+    logo_url: logoUrl?.trim() || null,
+  });
+
+  if (error) {
+    if (error.message?.includes('duplicate') || error.code === '23505') {
+      return { error: 'Já existe um torneio com esse slug' };
+    }
+    return { error: error.message || 'Erro ao criar torneio' };
+  }
+
+  revalidatePath('/');
+  return { success: true, slug: normalizedSlug };
+}
+
+export async function deleteMatch(matchId: number, tournamentSlug: string) {
+  // Verificar acesso de admin primeiro
+  const accessCheck = await checkAdminAccess();
+
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  // Verificar se o jogo existe e pertence ao torneio
+  const { data: existingMatch, error: matchError } = await supabase
+    .from('matches')
+    .select('id, tournament_id')
+    .eq('id', matchId)
+    .single();
+
+  if (matchError || !existingMatch) {
+    return { error: 'Jogo não encontrado' };
+  }
+
+  // Buscar o torneio pelo slug para validar
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { error: 'Torneio não encontrado' };
+  }
+
+  // Verificar se o jogo pertence ao torneio correto
+  if (existingMatch.tournament_id !== tournament.id) {
+    return { error: 'Jogo não pertence a este torneio' };
+  }
+
+  // Verificar se há palpites associados ao jogo
+  const { data: predictions, error: predictionsError } = await supabase
+    .from('predictions')
+    .select('id')
+    .eq('match_id', matchId)
+    .limit(1);
+
+  if (predictionsError) {
+    return { error: 'Erro ao verificar palpites associados' };
+  }
+
+  if (predictions && predictions.length > 0) {
+    return { 
+      error: 'Não é possível deletar um jogo que possui palpites. Delete os palpites primeiro ou altere o status do jogo.' 
+    };
+  }
+
+  // Deletar o jogo
+  const { error, data } = await supabase
+    .from('matches')
+    .delete()
+    .eq('id', matchId)
+    .select();
+
+  if (error) {
+    console.error('Erro ao deletar jogo:', error);
+    // Se for erro de RLS, dar mensagem mais clara
+    if (error.message?.includes('row-level security') || error.message?.includes('policy')) {
+      return { 
+        error: 'Erro de permissão: Verifique se a política RLS para DELETE está configurada corretamente no banco de dados.' 
+      };
+    }
+    return { error: error.message || 'Erro ao deletar jogo' };
+  }
+
+  // Verificar se realmente deletou (data será vazio se deletou com sucesso)
+  if (data && data.length === 0) {
+    // Nenhuma linha foi deletada, mas também não houve erro
+    // Isso pode acontecer se o jogo não existir mais ou se RLS bloqueou silenciosamente
+    return { error: 'Nenhuma partida foi deletada. Verifique se a partida ainda existe e se você tem permissão para deletá-la.' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+
+  return { success: true };
+}
+

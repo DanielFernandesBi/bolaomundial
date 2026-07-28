@@ -1,0 +1,485 @@
+'use server';
+
+import { createServerSupabaseClient } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
+import { COMPETITIONS } from '@/lib/competitions';
+
+export async function getMatchesWithPredictions(tournamentSlug: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { matches: [], error: 'Usuário não autenticado', tournamentStartDate: null, tournamentFormat: 'groups' };
+  }
+
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id, format')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { matches: [], error: 'Torneio não encontrado', tournamentStartDate: null, tournamentFormat: 'groups' };
+  }
+
+  const { data: matches, error } = await supabase
+    .from('matches')
+    .select('*')
+    .eq('tournament_id', tournament.id)
+    .order('match_date', { ascending: true });
+
+  if (error) {
+    return { matches: [], error: error.message, tournamentStartDate: null, tournamentFormat: tournament.format };
+  }
+
+  const tournamentStartDate = matches && matches.length > 0 ? (matches[0].match_date as string) : null;
+
+  const matchIds = matches?.map((m: any) => m.id) || [];
+  const { data: predictions } = await supabase
+    .from('predictions')
+    .select('*')
+    .eq('user_id', user.id)
+    .in('match_id', matchIds);
+
+  const predictionsMap = new Map(predictions?.map((p: any) => [p.match_id, p]) || []);
+
+  const processedMatches =
+    matches?.map((match: any) => {
+      const prediction = predictionsMap.get(match.id);
+
+      return {
+        ...match,
+        user_prediction: prediction
+          ? {
+              id: prediction.id,
+              pred_home: prediction.pred_home,
+              pred_away: prediction.pred_away,
+              pred_extra_result: prediction.pred_extra_result ?? null,
+              pred_pen_home: prediction.pred_pen_home ?? null,
+              pred_pen_away: prediction.pred_pen_away ?? null,
+              points_earned: prediction.points_earned,
+              points_regular: prediction.points_regular ?? 0,
+              points_extra: prediction.points_extra ?? 0,
+              points_pen: prediction.points_pen ?? 0,
+            }
+          : null,
+      };
+    }) || [];
+
+  return { matches: processedMatches, error: null, tournamentStartDate, tournamentFormat: tournament.format };
+}
+
+interface ExtraPrediction {
+  predExtraResult?: 'home' | 'draw' | 'away' | null;
+  predPenHome?: number | null;
+  predPenAway?: number | null;
+}
+
+export async function savePrediction(
+  matchId: number,
+  predHome: number,
+  predAway: number,
+  tournamentSlug: string,
+  extra?: ExtraPrediction
+) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Usuário não autenticado' };
+  }
+
+  const { data: match, error: matchError } = await supabase
+    .from('matches')
+    .select('match_date, status, tournament_id, is_knockout')
+    .eq('id', matchId)
+    .single();
+
+  if (matchError || !match) {
+    return { error: 'Jogo não encontrado' };
+  }
+
+  if (match.status === 'FINISHED') {
+    return { error: 'Não é possível alterar palpite de um jogo finalizado' };
+  }
+
+  // Prazo por partida: bloqueia no horário de início do jogo.
+  // match_date NULL = "data a definir" (jogo gerado pela fase anterior) → palpite aberto.
+  const now = new Date();
+  if (match.match_date && now > new Date(match.match_date)) {
+    return { error: 'A partida já começou. Não é mais possível fazer ou alterar este palpite.' };
+  }
+
+  const payload: Record<string, unknown> = {
+    user_id: user.id,
+    match_id: matchId,
+    pred_home: predHome,
+    pred_away: predAway,
+  };
+
+  // Só grava prorrogação/pênaltis em jogos de mata-mata
+  if (match.is_knockout && extra) {
+    payload.pred_extra_result = extra.predExtraResult ?? null;
+    payload.pred_pen_home = extra.predPenHome ?? null;
+    payload.pred_pen_away = extra.predPenAway ?? null;
+  }
+
+  const { error: upsertError } = await supabase
+    .from('predictions')
+    .upsert(payload, { onConflict: 'user_id,match_id' });
+
+  if (upsertError) {
+    return { error: upsertError.message || 'Erro ao salvar palpite' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/matches`);
+  return { success: true };
+}
+
+/**
+ * Transparência por partida: jogos cujo horário de início já passou
+ * (apostas encerradas) mas que ainda não foram finalizados pelo admin.
+ */
+export async function getMatchesInProgressWithAllPredictions(tournamentSlug: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { matches: [], error: 'Torneio não encontrado' };
+  }
+
+  const now = new Date();
+
+  const { data: matches, error } = await supabase
+    .from('matches')
+    .select('*')
+    .eq('tournament_id', tournament.id)
+    .eq('status', 'SCHEDULED')
+    .lte('match_date', now.toISOString())
+    .order('match_date', { ascending: true });
+
+  if (error) {
+    return { matches: [], error: error.message };
+  }
+
+  const inProgressMatches = matches || [];
+  if (inProgressMatches.length === 0) {
+    return { matches: [], error: null };
+  }
+
+  const matchIds = inProgressMatches.map((m: any) => m.id);
+  const { data: allPredictions, error: predictionsError } = await supabase
+    .from('predictions')
+    .select(`*, profiles:user_id ( id, username, avatar_url )`)
+    .in('match_id', matchIds);
+
+  if (predictionsError) {
+    return { matches: [], error: predictionsError.message };
+  }
+
+  const predictionsByMatch = new Map<number, any[]>();
+  allPredictions?.forEach((pred: any) => {
+    const profile = Array.isArray(pred.profiles) ? pred.profiles[0] : pred.profiles;
+    if (!predictionsByMatch.has(pred.match_id)) predictionsByMatch.set(pred.match_id, []);
+    predictionsByMatch.get(pred.match_id)!.push({
+      id: pred.id,
+      pred_home: pred.pred_home,
+      pred_away: pred.pred_away,
+      pred_extra_result: pred.pred_extra_result ?? null,
+      pred_pen_home: pred.pred_pen_home ?? null,
+      pred_pen_away: pred.pred_pen_away ?? null,
+      user_id: pred.user_id,
+      username: profile?.username || 'Usuário',
+      avatar_url: profile?.avatar_url || null,
+    });
+  });
+
+  const processedMatches = inProgressMatches.map((match: any) => ({
+    ...match,
+    all_predictions: predictionsByMatch.get(match.id) || [],
+  }));
+
+  return { matches: processedMatches, error: null };
+}
+
+/**
+ * Detalhe de uma partida encerrada: todos os palpites ordenados por pontuação
+ * (maior -> menor), com o resultado real da partida.
+ */
+export async function getMatchResultDetail(matchId: number) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: match, error: matchError } = await supabase
+    .from('matches')
+    .select('*')
+    .eq('id', matchId)
+    .single();
+
+  if (matchError || !match) {
+    return { match: null, predictions: [], error: 'Jogo não encontrado' };
+  }
+
+  const { data: preds, error: predsError } = await supabase
+    .from('predictions')
+    .select(`*, profiles:user_id ( id, username, avatar_url )`)
+    .eq('match_id', matchId);
+
+  if (predsError) {
+    return { match, predictions: [], error: predsError.message };
+  }
+
+  const predictions = (preds || [])
+    .map((pred: any) => {
+      const profile = Array.isArray(pred.profiles) ? pred.profiles[0] : pred.profiles;
+      return {
+        id: pred.id,
+        user_id: pred.user_id,
+        username: profile?.username || 'Usuário',
+        avatar_url: profile?.avatar_url || null,
+        pred_home: pred.pred_home,
+        pred_away: pred.pred_away,
+        pred_extra_result: pred.pred_extra_result ?? null,
+        pred_pen_home: pred.pred_pen_home ?? null,
+        pred_pen_away: pred.pred_pen_away ?? null,
+        points_earned: pred.points_earned ?? 0,
+        points_regular: pred.points_regular ?? 0,
+        points_extra: pred.points_extra ?? 0,
+        points_pen: pred.points_pen ?? 0,
+      };
+    })
+    .sort((a, b) => b.points_earned - a.points_earned);
+
+  return { match, predictions, error: null };
+}
+
+// ============================================
+// PÓDIO por competição (campeão + vice) — bolão unificado
+// ============================================
+
+export interface PodiumCompetition {
+  key: string;
+  name: string;
+  teams: { name: string; iso: string | null }[];
+  locked: boolean;
+  firstMatchDate: string | null;
+  userPick: { championTeam: string | null; championIso: string | null; viceTeam: string | null; viceIso: string | null } | null;
+  actual: { championTeam: string | null; championIso: string | null; runnerUpTeam: string | null; runnerUpIso: string | null } | null;
+}
+
+export async function getPodiumData(tournamentSlug: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id, format')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { error: 'Torneio não encontrado' } as const;
+  }
+
+  const { data: matches } = await supabase
+    .from('matches')
+    .select('competition, team_home, home_iso, team_away, away_iso, match_date')
+    .eq('tournament_id', tournament.id);
+
+  // Agrupa times e a 1ª data por competição
+  const byComp = new Map<string, { teams: Map<string, { name: string; iso: string | null }>; firstDate: string | null }>();
+  (matches || []).forEach((m: any) => {
+    if (!m.competition) return;
+    if (!byComp.has(m.competition)) byComp.set(m.competition, { teams: new Map(), firstDate: null });
+    const g = byComp.get(m.competition)!;
+    if (m.team_home && !g.teams.has(m.team_home)) g.teams.set(m.team_home, { name: m.team_home, iso: m.home_iso });
+    if (m.team_away && !g.teams.has(m.team_away)) g.teams.set(m.team_away, { name: m.team_away, iso: m.away_iso });
+    if (m.match_date && (!g.firstDate || new Date(m.match_date) < new Date(g.firstDate))) g.firstDate = m.match_date;
+  });
+
+  let picks: any[] = [];
+  if (user) {
+    const { data } = await supabase
+      .from('podium_predictions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('tournament_id', tournament.id);
+    picks = data || [];
+  }
+
+  const { data: results } = await supabase
+    .from('tournament_competition_results')
+    .select('*')
+    .eq('tournament_id', tournament.id);
+
+  const now = new Date();
+  const competitions: PodiumCompetition[] = COMPETITIONS.filter((c) => byComp.has(c.key)).map((c) => {
+    const g = byComp.get(c.key)!;
+    const teams = Array.from(g.teams.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const pick = picks.find((p) => p.competition === c.key) || null;
+    const res = (results || []).find((r: any) => r.competition === c.key) || null;
+    return {
+      key: c.key,
+      name: c.name,
+      teams,
+      locked: g.firstDate ? now > new Date(g.firstDate) : false,
+      firstMatchDate: g.firstDate,
+      userPick: pick
+        ? { championTeam: pick.champion_team, championIso: pick.champion_iso, viceTeam: pick.runner_up_team, viceIso: pick.runner_up_iso }
+        : null,
+      actual: res
+        ? { championTeam: res.champion_team, championIso: res.champion_iso, runnerUpTeam: res.runner_up_team, runnerUpIso: res.runner_up_iso }
+        : null,
+    };
+  });
+
+  return { error: null, format: tournament.format, competitions } as const;
+}
+
+/**
+ * Transparência do PÓDIO por competição: a partir do 1º jogo de cada competição,
+ * mostra os palpites de campeão/vice de todos e permanece visível até o fim.
+ */
+export async function getPodiumTransparency(tournamentSlug: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id, format')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { available: false, started: false, competitions: [], error: 'Torneio não encontrado' as string | null };
+  }
+
+  if (tournament.format !== 'knockout' && tournament.format !== 'mixed') {
+    return { available: false, started: false, competitions: [], error: null };
+  }
+
+  const { data: matches } = await supabase
+    .from('matches')
+    .select('competition, match_date')
+    .eq('tournament_id', tournament.id);
+
+  const firstByComp = new Map<string, string | null>();
+  (matches || []).forEach((m: any) => {
+    if (!m.competition || !m.match_date) return;
+    const cur = firstByComp.get(m.competition);
+    if (!cur || new Date(m.match_date) < new Date(cur)) firstByComp.set(m.competition, m.match_date);
+  });
+
+  const { data: picks } = await supabase
+    .from('podium_predictions')
+    .select(`*, profiles:user_id ( id, username, avatar_url )`)
+    .eq('tournament_id', tournament.id);
+
+  const now = new Date();
+  const competitions = COMPETITIONS.filter((c) => firstByComp.has(c.key)).map((c) => {
+    const first = firstByComp.get(c.key) || null;
+    const started = first ? now > new Date(first) : false;
+    const predictions = started
+      ? (picks || [])
+          .filter((p: any) => p.competition === c.key)
+          .map((p: any) => {
+            const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+            return {
+              user_id: p.user_id,
+              username: profile?.username || 'Usuário',
+              avatar_url: profile?.avatar_url || null,
+              championTeam: p.champion_team,
+              championIso: p.champion_iso,
+              viceTeam: p.runner_up_team,
+              viceIso: p.runner_up_iso,
+            };
+          })
+          .sort((a, b) => a.username.localeCompare(b.username, 'pt-BR'))
+      : [];
+    return { key: c.key, name: c.name, started, predictions };
+  });
+
+  return { available: true, started: competitions.some((c) => c.started), competitions, error: null };
+}
+
+interface PodiumPickCV {
+  championTeam: string | null;
+  championIso: string | null;
+  viceTeam: string | null;
+  viceIso: string | null;
+}
+
+export async function savePodiumPrediction(tournamentSlug: string, competition: string, pick: PodiumPickCV) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Usuário não autenticado' };
+  }
+
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (tournamentError || !tournament) {
+    return { error: 'Torneio não encontrado' };
+  }
+
+  // Prazo do pódio: início da competição (1º jogo dela com data definida)
+  const { data: firstMatch } = await supabase
+    .from('matches')
+    .select('match_date')
+    .eq('tournament_id', tournament.id)
+    .eq('competition', competition)
+    .not('match_date', 'is', null)
+    .order('match_date', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (firstMatch?.match_date && new Date() > new Date(firstMatch.match_date)) {
+    return { error: 'Esta competição já começou. O palpite de pódio está encerrado.' };
+  }
+
+  if (pick.championTeam && pick.viceTeam && pick.championTeam === pick.viceTeam) {
+    return { error: 'Escolha times diferentes para campeão e vice.' };
+  }
+
+  const { error: upsertError } = await supabase.from('podium_predictions').upsert(
+    {
+      user_id: user.id,
+      tournament_id: tournament.id,
+      competition,
+      champion_team: pick.championTeam,
+      champion_iso: pick.championIso,
+      runner_up_team: pick.viceTeam,
+      runner_up_iso: pick.viceIso,
+      third_place_team: null,
+      third_place_iso: null,
+    },
+    { onConflict: 'user_id,tournament_id,competition' }
+  );
+
+  if (upsertError) {
+    return { error: upsertError.message || 'Erro ao salvar palpite de pódio' };
+  }
+
+  revalidatePath(`/${tournamentSlug}/matches`);
+  return { success: true };
+}

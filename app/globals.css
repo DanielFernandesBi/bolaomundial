@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* TEMA ESCURO (padrão) — valores em HSL para casar com hsl(var(--x)).
+     Equivalem ao visual atual (slate-950/900/800, texto slate-100, etc.). */
+  :root {
+    --primary: 45 93% 47%;          /* amber-500 */
+    --primary-foreground: 0 0% 0%;  /* preto */
+
+    --background: 229 84% 5%;       /* slate-950 */
+    --foreground: 210 40% 96%;      /* slate-100 */
+
+    --card: 222 47% 11%;            /* slate-900 */
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 96%;
+
+    --border: 217 33% 17%;          /* slate-800 */
+    --input: 217 33% 17%;
+    --ring: 45 93% 47%;             /* amber-500 */
+
+    --secondary: 217 33% 17%;       /* slate-800 */
+    --secondary-foreground: 210 40% 96%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 96%;
+
+    --destructive: 0 84% 60%;       /* red-500 */
+    --destructive-foreground: 210 40% 96%;
+
+    --muted: 217 33% 17%;           /* slate-800 */
+    --muted-foreground: 215 20% 65%;/* slate-400 */
+
+    --success: 142 71% 45%;         /* green-500 */
+    --success-foreground: 0 0% 0%;
+    --warning: 45 93% 47%;          /* amber-500 */
+    --warning-foreground: 0 0% 0%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-slate-950 text-slate-100 overflow-x-hidden;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  html {
+    @apply overflow-x-hidden;
+  }
+}
+
+/* Utilitário para bandeiras */
+.flag {
+  @apply inline-block;
+  width: 40px;
+  height: auto;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+/* Scrollbar personalizada para tema escuro */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-600;
+}
+
+/* Esconder scrollbar horizontal em navegação mobile */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+

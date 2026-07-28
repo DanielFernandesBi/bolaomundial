@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#EAB308"/>
+  <g transform="translate(256, 256)">
+    <!-- Base do troféu -->
+    <rect x="-76.8" y="128" width="153.6" height="51.2" fill="#000"/>
+    <!-- Corpo do troféu -->
+    <path d="M -102.4 128 L -76.8 -102.4 L 76.8 -102.4 L 102.4 128 Z" fill="#000"/>
+    <!-- Alças -->
+    <path d="M -102.4 -51.2 Q -153.6 -102.4 -102.4 -153.6" stroke="#000" stroke-width="15.36" fill="none"/>
+    <path d="M 102.4 -51.2 Q 153.6 -102.4 102.4 -153.6" stroke="#000" stroke-width="15.36" fill="none"/>
+    <!-- Estrela no topo -->
+    <polygon points="0,-179.2 25.6,-128 76.8,-128 30.72,-76.8 51.2,-25.6 0,-51.2 -51.2,-25.6 -30.72,-76.8 -76.8,-128 -25.6,-128" fill="#000"/>
+  </g>
+</svg>
