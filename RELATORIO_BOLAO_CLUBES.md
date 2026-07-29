@@ -207,6 +207,16 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 | 13 | O motor pontuava pênaltis sempre que houvesse resultado de pênalti, **sem verificar** se eles deveriam existir. Nos clubes, um 5×2 no agregado com o vencedor preenchido por engano concederia `points_pen`. A regra "só no empate de agregado" vivia só no `bracket.ts`. | Regra **centralizada** no banco: nova função `tie_aggregate_tied(tie_id)`; em `process_match_finished`, nos clubes (`has_extra_time=false`, `leg='volta'`, com confronto), os pontos de pênalti só valem se o **agregado empatar** — senão `points_pen = 0`. |
 | 14 | Reabrir `FINISHED → SCHEDULED` **não revertia** os pontos (a trigger só somava ao finalizar). O jogo saía de "Encerradas" mas os pontos ficavam no ranking até (e se) fosse finalizado de novo. | `process_match_finished` ganhou um ramo de **reversão atômica**: ao sair de `FINISHED`, zera os pontos das predictions daquele jogo e desconta do `tournament_rankings` (e das cravadas), mantendo o ranking coerente no intervalo. |
 
+### ⚠️ Ranking diário contava "cravada" errado (item 15 — código)
+| Como estava | O que mudou |
+|---|---|
+| O ranking diário usava `isExact = points_earned >= 20`. Com a pontuação de mata‑mata isso conta falsas cravadas (17+5=22, 15+5=20 viram "cravada") e depende da soma. | Passou a usar **`points_regular === 30`** (placar exato do tempo normal). Mesma correção estendida aos contadores de cravada do **Perfil** e do **Desempenho** (que usavam `points_earned === 25 || === 20`). O `exact_matches` autoritativo no banco já estava certo (auditoria item 10). Arquivos: `ranking/actions.ts`, `profile/actions.ts`, `desempenho/actions.ts`. |
+
+### ⚠️ Empates completos: posição compartilhada + prêmio dividido (item 16 — `20260728000014_prize_shared_positions.sql`)
+| Como estava | O que mudou |
+|---|---|
+| `distribute_tournament_prizes` ordenava por `(total_points DESC, exact_matches DESC)` e dava 1º/2º/3º sem regra determinística para empates completos → a ordem dos empatados dependia do PostgreSQL. | Regra do usuário: em empate completo, **posição compartilhada**; quando envolve dinheiro, **soma‑se o prêmio das posições ocupadas pelo grupo e divide‑se pelo nº de empatados** (ex.: 2 no topo → cada um `(1º+2º)/2`; 3 no topo → `(1º+2º+3º)/3`; fora do pódio → 0). Implementado com `ROW_NUMBER`/janela por `(total_points, exact_matches)`. *(A exibição do ranking ainda numera sequencialmente — mostrar a posição compartilhada na tabela é um ajuste de UI opcional; o dinheiro já é justo/determinístico.)* |
+
 ---
 
 ## 12. Índice de arquivos
@@ -225,6 +235,7 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 - `supabase/migrations/20260728000011_podium_legacy_unique_index.sql`
 - `supabase/migrations/20260728000012_pen_winner_only_clubs.sql`
 - `supabase/migrations/20260728000013_scoring_pen_gate_and_reopen_reversal.sql`
+- `supabase/migrations/20260728000014_prize_shared_positions.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`

@@ -76,6 +76,7 @@ export async function getDailyRanking(tournamentSlug: string) {
     .select(`
       user_id,
       points_earned,
+      points_regular,
       profiles:user_id (
         id,
         username,
@@ -105,7 +106,9 @@ export async function getDailyRanking(tournamentSlug: string) {
     if (!profile) continue;
 
     const pts     = pred.points_earned ?? 0;
-    const isExact = pts >= 20;
+    // Cravada = placar exato do tempo normal (30 pts em points_regular),
+    // não pela soma points_earned (que pode passar de 20 com pênaltis/prorrogação).
+    const isExact = (pred.points_regular ?? 0) === 30;
     const entry   = userMap.get(pred.user_id);
 
     if (entry) {

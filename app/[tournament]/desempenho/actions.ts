@@ -160,8 +160,8 @@ export async function getUserProfile(tournamentSlug: string, userId?: string) {
     ? Math.round((correctFinishedPredictions / finishedPredictionsCount) * 100 * 10) / 10
     : 0;
 
-  // Porcentagem de cravadas (palpites com 25 ou 20 pontos)
-  const exactMatchesCount = finishedPredictions?.filter((p: any) => p.points_earned === 25 || p.points_earned === 20).length || 0;
+  // Porcentagem de cravadas (placar exato do tempo normal: points_regular === 30)
+  const exactMatchesCount = finishedPredictions?.filter((p: any) => p.points_regular === 30).length || 0;
   const exactMatchesPercentage = finishedPredictionsCount > 0
     ? Math.round((exactMatchesCount / finishedPredictionsCount) * 100 * 10) / 10
     : 0;

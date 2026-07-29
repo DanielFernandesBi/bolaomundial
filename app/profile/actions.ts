@@ -52,14 +52,14 @@ export async function getGeneralProfile() {
   // Buscar total de palpites em todos os torneios com detalhes
   const { data: allPredictions } = await supabase
     .from('predictions')
-    .select('points_earned')
+    .select('points_earned, points_regular')
     .eq('user_id', user.id);
 
   const totalPredictions = allPredictions?.length || 0;
   const correctPredictions = allPredictions?.filter((p) => p.points_earned > 0).length || 0;
   
   // Calcular estatísticas adicionais
-  const exactMatchesCount = allPredictions?.filter((p) => p.points_earned === 25 || p.points_earned === 20).length || 0;
+  const exactMatchesCount = allPredictions?.filter((p) => p.points_regular === 30).length || 0;
   const exactMatchesPercentage = totalPredictions > 0 
     ? Math.round((exactMatchesCount / totalPredictions) * 100 * 10) / 10 
     : 0;
@@ -72,7 +72,7 @@ export async function getGeneralProfile() {
   
   // Distribuição de pontos por categoria
   const pointsDistribution = {
-    exact: allPredictions?.filter((p) => p.points_earned === 25 || p.points_earned === 20).length || 0,
+    exact: allPredictions?.filter((p) => p.points_regular === 30).length || 0,
     category17: allPredictions?.filter((p) => p.points_earned === 17).length || 0,
     category15: allPredictions?.filter((p) => p.points_earned === 15).length || 0,
     category12: allPredictions?.filter((p) => p.points_earned === 12).length || 0,
@@ -226,14 +226,14 @@ export async function getPublicProfile(userId: string) {
   // Buscar total de palpites em todos os torneios
   const { data: allPredictions } = await supabase
     .from('predictions')
-    .select('points_earned')
+    .select('points_earned, points_regular')
     .eq('user_id', userId);
 
   const totalPredictions = allPredictions?.length || 0;
   const correctPredictions = allPredictions?.filter((p) => p.points_earned > 0).length || 0;
   
   // Calcular estatísticas adicionais
-  const exactMatchesCount = allPredictions?.filter((p) => p.points_earned === 25 || p.points_earned === 20).length || 0;
+  const exactMatchesCount = allPredictions?.filter((p) => p.points_regular === 30).length || 0;
   const exactMatchesPercentage = totalPredictions > 0 
     ? Math.round((exactMatchesCount / totalPredictions) * 100 * 10) / 10 
     : 0;
@@ -246,7 +246,7 @@ export async function getPublicProfile(userId: string) {
   
   // Distribuição de pontos por categoria
   const pointsDistribution = {
-    exact: allPredictions?.filter((p) => p.points_earned === 25 || p.points_earned === 20).length || 0,
+    exact: allPredictions?.filter((p) => p.points_regular === 30).length || 0,
     category17: allPredictions?.filter((p) => p.points_earned === 17).length || 0,
     category15: allPredictions?.filter((p) => p.points_earned === 15).length || 0,
     category12: allPredictions?.filter((p) => p.points_earned === 12).length || 0,
