@@ -70,6 +70,7 @@ interface KnockoutResult {
   extraTimeResult?: 'home' | 'draw' | 'away' | null;
   penHome?: number | null;
   penAway?: number | null;
+  penWinner?: 'home' | 'away' | null;
 }
 
 export async function updateMatchScore(
@@ -113,6 +114,7 @@ export async function updateMatchScore(
     updatePayload.extra_time_result = knockout?.extraTimeResult ?? null;
     updatePayload.pen_home = knockout?.penHome ?? null;
     updatePayload.pen_away = knockout?.penAway ?? null;
+    updatePayload.pen_winner = knockout?.penWinner ?? null;
   }
 
   const { error } = await supabase.from('matches').update(updatePayload).eq('id', matchId);

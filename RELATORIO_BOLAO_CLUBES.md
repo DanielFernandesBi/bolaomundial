@@ -60,7 +60,8 @@ Todas aditivas e seguras; **não alteram torneios antigos**. Arquivos em `supaba
 
 **Mata‑mata (clubes):**
 - **Prorrogação**: não existe (não coletada nem pontuada).
-- **Pênaltis** (só na volta, quando o agregado empata): acertar vencedor **+5**; placar exato dos pênaltis **+10**. Reaproveita `calc_pen_points`.
+- **Pênaltis** (só na volta, quando o agregado empata): o palpite é **apenas o vencedor** (sem placar) → **+7** se acertar, **0** se errar (`calc_pen_winner_points`; colunas `matches.pen_winner` / `predictions.pred_pen_winner`).
+- *(Mundial legado permanece por placar: 5 vencedor / 10 placar exato — o exato é 10 **totais**, não somados aos 5.)*
 
 **Pódio por competição** (`calc_podium_points_cv`):
 - Campeão exato **40**; vice exato **25**; **consolação 10** (acertou o time, mas trocou campeão↔vice). Acerto exato tem prioridade sobre a consolação.
@@ -195,6 +196,11 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 |---|---|
 | Ao migrar o pódio para "por competição", `getPodiumData`/`getPodiumTransparency` passaram a **ignorar** partidas sem `competition` (`if (!m.competition) return;`). O Mundial legado tem `competition = NULL` em todos os jogos → **nenhum card de pódio nem transparência** na tela pública, embora banco/ranking/admin mantivessem o pódio. | O pódio agora tem **dois modos**: `competition` (clubes: campeão+vice por competição) e **`legacy`** (Mundial: campeão+vice+**3º**, resultado real em `tournaments.*`). Quando o torneio não tem partidas com `competition`, é montado um bloco legado único. `PodiumCard` renderiza 2 ou 3 slots conforme o modo; `PodiumTransparency` mostra o 3º quando aplicável; `savePodiumPrediction` aceita `competition` nulo (grava via select-then-write, já que `NULL` não casa no `onConflict` composto). Arquivos: `matches/actions.ts`, `components/podium-card.tsx`, `components/podium-transparency.tsx`, `matches/page.tsx`. |
 
+### 🔧 Mudança de regra — Pênaltis dos clubes: só vencedor, +7 (`20260728000012_pen_winner_only_clubs.sql`)
+| Como estava | O que mudou |
+|---|---|
+| Nos clubes, o palpite de pênaltis era **placar** (`pred_pen_home/away`) e pontuava como o Mundial (5 vencedor / 10 exato). | Decisão dos usuários: no bolão de clubes o palpite é **apenas o vencedor** dos pênaltis (sem placar), valendo **7** se acertar e **0** se errar. Novas colunas `predictions.pred_pen_winner` e `matches.pen_winner`; função `calc_pen_winner_points`; `process_match_finished` escolhe o modelo por `has_extra_time` (Mundial=placar 5/10; clubes=vencedor 7/0). Wizard, admin, transparência, detalhe de partida e `advanceBracket` passam a usar o vencedor nos clubes. O Mundial legado continua por placar, intocado. |
+
 ---
 
 ## 12. Índice de arquivos
@@ -211,6 +217,7 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 - `supabase/migrations/20260728000009_podium_deadline_trigger.sql`
 - `supabase/migrations/20260728000010_fix_podium_mechanisms_isolation.sql`
 - `supabase/migrations/20260728000011_podium_legacy_unique_index.sql`
+- `supabase/migrations/20260728000012_pen_winner_only_clubs.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`

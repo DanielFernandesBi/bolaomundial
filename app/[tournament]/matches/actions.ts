@@ -60,6 +60,7 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
               pred_extra_result: prediction.pred_extra_result ?? null,
               pred_pen_home: prediction.pred_pen_home ?? null,
               pred_pen_away: prediction.pred_pen_away ?? null,
+              pred_pen_winner: prediction.pred_pen_winner ?? null,
               points_earned: prediction.points_earned,
               points_regular: prediction.points_regular ?? 0,
               points_extra: prediction.points_extra ?? 0,
@@ -76,6 +77,7 @@ interface ExtraPrediction {
   predExtraResult?: 'home' | 'draw' | 'away' | null;
   predPenHome?: number | null;
   predPenAway?: number | null;
+  predPenWinner?: 'home' | 'away' | null;
 }
 
 export async function savePrediction(
@@ -128,6 +130,7 @@ export async function savePrediction(
     payload.pred_extra_result = extra.predExtraResult ?? null;
     payload.pred_pen_home = extra.predPenHome ?? null;
     payload.pred_pen_away = extra.predPenAway ?? null;
+    payload.pred_pen_winner = extra.predPenWinner ?? null;
   }
 
   const { error: upsertError } = await supabase
@@ -252,6 +255,7 @@ export async function getMatchResultDetail(matchId: number) {
         pred_extra_result: pred.pred_extra_result ?? null,
         pred_pen_home: pred.pred_pen_home ?? null,
         pred_pen_away: pred.pred_pen_away ?? null,
+        pred_pen_winner: pred.pred_pen_winner ?? null,
         points_earned: pred.points_earned ?? 0,
         points_regular: pred.points_regular ?? 0,
         points_extra: pred.points_extra ?? 0,

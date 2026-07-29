@@ -45,6 +45,7 @@ interface Match {
   extra_time_result?: 'home' | 'draw' | 'away' | null;
   pen_home?: number | null;
   pen_away?: number | null;
+  pen_winner?: 'home' | 'away' | null;
 }
 
 interface AdminMatchesTableProps {
@@ -73,6 +74,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
           extraTimeResult: (match.extra_time_result || null) as 'home' | 'draw' | 'away' | null,
           penHome: match.pen_home ?? null,
           penAway: match.pen_away ?? null,
+          penWinner: (match.pen_winner || null) as 'home' | 'away' | null,
         }
       : undefined;
 
@@ -180,30 +182,45 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
             </select>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <label className="text-slate-400 text-xs w-20">{showExtraTime ? 'Pênaltis' : 'Pênaltis (agregado)'}</label>
-          <Input
-            type="number"
-            min="0"
-            placeholder={match.team_home}
-            value={match.pen_home ?? ''}
-            onChange={(e) =>
-              updateMatchField(match.id, 'pen_home', e.target.value === '' ? null : parseInt(e.target.value))
-            }
-            className="w-16 text-center bg-slate-950 border-slate-700 text-white h-9"
-          />
-          <span className="text-white">x</span>
-          <Input
-            type="number"
-            min="0"
-            placeholder={match.team_away}
-            value={match.pen_away ?? ''}
-            onChange={(e) =>
-              updateMatchField(match.id, 'pen_away', e.target.value === '' ? null : parseInt(e.target.value))
-            }
-            className="w-16 text-center bg-slate-950 border-slate-700 text-white h-9"
-          />
-        </div>
+        {showExtraTime ? (
+          <div className="flex items-center gap-2">
+            <label className="text-slate-400 text-xs w-20">Pênaltis</label>
+            <Input
+              type="number"
+              min="0"
+              placeholder={match.team_home}
+              value={match.pen_home ?? ''}
+              onChange={(e) =>
+                updateMatchField(match.id, 'pen_home', e.target.value === '' ? null : parseInt(e.target.value))
+              }
+              className="w-16 text-center bg-slate-950 border-slate-700 text-white h-9"
+            />
+            <span className="text-white">x</span>
+            <Input
+              type="number"
+              min="0"
+              placeholder={match.team_away}
+              value={match.pen_away ?? ''}
+              onChange={(e) =>
+                updateMatchField(match.id, 'pen_away', e.target.value === '' ? null : parseInt(e.target.value))
+              }
+              className="w-16 text-center bg-slate-950 border-slate-700 text-white h-9"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <label className="text-slate-400 text-xs w-20">Pênaltis (vencedor)</label>
+            <select
+              value={match.pen_winner ?? ''}
+              onChange={(e) => updateMatchField(match.id, 'pen_winner', e.target.value || null)}
+              className="bg-slate-950 border border-slate-700 text-white rounded-md px-2 py-1 text-xs flex-1"
+            >
+              <option value="">— não houve —</option>
+              <option value="home">{match.team_home} venceu</option>
+              <option value="away">{match.team_away} venceu</option>
+            </select>
+          </div>
+        )}
       </div>
     );
   }

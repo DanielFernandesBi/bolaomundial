@@ -46,7 +46,7 @@ export async function advanceTie(supabase: any, tieId: number): Promise<BracketR
 
   const { data: legs } = await supabase
     .from('matches')
-    .select('id, team_home, team_away, score_home, score_away, status, pen_home, pen_away')
+    .select('id, team_home, team_away, score_home, score_away, status, pen_home, pen_away, pen_winner')
     .in('id', [tie.ida_match_id, tie.volta_match_id]);
 
   const ida = (legs || []).find((x: any) => x.id === tie.ida_match_id);
@@ -84,17 +84,21 @@ export async function advanceTie(supabase: any, tieId: number): Promise<BracketR
     winnerSide = aggA > aggB ? 'a' : 'b';
     decidedBy = 'aggregate';
   } else {
-    // Empate no agregado → pênaltis da volta (precisa ter um vencedor)
-    const ph = volta.pen_home;
-    const pa = volta.pen_away;
-    if (ph == null || pa == null || ph === pa) {
+    // Empate no agregado → pênaltis da volta (precisa ter um vencedor definido).
+    // Clubes: vencedor por matches.pen_winner ('home'/'away'). Fallback: placar de pênaltis.
+    let penWinnerTeam: string | null = null;
+    if (volta.pen_winner === 'home') penWinnerTeam = volta.team_home;
+    else if (volta.pen_winner === 'away') penWinnerTeam = volta.team_away;
+    else if (volta.pen_home != null && volta.pen_away != null && volta.pen_home !== volta.pen_away) {
+      penWinnerTeam = volta.pen_home > volta.pen_away ? volta.team_home : volta.team_away;
+    }
+
+    if (!penWinnerTeam) {
       return {
         advanced: false,
-        warning:
-          'Agregado empatado: preencha o placar dos pênaltis da volta (com um vencedor) para definir o classificado.',
+        warning: 'Agregado empatado: informe o vencedor dos pênaltis da volta para definir o classificado.',
       };
     }
-    const penWinnerTeam = ph > pa ? volta.team_home : volta.team_away;
     if (penWinnerTeam === a) winnerSide = 'a';
     else if (penWinnerTeam === b) winnerSide = 'b';
     else {

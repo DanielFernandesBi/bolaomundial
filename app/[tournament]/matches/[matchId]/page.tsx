@@ -88,6 +88,11 @@ export default async function MatchResultDetailPage({ params }: PageProps) {
                 {isKnockout && match.pen_home != null && match.pen_away != null && (
                   <span className="text-xs text-slate-400">Pênaltis: {match.pen_home} x {match.pen_away}</span>
                 )}
+                {isKnockout && match.pen_winner && (
+                  <span className="text-xs text-slate-400">
+                    Pênaltis: {match.pen_winner === 'home' ? match.team_home : match.team_away}
+                  </span>
+                )}
               </div>
               <div className="flex flex-col items-center gap-2 flex-1">
                 <TeamLogo iso={match.away_iso} alt={match.team_away} />
@@ -140,7 +145,7 @@ export default async function MatchResultDetailPage({ params }: PageProps) {
                     <div className="text-white font-bold">
                       {p.pred_home} x {p.pred_away}
                     </div>
-                    {isKnockout && (p.pred_extra_result || p.pred_pen_home != null) && (
+                    {isKnockout && (p.pred_extra_result || p.pred_pen_home != null || p.pred_pen_winner) && (
                       <div className="text-[10px] text-slate-400 leading-tight">
                         {p.pred_extra_result && (
                           <span>
@@ -153,6 +158,9 @@ export default async function MatchResultDetailPage({ params }: PageProps) {
                           </span>
                         )}
                         {p.pred_pen_home != null && <span> · Pên {p.pred_pen_home}x{p.pred_pen_away}</span>}
+                        {p.pred_pen_winner && (
+                          <span> · Pên {p.pred_pen_winner === 'home' ? match.team_home : match.team_away}</span>
+                        )}
                       </div>
                     )}
                   </div>

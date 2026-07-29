@@ -14,6 +14,7 @@ interface Prediction {
   pred_extra_result?: 'home' | 'draw' | 'away' | null;
   pred_pen_home?: number | null;
   pred_pen_away?: number | null;
+  pred_pen_winner?: 'home' | 'away' | null;
   user_id: string;
   username: string;
   avatar_url: string | null;
@@ -164,13 +165,16 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
                     <span className="text-slate-400">x</span>
                     <span className="text-white font-bold text-lg">{prediction.pred_away}</span>
                   </div>
-                  {(prediction.pred_extra_result || prediction.pred_pen_home != null) && (
+                  {(prediction.pred_extra_result || prediction.pred_pen_home != null || prediction.pred_pen_winner) && (
                     <div className="text-[10px] text-slate-400 text-right leading-tight mt-0.5">
                       {extraLabel(prediction.pred_extra_result, match.team_home, match.team_away) && (
                         <div>{extraLabel(prediction.pred_extra_result, match.team_home, match.team_away)}</div>
                       )}
                       {prediction.pred_pen_home != null && prediction.pred_pen_away != null && (
                         <div>Pên.: {prediction.pred_pen_home} x {prediction.pred_pen_away}</div>
+                      )}
+                      {prediction.pred_pen_winner && (
+                        <div>Pên.: {prediction.pred_pen_winner === 'home' ? match.team_home : match.team_away}</div>
                       )}
                     </div>
                   )}

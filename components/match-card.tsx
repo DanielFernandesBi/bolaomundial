@@ -25,6 +25,7 @@ function formatDate(date: Date): string {
 }
 
 type ExtraResult = 'home' | 'draw' | 'away' | '';
+type PenWinner = 'home' | 'away' | '';
 
 interface MatchCardProps {
   match: {
@@ -42,6 +43,7 @@ interface MatchCardProps {
     extra_time_result?: 'home' | 'draw' | 'away' | null;
     pen_home?: number | null;
     pen_away?: number | null;
+    pen_winner?: 'home' | 'away' | null;
     user_prediction: {
       id: number;
       pred_home: number;
@@ -49,6 +51,7 @@ interface MatchCardProps {
       pred_extra_result?: 'home' | 'draw' | 'away' | null;
       pred_pen_home?: number | null;
       pred_pen_away?: number | null;
+      pred_pen_winner?: 'home' | 'away' | null;
       points_earned: number;
       points_regular?: number;
       points_extra?: number;
@@ -92,6 +95,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   const initialExtra = (match.user_prediction?.pred_extra_result ?? '') as ExtraResult;
   const initialPenHome = match.user_prediction?.pred_pen_home?.toString() ?? '';
   const initialPenAway = match.user_prediction?.pred_pen_away?.toString() ?? '';
+  const initialPenWinner = (match.user_prediction?.pred_pen_winner ?? '') as PenWinner;
 
   const [step, setStep] = useState(1);
   const [homeScore, setHomeScore] = useState(initialHome);
@@ -99,6 +103,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   const [extraResult, setExtraResult] = useState<ExtraResult>(initialExtra);
   const [penHome, setPenHome] = useState(initialPenHome);
   const [penAway, setPenAway] = useState(initialPenAway);
+  const [penWinner, setPenWinner] = useState<PenWinner>(initialPenWinner);
 
   const [saved, setSaved] = useState({
     home: initialHome,
@@ -106,6 +111,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     extra: initialExtra as ExtraResult,
     penHome: initialPenHome,
     penAway: initialPenAway,
+    penWinner: initialPenWinner as PenWinner,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -117,6 +123,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     const newExtra = (match.user_prediction?.pred_extra_result ?? '') as ExtraResult;
     const newPenHome = match.user_prediction?.pred_pen_home?.toString() ?? '';
     const newPenAway = match.user_prediction?.pred_pen_away?.toString() ?? '';
+    const newPenWinner = (match.user_prediction?.pred_pen_winner ?? '') as PenWinner;
 
     setSaved((prev) => {
       const hadLocalChanges =
@@ -124,15 +131,17 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
         awayScore !== prev.away ||
         extraResult !== prev.extra ||
         penHome !== prev.penHome ||
-        penAway !== prev.penAway;
+        penAway !== prev.penAway ||
+        penWinner !== prev.penWinner;
       if (!hadLocalChanges) {
         setHomeScore(newHome);
         setAwayScore(newAway);
         setExtraResult(newExtra);
         setPenHome(newPenHome);
         setPenAway(newPenAway);
+        setPenWinner(newPenWinner);
       }
-      return { home: newHome, away: newAway, extra: newExtra, penHome: newPenHome, penAway: newPenAway };
+      return { home: newHome, away: newAway, extra: newExtra, penHome: newPenHome, penAway: newPenAway, penWinner: newPenWinner };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -141,6 +150,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     match.user_prediction?.pred_extra_result,
     match.user_prediction?.pred_pen_home,
     match.user_prediction?.pred_pen_away,
+    match.user_prediction?.pred_pen_winner,
   ]);
 
   // match_date pode ser NULL ("data a definir") → sem prazo, palpite aberto.
@@ -153,7 +163,8 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     awayScore !== saved.away ||
     extraResult !== saved.extra ||
     penHome !== saved.penHome ||
-    penAway !== saved.penAway;
+    penAway !== saved.penAway ||
+    penWinner !== saved.penWinner;
 
   // Mostra o wizard interativo só quando dá pra editar um jogo de mata-mata
   const showStepper = isKnockout && !isLocked;
@@ -175,7 +186,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   const isStepDone = (key: StepKey) => {
     if (key === 'normal') return homeScore !== '' && awayScore !== '';
     if (key === 'extra') return extraResult !== '';
-    return penHome !== '' && penAway !== '';
+    return hasExtraTime ? penHome !== '' && penAway !== '' : penWinner !== '';
   };
 
   const handleSave = async () => {
@@ -192,8 +203,9 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     const extra = isKnockout
       ? {
           predExtraResult: (hasExtraTime ? extraResult || null : null) as 'home' | 'draw' | 'away' | null,
-          predPenHome: penHome === '' ? null : parseInt(penHome),
-          predPenAway: penAway === '' ? null : parseInt(penAway),
+          predPenHome: hasExtraTime && penHome !== '' ? parseInt(penHome) : null,
+          predPenAway: hasExtraTime && penAway !== '' ? parseInt(penAway) : null,
+          predPenWinner: (!hasExtraTime ? penWinner || null : null) as 'home' | 'away' | null,
         }
       : undefined;
 
@@ -202,7 +214,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
       setToastMessage(result.error);
     } else {
       setToastMessage('Palpite salvo com sucesso!');
-      setSaved({ home: home.toString(), away: away.toString(), extra: extraResult, penHome, penAway });
+      setSaved({ home: home.toString(), away: away.toString(), extra: extraResult, penHome, penAway, penWinner });
     }
     setTimeout(() => setToastMessage(null), 3000);
     setIsSaving(false);
@@ -236,6 +248,11 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     if (r === 'home') return `${match.team_home} vence`;
     if (r === 'away') return `${match.team_away} vence`;
     if (r === 'draw') return 'Empate';
+    return '—';
+  }
+  function penWinnerLabel(w: 'home' | 'away' | null | undefined) {
+    if (w === 'home') return `${match.team_home}`;
+    if (w === 'away') return `${match.team_away}`;
     return '—';
   }
 
@@ -458,11 +475,9 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                 </div>
               )}
 
-              {currentStepKey === 'pen' && (
+              {currentStepKey === 'pen' && hasExtraTime && (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-300 text-center font-medium">
-                    {hasExtraTime ? 'E se for aos pênaltis, qual o placar?' : 'E se o agregado empatar e for aos pênaltis, qual o placar?'}
-                  </p>
+                  <p className="text-sm text-slate-300 text-center font-medium">E se for aos pênaltis, qual o placar?</p>
                   <div className="flex items-center justify-center gap-3">
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-[11px] text-slate-400 truncate max-w-[80px]">{match.team_home}</span>
@@ -485,6 +500,31 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                         className="w-16 text-center text-white text-2xl font-bold h-14 bg-slate-950 border-slate-700"
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {currentStepKey === 'pen' && !hasExtraTime && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-300 text-center font-medium">E se o agregado empatar e for aos pênaltis, quem vence?</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {([
+                      ['home', `${match.team_home} vence`],
+                      ['away', `${match.team_away} vence`],
+                    ] as [PenWinner, string][]).map(([val, label]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setPenWinner(val)}
+                        className={`px-3 py-3 rounded-lg text-sm font-medium border-2 transition-colors ${
+                          penWinner === val
+                            ? 'bg-amber-500 text-black border-amber-500'
+                            : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -548,9 +588,13 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
             {match.user_prediction.pred_extra_result && (
               <div className="text-center text-xs">Prorrogação: {extraResultLabel(match.user_prediction.pred_extra_result)}</div>
             )}
-            {match.user_prediction.pred_pen_home != null && (
-              <div className="text-center text-xs">Pênaltis: {match.user_prediction.pred_pen_home} x {match.user_prediction.pred_pen_away}</div>
-            )}
+            {hasExtraTime
+              ? match.user_prediction.pred_pen_home != null && (
+                  <div className="text-center text-xs">Pênaltis: {match.user_prediction.pred_pen_home} x {match.user_prediction.pred_pen_away}</div>
+                )
+              : match.user_prediction.pred_pen_winner && (
+                  <div className="text-center text-xs">Pênaltis: {penWinnerLabel(match.user_prediction.pred_pen_winner)}</div>
+                )}
           </div>
         )}
 
@@ -578,12 +622,14 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
         </div>
 
         {/* Resultado real de prorrogação/pênaltis (encerrado) */}
-        {isFinished && isKnockout && (match.extra_time_result || match.pen_home != null) && (
+        {isFinished && isKnockout && (match.extra_time_result || match.pen_home != null || match.pen_winner) && (
           <div className="text-slate-400 text-xs text-center mt-2 space-y-0.5">
             {match.extra_time_result && <div>Prorrogação: {extraResultLabel(match.extra_time_result)}</div>}
-            {match.pen_home != null && match.pen_away != null && (
-              <div>Pênaltis: {match.pen_home} x {match.pen_away}</div>
-            )}
+            {hasExtraTime
+              ? match.pen_home != null && match.pen_away != null && (
+                  <div>Pênaltis: {match.pen_home} x {match.pen_away}</div>
+                )
+              : match.pen_winner && <div>Pênaltis: {penWinnerLabel(match.pen_winner)}</div>}
           </div>
         )}
 
@@ -594,10 +640,13 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
             {isKnockout && match.user_prediction.pred_extra_result && (
               <div className="text-xs">Prorrogação: {extraResultLabel(match.user_prediction.pred_extra_result)}</div>
             )}
-            {isKnockout && match.user_prediction.pred_pen_home != null && (
+            {isKnockout && hasExtraTime && match.user_prediction.pred_pen_home != null && (
               <div className="text-xs">
                 Pênaltis: {match.user_prediction.pred_pen_home} x {match.user_prediction.pred_pen_away}
               </div>
+            )}
+            {isKnockout && !hasExtraTime && match.user_prediction.pred_pen_winner && (
+              <div className="text-xs">Pênaltis: {penWinnerLabel(match.user_prediction.pred_pen_winner)}</div>
             )}
           </div>
         )}
