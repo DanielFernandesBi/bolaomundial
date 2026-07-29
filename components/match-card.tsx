@@ -269,8 +269,12 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
       text = isLocked ? 'Você não palpitou neste jogo' : 'Você ainda não palpitou neste jogo';
     } else if (isKnockout) {
       const missing: string[] = [];
-      if (hasExtraTime && saved.extra === '') missing.push('prorrogação');
-      if (saved.penHome === '' || saved.penAway === '') missing.push('pênaltis');
+      if (hasExtraTime) {
+        if (saved.extra === '') missing.push('prorrogação');
+        if (saved.penHome === '' || saved.penAway === '') missing.push('pênaltis');
+      } else {
+        if (saved.penWinner === '') missing.push('pênaltis');
+      }
       if (missing.length > 0) {
         tone = 'partial';
         text = `Palpite incompleto — falta: ${missing.join(' e ')}`;

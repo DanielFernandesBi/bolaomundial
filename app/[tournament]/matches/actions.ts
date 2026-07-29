@@ -202,6 +202,7 @@ export async function getMatchesInProgressWithAllPredictions(tournamentSlug: str
       pred_extra_result: pred.pred_extra_result ?? null,
       pred_pen_home: pred.pred_pen_home ?? null,
       pred_pen_away: pred.pred_pen_away ?? null,
+      pred_pen_winner: pred.pred_pen_winner ?? null,
       user_id: pred.user_id,
       username: profile?.username || 'Usuário',
       avatar_url: profile?.avatar_url || null,

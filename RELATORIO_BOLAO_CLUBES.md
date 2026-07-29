@@ -231,6 +231,13 @@ Segurança: `advance_bracket_for_match` tem checagem interna de admin e é a ún
 |---|---|
 | `package.json` só tinha `dev/build/start/lint`; nenhum teste para regras de dinheiro/ranking/chaveamento. | Adicionada suíte **pgTAP** em `supabase/tests/` + script `npm test` (`supabase test db`). **`01_scoring_functions`** cobre toda a matemática pura: pontuação (30/17/15/12/empate 15/10/3/0), pênaltis clubes (0/7), pênaltis legado (0/5/10), prorrogação (0/5), pódio por competição (40/25/10) e pódio legado (40/20/25/10). **`02_bracket_aggregate`** cobre `tie_aggregate_tied` (empate, não‑empate, mandantes invertidos, não finalizado). O `README.md` documenta como rodar e traz o **esqueleto** da próxima camada (motor/trigger, prêmio e RLS/segurança — que exigem fixtures de `auth`/roles). |
 
+### 🔴 Bloqueador + 2 bugs de frontend dos pênaltis dos clubes (pré‑estreia)
+| # | Como estava | O que mudou |
+|---|---|---|
+| 🔴 | A coluna `pred_pen_winner` (criada na `000012`) não entrou nos GRANTs por coluna da `000006` → **usuário comum não conseguia salvar o palpite de volta** dos clubes (erro de permissão). | Migration **`20260728000016`**: `GRANT INSERT/UPDATE (pred_pen_winner) TO authenticated` (nada em `points_*`). |
+| ⚠️ | `statusHeader()` do card checava `penHome/penAway` para todo mata‑mata → nos clubes (que usam vencedor) o card dizia **"Palpite incompleto — falta pênaltis"** mesmo com o palpite salvo. | Ramo por modelo: clubes exigem `penWinner`; Mundial exige `penHome/penAway` (+prorrogação). |
+| ⚠️ | `getMatchesInProgressWithAllPredictions` não enviava `pred_pen_winner` → a Transparência não mostrava "Pên.: <time>" nos clubes. | Passou a incluir `pred_pen_winner` no `all_predictions`. |
+
 ---
 
 ## 12. Índice de arquivos
@@ -251,6 +258,7 @@ Segurança: `advance_bracket_for_match` tem checagem interna de admin e é a ún
 - `supabase/migrations/20260728000013_scoring_pen_gate_and_reopen_reversal.sql`
 - `supabase/migrations/20260728000014_prize_shared_positions.sql`
 - `supabase/migrations/20260728000015_bracket_atomic_rpc.sql`
+- `supabase/migrations/20260728000016_grant_pred_pen_winner.sql`
 - `supabase/tests/01_scoring_functions.test.sql`
 - `supabase/tests/02_bracket_aggregate.test.sql`
 - `supabase/tests/README.md`
