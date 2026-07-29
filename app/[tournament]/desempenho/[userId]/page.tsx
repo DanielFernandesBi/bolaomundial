@@ -234,6 +234,7 @@ export default async function DesempenhoUserPage({ params }: DesempenhoUserPageP
           </CardHeader>
           <CardContent>
             <HistoryList
+              isOwn={false}
               history={profile.history}
               userAvatarUrl={profile.avatar_url}
               username={profile.username}

@@ -41,6 +41,9 @@ interface HistoryListProps {
   history: HistoryItem[];
   userAvatarUrl?: string | null;
   username: string;
+  /** false na página de OUTRO jogador — troca "Seu palpite" por "Palpitou".
+      Opcional e com default true: quem já usava o componente não muda. */
+  isOwn?: boolean;
 }
 
 // Etiqueta da pontuação regular (tempo normal) — mesma lógica dos cards de "Encerradas"
@@ -56,7 +59,7 @@ function regularBadge(pts: number) {
   );
 }
 
-export function HistoryList({ history, userAvatarUrl, username }: HistoryListProps) {
+export function HistoryList({ history, userAvatarUrl, username, isOwn = true }: HistoryListProps) {
   const [sharingId, setSharingId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -73,7 +76,7 @@ export function HistoryList({ history, userAvatarUrl, username }: HistoryListPro
       // Gerar e compartilhar imagem
       await shareAsImage(cardId, `bolao-cravada-${match.match_id}.png`);
       
-      setToast('Imagem gerada! Compartilhe com a galera 🎉');
+      setToast('Imagem gerada! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
       setToast(error.message || 'Erro ao gerar imagem');
@@ -222,9 +225,9 @@ export function HistoryList({ history, userAvatarUrl, username }: HistoryListPro
 
                 {/* Separador */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {/* Seu Palpite */}
+                  {/* Palpite (do próprio usuário ou de terceiro) */}
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-sm">Seu Palpite</span>
+                    <span className="text-muted-foreground text-sm">{isOwn ? 'Seu palpite' : 'Palpitou'}</span>
                     <div className="flex flex-col items-end">
                       <span className="text-foreground font-semibold text-lg">
                         {match.pred_home} x {match.pred_away}

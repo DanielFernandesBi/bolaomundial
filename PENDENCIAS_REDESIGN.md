@@ -27,7 +27,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 4c — Aba Projeção + barra "Você" | ✅ | `30d4c64` |
 | 4d — Abas de ordenação no Ranking Geral | ✅ | `f56622d` |
 | 4e — Escopo "Todos os bolões" na tela do torneio | ⬜ | — |
-| 5 — Desempenho + Perfil (+ perfil de terceiro) | ⬜ | — |
+| 5a — Perfil: escala em 3 níveis + correção de cópia | ✅ | `80534fa` |
+| 5b — Desempenho: hero, faixa de métricas, últimos 8 jogos, legenda recolhível | ⬜ | — |
 | 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
 | 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
 
@@ -59,8 +60,7 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 - [x] **Toasts locais** → `components/toast.tsx` (bloco 1, `a2ac0aa`).
       Sem provider: cada tela mantém o próprio estado; só a apresentação mudou.
-- [ ] Remover o 🎉 e demais emoji das mensagens de toast (ficou para o bloco
-      da tela correspondente).
+- [x] Emoji removidos das 5 mensagens de toast (bloco 5a).
 - [x] **Botão Salvar** em `match-card.tsx` (bloco 2) e `podium-card.tsx`
       (bloco 3) → `bg-primary`.
 - [ ] **Botões de excluir** `bg-red-600/700` → `destructive`.
@@ -79,10 +79,20 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 ### Vindas da Fase 3 (escala antiga ainda viva)
 
-- [ ] **Distribuição de pontos do perfil** (7 categorias coloridas) → 3 níveis.
-      `app/profile/page.tsx`, `app/profile/[userId]/page.tsx`
-      (roxo/ciano/amarelo restantes).
+- [x] **Distribuição de pontos do perfil** → 3 níveis (bloco 5a). As duas telas
+      de perfil não têm mais NENHUMA classe de cor fixa. Com isso a escala de 8
+      cores está extinta do app — só resta `indigo` no admin.
 - [ ] **`admin/admin-matches-table.tsx`**: `indigo-300/500` restantes.
+
+### Restante do bloco 5 → 5b
+
+- [ ] **Desempenho**: hero de dois cards (Posição âmbar / Pontos neutro), faixa
+      de 4 métricas em grid-cols-4 com divisórias (hoje são 7 cards de peso
+      igual), **últimos 8 jogos** em blocos de 34px coloridos pela escala, e a
+      **legenda de pontuação recolhível**, fechada por padrão.
+- [ ] **Perfil**: cabeçalho centralizado com avatar de 76px, dois cards-herói
+      (Pontos totais / Dinheiro ganho em `text-money`) e "Bolões que você jogou"
+      como linha por torneio.
 
 ### Restante do bloco 4 → passa a ser o 4c
 
@@ -166,8 +176,9 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 ### Correção de cópia (do handoff)
 
-- [ ] Em `desempenho/[userId]` o histórico diz "Seu Palpite" mesmo sendo de
-      outra pessoa. Em página de terceiro, usar "palpitou 2 — 1".
+- [x] Corrigido no bloco 5a: `HistoryList` ganhou a prop opcional `isOwn`
+      (default `true`, então quem já usava não muda) e a página de terceiro
+      passa `isOwn={false}` — o rótulo vira "Palpitou".
 
 ---
 

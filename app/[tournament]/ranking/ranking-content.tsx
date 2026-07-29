@@ -112,7 +112,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
       // Gerar e compartilhar imagem
       await shareAsImage(cardId, `bolao-ranking-${profile.id}.png`);
       
-      setToast('Imagem gerada! Compartilhe com a galera 🎉');
+      setToast('Imagem gerada! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
       setToast(error.message || 'Erro ao gerar imagem');
@@ -129,7 +129,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
       await shareAsImage('share-full-ranking-card', `bolao-ranking-completo-${activeTab}.png`);
-      setToast('Ranking completo gerado! Compartilhe com a galera 🎉');
+      setToast('Ranking completo gerado! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
       setToast(error.message || 'Erro ao gerar imagem');

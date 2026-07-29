@@ -92,7 +92,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
       // Gerar e compartilhar imagem
       await shareAsImage(cardId, `bolao-ranking-geral-${profile.id}.png`);
       
-      setToast('Imagem gerada! Compartilhe com a galera 🎉');
+      setToast('Imagem gerada! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
       setToast(error.message || 'Erro ao gerar imagem');
@@ -109,7 +109,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
       await shareAsImage('share-full-ranking-card-geral', 'bolao-ranking-geral-completo.png');
-      setToast('Ranking completo gerado! Compartilhe com a galera 🎉');
+      setToast('Ranking completo gerado! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
       setToast(error.message || 'Erro ao gerar imagem');

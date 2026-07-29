@@ -229,47 +229,52 @@ export default async function GeneralProfilePage() {
                 </p>
               </div>
               <div className="p-4 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-sm mb-2">Distribuição de Pontos</p>
+                <p className="text-muted-foreground text-sm mb-2">
+                  Distribuição de pontos
+                  <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+                    cravada · parcial · zero
+                  </span>
+                </p>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-card-foreground">Cravadas (30 pts)</span>
-                    <span className="text-primary font-semibold">
+                    <span className="text-score-exact font-semibold tabular-nums">
                       {profile.points_distribution?.exact || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-card-foreground">17 pts</span>
-                    <span className="text-purple-400 font-semibold">
+                    <span className="text-score-partial font-semibold tabular-nums">
                       {profile.points_distribution?.category17 || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-card-foreground">15 pts</span>
-                    <span className="text-muted-foreground font-semibold">
+                    <span className="text-score-partial font-semibold tabular-nums">
                       {profile.points_distribution?.category15 || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-card-foreground">12 pts</span>
-                    <span className="text-state-open font-semibold">
+                    <span className="text-score-partial font-semibold tabular-nums">
                       {profile.points_distribution?.category12 || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-card-foreground">10 pts</span>
-                    <span className="text-cyan-400 font-semibold">
+                    <span className="text-score-partial font-semibold tabular-nums">
                       {profile.points_distribution?.category9 || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-card-foreground">3 pts</span>
-                    <span className="text-state-missing font-semibold">
+                    <span className="text-score-partial font-semibold tabular-nums">
                       {profile.points_distribution?.category3 || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-card-foreground">0 pts</span>
-                    <span className="text-[hsl(var(--faint))] font-semibold">
+                    <span className="text-score-none font-semibold tabular-nums">
                       {profile.points_distribution?.zero || 0}
                     </span>
                   </div>
@@ -333,12 +338,12 @@ export default async function GeneralProfilePage() {
                               </span>
                             )}
                             {tournament.tournament_status === 'pending' && (
-                              <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
+                              <span className="px-2 py-1 bg-state-closing/15 text-state-closing text-xs rounded-full">
                                 Pendente
                               </span>
                             )}
                             {tournament.tournament_status === 'finished' && (
-                              <span className="px-2 py-1 bg-slate-600 text-muted-foreground text-xs rounded-full">
+                              <span className="px-2 py-1 bg-score-none/10 text-muted-foreground text-xs rounded-full">
                                 Encerrado
                               </span>
                             )}
