@@ -27,6 +27,10 @@ rodar os arquivos `*.test.sql` via `psql` (o banco precisa da extensão `pgtap`)
   - `calc_podium_points` — pódio legado (40 / 20 / 25 / consolação 10)
 - **`02_bracket_aggregate.test.sql`** — `tie_aggregate_tied`: empate, não‑empate,
   mandantes invertidos, pernas não finalizadas.
+- **`03_bracket_flow.test.sql`** — fluxo de `advance_tie`/`ensure_tie_matches`:
+  bracket fixo (2 vencedores → 1 QF com exatamente 1 ida + 1 volta, sem duplicar),
+  barreira de sorteio (agregado empatado sem pênaltis não classifica), final `single`
+  (1 jogo `single`, nunca volta; campeão gravado) e participante pendente (não cria jogo).
 
 ## Próxima camada (recomendado adicionar)
 

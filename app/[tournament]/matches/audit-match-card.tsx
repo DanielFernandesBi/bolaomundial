@@ -29,6 +29,7 @@ interface AuditMatchCardProps {
     away_iso: string | null;
     match_date: string;
     is_knockout?: boolean;
+    venue?: string | null;
     all_predictions: Prediction[];
   };
   tournamentSlug: string;
@@ -122,6 +123,9 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
           <div className="text-slate-400 text-xs sm:text-sm text-center mt-2">
             {formattedDate}
           </div>
+          {match.venue && (
+            <div className="text-slate-500 text-xs text-center">🏟️ {match.venue}</div>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>

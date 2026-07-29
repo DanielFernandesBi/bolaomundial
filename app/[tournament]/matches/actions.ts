@@ -268,6 +268,47 @@ export async function getMatchResultDetail(matchId: number) {
   return { match, predictions, error: null };
 }
 
+/**
+ * Confrontos de oitavas ainda SEM os dois participantes (playoffs pendentes).
+ * Retorna, por competição, os ties com rótulo de origem para exibir sem inputs.
+ */
+export async function getPendingBracketTies(tournamentSlug: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+  if (!tournament) return { competitions: [] as any[] };
+
+  const { data: ties } = await supabase
+    .from('ties')
+    .select('id, competition, round, slot, team_a, team_a_iso, team_a_source_label, team_b, team_b_iso, team_b_source_label, ida_match_id')
+    .eq('tournament_id', tournament.id)
+    .eq('round', 'oitavas')
+    .order('slot', { ascending: true });
+
+  // Pendente = falta um participante E ainda não há jogos criados
+  const pending = (ties || []).filter(
+    (t: any) => (t.team_a == null || t.team_b == null) && t.ida_match_id == null
+  );
+
+  const competitions = COMPETITIONS.filter((c) => pending.some((t: any) => t.competition === c.key)).map((c) => ({
+    key: c.key,
+    name: c.name,
+    ties: pending
+      .filter((t: any) => t.competition === c.key)
+      .map((t: any) => ({
+        id: t.id,
+        sideA: { team: t.team_a, iso: t.team_a_iso, label: t.team_a_source_label },
+        sideB: { team: t.team_b, iso: t.team_b_iso, label: t.team_b_source_label },
+      })),
+  }));
+
+  return { competitions };
+}
+
 // ============================================
 // PÓDIO — dois modos:
 //   • 'competition' (bolão de clubes): campeão + vice por competição
@@ -280,6 +321,7 @@ export interface PodiumCompetition {
   mode: 'competition' | 'legacy';
   teams: { name: string; iso: string | null }[];
   locked: boolean;
+  pending: boolean; // algum participante das oitavas ainda indefinido (bloqueia o pódio)
   firstMatchDate: string | null;
   userPick: {
     championTeam: string | null; championIso: string | null;
@@ -328,18 +370,37 @@ export async function getPodiumData(tournamentSlug: string) {
   }
 
   const now = new Date();
-  const hasCompetitionMatches = (matches || []).some((m: any) => m.competition);
 
-  // ---- Modo por competição (clubes) ----
-  if (hasCompetitionMatches) {
-    const byComp = new Map<string, { teams: Map<string, { name: string; iso: string | null }>; firstDate: string | null }>();
+  // Confrontos (bracket) — a fonte dos 16 clubes de cada competição vem dos ties de
+  // oitavas (a Sul-Americana existe antes das partidas). Nunca usar source_label como time.
+  const { data: ties } = await supabase
+    .from('ties')
+    .select('competition, round, team_a, team_a_iso, team_b, team_b_iso')
+    .eq('tournament_id', tournament.id)
+    .eq('round', 'oitavas');
+
+  const hasTies = (ties || []).length > 0;
+
+  // ---- Modo por competição (clubes), a partir dos ties de oitavas ----
+  if (hasTies) {
+    // 1ª data por competição (das partidas reais)
+    const firstDateByComp = new Map<string, string | null>();
     (matches || []).forEach((m: any) => {
-      if (!m.competition) return;
-      if (!byComp.has(m.competition)) byComp.set(m.competition, { teams: new Map(), firstDate: null });
-      const g = byComp.get(m.competition)!;
-      if (m.team_home && !g.teams.has(m.team_home)) g.teams.set(m.team_home, { name: m.team_home, iso: m.home_iso });
-      if (m.team_away && !g.teams.has(m.team_away)) g.teams.set(m.team_away, { name: m.team_away, iso: m.away_iso });
-      if (m.match_date && (!g.firstDate || new Date(m.match_date) < new Date(g.firstDate))) g.firstDate = m.match_date;
+      if (!m.competition || !m.match_date) return;
+      const cur = firstDateByComp.get(m.competition);
+      if (!cur || new Date(m.match_date) < new Date(cur)) firstDateByComp.set(m.competition, m.match_date);
+    });
+
+    // times reais + pendência por competição
+    const byComp = new Map<string, { teams: Map<string, { name: string; iso: string | null }>; pending: boolean }>();
+    (ties || []).forEach((t: any) => {
+      if (!t.competition) return;
+      if (!byComp.has(t.competition)) byComp.set(t.competition, { teams: new Map(), pending: false });
+      const g = byComp.get(t.competition)!;
+      if (t.team_a) g.teams.set(t.team_a, { name: t.team_a, iso: t.team_a_iso });
+      else g.pending = true;
+      if (t.team_b) g.teams.set(t.team_b, { name: t.team_b, iso: t.team_b_iso });
+      else g.pending = true;
     });
 
     const { data: results } = await supabase
@@ -350,6 +411,7 @@ export async function getPodiumData(tournamentSlug: string) {
     const competitions: PodiumCompetition[] = COMPETITIONS.filter((c) => byComp.has(c.key)).map((c) => {
       const g = byComp.get(c.key)!;
       const teams = Array.from(g.teams.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      const firstDate = firstDateByComp.get(c.key) ?? null;
       const pick = picks.find((p) => p.competition === c.key) || null;
       const res = (results || []).find((r: any) => r.competition === c.key) || null;
       return {
@@ -357,8 +419,9 @@ export async function getPodiumData(tournamentSlug: string) {
         name: c.name,
         mode: 'competition',
         teams,
-        locked: g.firstDate ? now > new Date(g.firstDate) : false,
-        firstMatchDate: g.firstDate,
+        pending: g.pending,
+        locked: firstDate ? now > new Date(firstDate) : false,
+        firstMatchDate: firstDate,
         userPick: pick
           ? { championTeam: pick.champion_team, championIso: pick.champion_iso, viceTeam: pick.runner_up_team, viceIso: pick.runner_up_iso, thirdTeam: null, thirdIso: null }
           : null,
@@ -391,6 +454,7 @@ export async function getPodiumData(tournamentSlug: string) {
     name: 'Pódio',
     mode: 'legacy',
     teams,
+    pending: false,
     locked: firstDate ? now > new Date(firstDate) : false,
     firstMatchDate: firstDate,
     userPick: legacyPick
@@ -550,6 +614,22 @@ export async function savePodiumPrediction(
 
   if (firstMatch?.match_date && new Date() > new Date(firstMatch.match_date)) {
     return { error: 'O prazo do palpite de pódio já encerrou.' };
+  }
+
+  // Não permite salvar pódio de uma competição com participantes de oitavas indefinidos.
+  if (competition) {
+    const { data: pendingTie } = await supabase
+      .from('ties')
+      .select('id')
+      .eq('tournament_id', tournament.id)
+      .eq('competition', competition)
+      .eq('round', 'oitavas')
+      .or('team_a.is.null,team_b.is.null')
+      .limit(1)
+      .maybeSingle();
+    if (pendingTie) {
+      return { error: 'Aguardando definição dos playoffs desta competição para liberar o palpite de pódio.' };
+    }
   }
 
   // Times distintos (campeão/vice/3º)

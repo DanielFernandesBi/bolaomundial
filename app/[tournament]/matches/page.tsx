@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MatchCard } from '@/components/match-card';
 import { PodiumCard } from '@/components/podium-card';
 import { PodiumTransparency } from '@/components/podium-transparency';
+import { PendingTieCard } from '@/components/pending-tie-card';
 import { AuditMatchCard } from './audit-match-card';
 import { TournamentDeadlineBanner } from '@/components/tournament-deadline-banner';
 import {
@@ -11,6 +12,7 @@ import {
   getMatchesInProgressWithAllPredictions,
   getPodiumData,
   getPodiumTransparency,
+  getPendingBracketTies,
 } from './actions';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { COMPETITIONS } from '@/lib/competitions';
@@ -93,6 +95,9 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   const podiumTransparency = showPodium ? await getPodiumTransparency(tournamentSlug) : null;
   const podiumCompetitions = podium && !podium.error ? podium.competitions : [];
 
+  // Confrontos de oitavas ainda sem os dois participantes (playoffs pendentes)
+  const { competitions: pendingBracket } = await getPendingBracketTies(tournamentSlug);
+
   return (
     <div className="min-h-screen bg-slate-950 overflow-x-hidden">
       <div className="container mx-auto px-4 py-8 max-w-full">
@@ -171,13 +176,27 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                     mode={c.mode}
                     teams={c.teams}
                     locked={c.locked}
+                    pending={c.pending}
                     userPick={c.userPick}
                   />
                 ))}
               </div>
             )}
 
-            {upcomingMatches.length === 0 ? (
+            {pendingBracket.length > 0 &&
+              pendingBracket.map((comp: any) => (
+                <section key={`pending-${comp.key}`} className="mb-8">
+                  <h2 className="text-xl font-bold text-white mb-1">{comp.name}</h2>
+                  <p className="text-slate-500 text-sm mb-4">Confrontos aguardando os classificados dos playoffs</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {comp.ties.map((t: any) => (
+                      <PendingTieCard key={t.id} sideA={t.sideA} sideB={t.sideB} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+
+            {upcomingMatches.length === 0 && pendingBracket.length === 0 ? (
               <div className="text-slate-400 text-center py-12">Nenhuma partida próxima no momento.</div>
             ) : (
               groupByCompetition(upcomingMatches).map((g) => (

@@ -21,6 +21,7 @@ interface PodiumCardProps {
   mode: 'competition' | 'legacy';
   teams: Team[];
   locked: boolean;
+  pending?: boolean;
   userPick: {
     championTeam: string | null;
     championIso: string | null;
@@ -41,7 +42,7 @@ function TeamFlag({ iso, alt, size = 32 }: { iso: string | null; alt: string; si
   return <Image src={getFlagUrl(iso)} alt={alt} width={size} height={size} className="rounded" style={{ height: 'auto' }} />;
 }
 
-export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mode, teams, locked, userPick }: PodiumCardProps) {
+export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mode, teams, locked, pending, userPick }: PodiumCardProps) {
   const slotDefs: { key: SlotKey; label: string; pts: number; color: string }[] =
     mode === 'legacy'
       ? [
@@ -110,14 +111,22 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="w-5 h-5 text-amber-500 flex-shrink-0" />
           <h3 className="text-white font-bold text-sm">{mode === 'legacy' ? 'Palpite de Pódio' : `Pódio — ${competitionName}`}</h3>
-          {locked && (
+          {locked && !pending && (
             <span className="flex items-center gap-1 text-slate-400 text-xs ml-auto">
               <Lock className="w-3 h-3" /> Encerrado
             </span>
           )}
         </div>
 
+        {pending && (
+          <p className="text-slate-400 text-sm text-center py-4">
+            Aguardando definição dos playoffs para liberar o palpite de pódio.
+          </p>
+        )}
+
         {/* Slots */}
+        {!pending && (
+        <>
         <div className={`grid ${mode === 'legacy' ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-4`}>
           {slotDefs.map((slot) => {
             const team = picks[slot.key];
@@ -186,6 +195,8 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
           <p className="text-slate-500 text-sm text-center">
             {mode === 'legacy' ? 'Você não palpitou o pódio deste torneio.' : 'Você não palpitou o pódio desta competição.'}
           </p>
+        )}
+        </>
         )}
       </CardContent>
     </Card>

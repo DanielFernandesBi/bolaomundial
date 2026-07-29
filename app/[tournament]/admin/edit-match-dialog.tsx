@@ -31,6 +31,7 @@ interface Match {
   has_extra_time?: boolean;
   competition?: string | null;
   leg?: string | null;
+  venue?: string | null;
 }
 
 interface EditMatchDialogProps {
@@ -75,6 +76,7 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
       competition: match.competition ?? '',
       leg: match.leg ?? '',
       hasExtraTime: match.has_extra_time !== false,
+      venue: match.venue ?? '',
     });
     setError(null);
     setSuccess(false);
@@ -105,7 +107,8 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
         formData.isKnockout,
         formData.competition || null,
         formData.leg || null,
-        formData.hasExtraTime
+        formData.hasExtraTime,
+        formData.venue || null
       );
 
       if (result.error) {
@@ -261,6 +264,20 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               onChange={handleChange}
               className="bg-slate-950 border-slate-700 text-white"
               placeholder="Ex: Oitavas de final – ida"
+            />
+          </div>
+
+          {/* Estádio */}
+          <div className="space-y-2">
+            <Label htmlFor="venue" className="text-slate-300">Estádio</Label>
+            <Input
+              id="venue"
+              name="venue"
+              type="text"
+              value={formData.venue}
+              onChange={handleChange}
+              className="bg-slate-950 border-slate-700 text-white"
+              placeholder="Ex: Maracanã"
             />
           </div>
 

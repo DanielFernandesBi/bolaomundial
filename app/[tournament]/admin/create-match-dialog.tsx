@@ -38,6 +38,7 @@ export function CreateMatchDialog({ tournamentSlug }: CreateMatchDialogProps) {
     competition: '',
     leg: '',
     hasExtraTime: true,
+    venue: '',
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -64,7 +65,8 @@ export function CreateMatchDialog({ tournamentSlug }: CreateMatchDialogProps) {
         formData.isKnockout,
         formData.competition || null,
         formData.leg || null,
-        formData.hasExtraTime
+        formData.hasExtraTime,
+        formData.venue || null
       );
 
       if (result.error) {
@@ -83,6 +85,7 @@ export function CreateMatchDialog({ tournamentSlug }: CreateMatchDialogProps) {
           competition: '',
           leg: '',
           hasExtraTime: true,
+          venue: '',
         });
         // Close dialog after a short delay
         setTimeout(() => {
@@ -240,6 +243,20 @@ export function CreateMatchDialog({ tournamentSlug }: CreateMatchDialogProps) {
               onChange={handleChange}
               className="bg-slate-950 border-slate-700 text-white"
               placeholder="Ex: Oitavas de final – ida"
+            />
+          </div>
+
+          {/* Estádio (opcional) */}
+          <div className="space-y-2">
+            <Label htmlFor="venue" className="text-slate-300">Estádio</Label>
+            <Input
+              id="venue"
+              name="venue"
+              type="text"
+              value={formData.venue}
+              onChange={handleChange}
+              className="bg-slate-950 border-slate-700 text-white"
+              placeholder="Ex: Maracanã"
             />
           </div>
 
