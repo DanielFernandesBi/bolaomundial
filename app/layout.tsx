@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from 'next';
+import { DM_Sans, DM_Mono } from 'next/font/google';
 import './globals.css';
+
+// Auto-hospedadas pelo next/font no build: nenhuma requisição em runtime e
+// nenhum salto de layout. A DM Mono serve aos rótulos em caixa alta (fases,
+// metadados, etiquetas) — sem ela cada sistema escolheria uma mono diferente.
+const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+const dmMono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-mono', display: 'swap' });
 import { Navbar } from '@/components/navbar';
 import { BottomNav } from '@/components/bottom-nav';
 import { MobileHeader } from '@/components/mobile-header';
@@ -64,7 +71,7 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="pt-BR" className="overflow-x-hidden">
+    <html lang="pt-BR" className={`${dmSans.variable} ${dmMono.variable} overflow-x-hidden`}>
       <head>
         {/*
           Anti-flash: aplica o tema ANTES da primeira pintura, senão a tela
