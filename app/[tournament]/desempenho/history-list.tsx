@@ -9,6 +9,7 @@ import { ShareMatchCard } from '@/components/share-match-card';
 import { shareAsImage } from '@/lib/shareUtils';
 import { getFlagUrl } from '@/lib/utils/flags';
 import { scoreTier, tierBadge, bonusBadge } from '@/lib/scoring-ui';
+import { Toast } from '@/components/toast';
 
 interface HistoryItem {
   match_id: number;
@@ -93,11 +94,7 @@ export function HistoryList({ history, userAvatarUrl, username }: HistoryListPro
   return (
     <>
       {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-foreground px-4 py-3 rounded-md shadow-lg">
-          {toast}
-        </div>
-      )}
+      <Toast message={toast} />
 
       {/* Cards ocultos para compartilhamento */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>

@@ -5,6 +5,7 @@ import { Trophy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { setTournamentPodium } from './actions';
+import { Toast } from '@/components/toast';
 
 interface Team {
   name: string;
@@ -58,13 +59,7 @@ export function PodiumEntry({ tournamentSlug, teams, current }: PodiumEntryProps
     <Card className="bg-card border-border mb-8">
       <CardContent className="p-6">
         {toast && (
-          <div
-            className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-md shadow-lg ${
-              toast.type === 'success' ? 'bg-green-500 text-foreground' : 'bg-red-500 text-foreground'
-            }`}
-          >
-            {toast.message}
-          </div>
+          <Toast message={toast.message} tone={toast.type === 'success' ? 'success' : 'error'} />
         )}
         <div className="flex items-center gap-2 mb-1">
           <Trophy className="w-5 h-5 text-primary" />

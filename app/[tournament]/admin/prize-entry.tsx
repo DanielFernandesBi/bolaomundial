@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { setTournamentPrizes, distributePrizes } from './actions';
+import { Toast } from '@/components/toast';
 
 interface PrizeEntryProps {
   tournamentSlug: string;
@@ -69,13 +70,7 @@ export function PrizeEntry({ tournamentSlug, current }: PrizeEntryProps) {
     <Card className="bg-card border-border mb-8">
       <CardContent className="p-6">
         {toast && (
-          <div
-            className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-md shadow-lg ${
-              toast.type === 'success' ? 'bg-green-500 text-foreground' : 'bg-red-500 text-foreground'
-            }`}
-          >
-            {toast.message}
-          </div>
+          <Toast message={toast.message} tone={toast.type === 'success' ? 'success' : 'error'} />
         )}
 
         <div className="flex items-center gap-2 mb-1">

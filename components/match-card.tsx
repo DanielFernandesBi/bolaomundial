@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { getFlagUrl } from '@/lib/utils/flags';
 import { scoreTier, tierBadge, bonusBadge } from '@/lib/scoring-ui';
 import { savePrediction } from '@/app/[tournament]/matches/actions';
+import { Toast } from '@/components/toast';
 
 // Função simples de formatação de data em português
 function formatDate(date: Date): string {
@@ -312,11 +313,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   return (
     <Card className={`bg-card border-border relative ${isLocked && !isFinished ? 'opacity-70' : ''}`}>
       <CardContent className="p-4">
-        {toastMessage && (
-          <div className="absolute top-4 right-4 bg-muted text-foreground px-4 py-2 rounded-md shadow-lg z-10">
-            {toastMessage}
-          </div>
-        )}
+        <Toast message={toastMessage} />
 
         {/* Cabeçalho de status do palpite */}
         {statusHeader()}

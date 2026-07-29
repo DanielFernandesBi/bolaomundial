@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { updateMatchScore, deleteMatch } from './actions';
 import { EditMatchDialog } from './edit-match-dialog';
+import { Toast } from '@/components/toast';
 
 interface Match {
   id: number;
@@ -232,15 +233,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
     <>
       {/* Toast */}
       {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-md shadow-lg ${
-            toast.type === 'success'
-              ? 'bg-green-500 text-foreground'
-              : 'bg-red-500 text-foreground'
-          }`}
-        >
-          {toast.message}
-        </div>
+        <Toast message={toast.message} tone={toast.type === 'success' ? 'success' : 'error'} />
       )}
 
       {/* Cards Mobile (md:hidden) */}

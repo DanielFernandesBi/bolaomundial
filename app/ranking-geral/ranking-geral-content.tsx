@@ -17,6 +17,7 @@ import {
 import { ShareRankingCard } from '@/components/share-ranking-card';
 import { ShareFullRankingCard } from '@/components/share-full-ranking-card';
 import { shareAsImage } from '@/lib/shareUtils';
+import { Toast } from '@/components/toast';
 
 interface GeneralRankingProfile {
   id: string;
@@ -97,11 +98,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
   return (
     <div>
       {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-foreground px-4 py-3 rounded-md shadow-lg">
-          {toast}
-        </div>
-      )}
+      <Toast message={toast} />
 
       {/* Cards ocultos para compartilhamento individual */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
