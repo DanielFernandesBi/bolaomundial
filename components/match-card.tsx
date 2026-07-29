@@ -95,11 +95,13 @@ function ScoreStepper({
   onChange,
   label,
   disabled = false,
+  hideLabel = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   label: string;
   disabled?: boolean;
+  hideLabel?: boolean;
 }) {
   const n = value === '' ? null : parseInt(value);
   const set = (next: number) => onChange(String(Math.max(0, next)));
@@ -108,7 +110,9 @@ function ScoreStepper({
 
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <span className="max-w-[96px] truncate text-[11px] text-muted-foreground">{label}</span>
+      {!hideLabel && (
+        <span className="max-w-[96px] truncate text-[11px] text-muted-foreground">{label}</span>
+      )}
       <div className="flex items-center gap-1.5 rounded-[12px] border border-border bg-surface-sunken p-1.5">
         <button
           type="button"
@@ -438,21 +442,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
               // No mata-mata o placar é editado dentro do passo 1 (abaixo)
               <span className="text-[hsl(var(--faint))] text-2xl font-bold">vs</span>
             ) : (
-              <div className="flex items-start gap-2">
-                <ScoreStepper
-                  value={homeScore}
-                  onChange={setHomeScore}
-                  label={match.team_home}
-                  disabled={isLocked || isSaving}
-                />
-                <span className="mt-9 text-[hsl(var(--faint))] text-lg">x</span>
-                <ScoreStepper
-                  value={awayScore}
-                  onChange={setAwayScore}
-                  label={match.team_away}
-                  disabled={isLocked || isSaving}
-                />
-              </div>
+              <span className="text-[hsl(var(--faint))] text-xl font-bold">vs</span>
             )}
           </div>
 
@@ -461,6 +451,28 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
             <TeamLogo iso={match.away_iso} alt={match.team_away} />
           </div>
         </div>
+
+        {/* Placar em linha própria: entre as colunas dos times não cabia no
+            celular — dois steppers de ~140px estouravam a largura da tela. */}
+        {!isFinished && !isKnockout && (
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <ScoreStepper
+              value={homeScore}
+              onChange={setHomeScore}
+              label={match.team_home}
+              disabled={isLocked || isSaving}
+              hideLabel
+            />
+            <span className="text-[hsl(var(--faint))] text-lg">x</span>
+            <ScoreStepper
+              value={awayScore}
+              onChange={setAwayScore}
+              label={match.team_away}
+              disabled={isLocked || isSaving}
+              hideLabel
+            />
+          </div>
+        )}
 
         {/* ── WIZARD DE MATA-MATA ───────────────────────────────────────── */}
         {showStepper && (

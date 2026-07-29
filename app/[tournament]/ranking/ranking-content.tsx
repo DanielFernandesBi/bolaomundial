@@ -44,26 +44,6 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Barra fixa "Você": aparece quando a sua linha sai da viewport e some
-  // quando ela volta — nunca as duas ao mesmo tempo. É só apresentação; não
-  // altera dado nenhum do ranking.
-  const myRowRef = useRef<HTMLDivElement | null>(null);
-  const [myRowVisible, setMyRowVisible] = useState(true);
-
-  useEffect(() => {
-    const el = myRowRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setMyRowVisible(true);
-      return;
-    }
-    const obs = new IntersectionObserver(
-      ([entry]) => setMyRowVisible(entry.isIntersecting),
-      { rootMargin: '-8px 0px -88px 0px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [activeTab, currentUserId, sortedProfiles.length]);
-
   // Ordenar perfis baseado na aba ativa
   const sortedProfiles = useMemo(() => {
     const sorted = [...profiles];
@@ -86,6 +66,26 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
     }
     return sorted;
   }, [profiles, activeTab]);
+
+  // Barra fixa "Você": aparece quando a sua linha sai da viewport e some
+  // quando ela volta — nunca as duas ao mesmo tempo. É só apresentação; não
+  // altera dado nenhum do ranking.
+  const myRowRef = useRef<HTMLDivElement | null>(null);
+  const [myRowVisible, setMyRowVisible] = useState(true);
+
+  useEffect(() => {
+    const el = myRowRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setMyRowVisible(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => setMyRowVisible(entry.isIntersecting),
+      { rootMargin: '-8px 0px -88px 0px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [activeTab, currentUserId, sortedProfiles.length]);
 
   const showCravadas = activeTab === 'cravadas';
 

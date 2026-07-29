@@ -33,6 +33,7 @@ export function TournamentSheet({ currentSlug, currentName }: Props) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<TournamentRow[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   async function abrir() {
     setOpen(true);
@@ -40,13 +41,17 @@ export function TournamentSheet({ currentSlug, currentName }: Props) {
     setLoading(true);
     try {
       const supabase = createBrowserClient();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('tournaments')
         .select('id, name, slug, active')
         .order('active', { ascending: false })
         .order('id', { ascending: false });
+      // Antes eu engolia o erro num catch mudo e a folha aparecia vazia, sem
+      // dizer o porquê. Agora a mensagem aparece na tela.
+      if (error) setErro(error.message);
       setRows((data as TournamentRow[]) ?? []);
-    } catch {
+    } catch (e: any) {
+      setErro(e?.message ?? 'Falha ao carregar os campeonatos.');
       setRows([]);
     } finally {
       setLoading(false);
@@ -116,6 +121,11 @@ export function TournamentSheet({ currentSlug, currentName }: Props) {
             </div>
 
             {loading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+            {erro && (
+              <p className="mb-4 rounded-[12px] border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {erro}
+              </p>
+            )}
             {!loading && rows?.length === 0 && (
               <p className="text-sm text-muted-foreground">Nenhum campeonato encontrado.</p>
             )}
