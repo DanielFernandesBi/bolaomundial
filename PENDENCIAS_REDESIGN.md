@@ -36,7 +36,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 7 — Cards de compartilhamento: marca + share sob demanda | ✅ | `898b5f8`, `a3f7473` |
 | 8 — Redesenho visual dos cards (§16) | ✅ | `fead8e3` |
 | 9 — Admin tokenizado, destaque no pódio, marca na folha nativa | ✅ | `afc6306` |
-| 10 — Contagem regressiva, tema no desktop, QA do claro | ✅ | este commit |
+| 10 — Contagem regressiva, tema no desktop, QA do claro | ✅ | `2a77db1` |
+| 11 — Filtro por competição nas Partidas | ✅ | este commit |
 
 ---
 
@@ -49,6 +50,15 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
   continua existindo.
 - **Escopo do ranking**: "Todos os bolões" **renderiza na própria tela** do
   ranking (não navega para `/ranking-geral`). A rota continua respondendo.
+- **Competições nas Partidas** (bloco 11): as três dividem a tela e cada uma tem
+  seu calendário, então um jogo mais próximo podia aparecer mais abaixo. Duas
+  medidas: botões de filtro no topo de cada aba (escolha compartilhada entre as
+  abas) e, na aba "Próximas", os grupos passam a vir na ordem do calendário —
+  quem joga antes aparece primeiro — em vez da ordem fixa de `COMPETITIONS`.
+  Em torneio de competição única nada disso é renderizado.
+- **Escudos das competições**: não existem no banco (`logo_url` é do torneio, e
+  as três vivem dentro de um). Os botões usam ícone do lucide; se um dia entrarem
+  os escudos, o mapa `ICONES` em `components/competition-filter.tsx` é o lugar.
 - **Admin no mobile**: entra, como engrenagem na barra inferior (feito na Fase 4).
 - **`app/page.tsx`: N queries → 1 agregada**: ❌ **não fazer.** Ganho irrelevante
   (6 torneios) e mexe na query que decide o status do torneio na home.

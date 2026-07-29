@@ -8,6 +8,11 @@ import { PendingTieCard } from '@/components/pending-tie-card';
 import { AuditMatchCard } from './audit-match-card';
 import { TournamentDeadlineBanner } from '@/components/tournament-deadline-banner';
 import {
+  CompetitionFilterProvider,
+  CompetitionFilterBar,
+  CompetitionSection,
+} from '@/components/competition-filter';
+import {
   getMatchesWithPredictions,
   getMatchesInProgressWithAllPredictions,
   getPodiumData,
@@ -39,6 +44,22 @@ function groupByCompetition<T extends { competition?: string | null }>(items: T[
   const others = items.filter((i) => i.competition && !known.has(i.competition));
   if (others.length) groups.push({ key: 'outros', name: 'Outros', items: others });
   return groups;
+}
+
+// Ordena os grupos pela data do jogo mais próximo de cada competição, em vez da
+// ordem fixa de COMPETITIONS. É o que resolve o incômodo real da aba "Próximas":
+// a Copa do Brasil podia jogar antes e ainda assim aparecer por último, porque a
+// ordem era a da constante, não a do calendário. Grupos só com jogos "a definir"
+// (sem data) vão para o fim. Só compara timestamps — nada de formatar data no
+// servidor, que traria divergência de fuso com o horário exibido no card.
+function sortGroupsByNextMatch<T extends { items: any[] }>(groups: T[]): T[] {
+  const primeiraData = (g: T) => {
+    const datas = g.items
+      .map((m) => (m.match_date ? new Date(m.match_date).getTime() : null))
+      .filter((t): t is number => t !== null);
+    return datas.length ? Math.min(...datas) : Number.POSITIVE_INFINITY;
+  };
+  return [...groups].sort((a, b) => primeiraData(a) - primeiraData(b));
 }
 
 export default async function MatchesPage({ params }: MatchesPageProps) {
@@ -85,6 +106,16 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   // Próximo jogo a fechar os palpites (ignora os "a definir"). upcomingMatches vem ordenado por data.
   const nextMatchDate =
     upcomingMatches.find((m: any) => m.match_date)?.match_date ?? null;
+
+  // Filtro por competição: só existe no bolão unificado, onde as três dividem a
+  // mesma tela. Em torneio de competição única nada disso é renderizado.
+  const temCompeticoes = matches.some((m: any) => m.competition);
+  const chipsDe = (lista: any[]) =>
+    COMPETITIONS.filter((c) => matches.some((m: any) => m.competition === c.key)).map((c) => ({
+      key: c.key,
+      short: c.short,
+      count: lista.filter((m: any) => m.competition === c.key).length,
+    }));
 
   // Transparência por partida (apostas encerradas, jogo ainda não finalizado)
   const { matches: inProgressMatches, error: auditError } = await getMatchesInProgressWithAllPredictions(tournamentSlug);
@@ -148,6 +179,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
           missingPredictionsCount={missingPredictionsCount}
         />
 
+        <CompetitionFilterProvider>
         <Tabs defaultValue="upcoming" className="w-full">
           <TabsList className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
             <TabsTrigger value="upcoming" className="flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:text-sm">
@@ -175,27 +207,31 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
 
           {/* Próximas */}
           <TabsContent value="upcoming" className="mt-6">
+            {temCompeticoes && <CompetitionFilterBar comps={chipsDe(upcomingMatches)} className="mb-8" />}
+
             {showPodium && podiumCompetitions.length > 0 && (
               <div className="mb-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {podiumCompetitions.map((c) => (
-                  <PodiumCard
-                    key={c.key}
-                    tournamentSlug={tournamentSlug}
-                    competitionKey={c.key}
-                    competitionName={c.name}
-                    mode={c.mode}
-                    teams={c.teams}
-                    locked={c.locked}
-                    pending={c.pending}
-                    userPick={c.userPick}
-                  />
+                  <CompetitionSection key={c.key} compKey={c.key}>
+                    <PodiumCard
+                      tournamentSlug={tournamentSlug}
+                      competitionKey={c.key}
+                      competitionName={c.name}
+                      mode={c.mode}
+                      teams={c.teams}
+                      locked={c.locked}
+                      pending={c.pending}
+                      userPick={c.userPick}
+                    />
+                  </CompetitionSection>
                 ))}
               </div>
             )}
 
             {pendingBracket.length > 0 &&
               pendingBracket.map((comp: any) => (
-                <section key={`pending-${comp.key}`} className="mb-8">
+                <CompetitionSection key={`pending-${comp.key}`} compKey={comp.key}>
+                <section className="mb-8">
                   <h2 className="text-xl font-bold text-foreground mb-1">{comp.name}</h2>
                   <p className="text-[hsl(var(--faint))] text-sm mb-4">Confrontos aguardando os classificados dos playoffs</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -204,13 +240,17 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                     ))}
                   </div>
                 </section>
+                </CompetitionSection>
               ))}
 
             {upcomingMatches.length === 0 && pendingBracket.length === 0 ? (
               <div className="text-muted-foreground text-center py-12">Nenhuma partida próxima no momento.</div>
             ) : (
-              groupByCompetition(upcomingMatches).map((g) => (
-                <section key={g.key ?? 'all'} className="mb-8">
+              /* Aqui os grupos vão na ordem do calendário, não na da constante:
+                 quem joga antes aparece primeiro. */
+              sortGroupsByNextMatch(groupByCompetition(upcomingMatches)).map((g) => (
+                <CompetitionSection key={g.key ?? 'all'} compKey={g.key}>
+                <section className="mb-8">
                   {g.key && (
                     <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-hairline pb-2">
                       <h2 className="font-mono text-[10.5px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">{g.name}</h2>
@@ -223,12 +263,14 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                     ))}
                   </div>
                 </section>
+                </CompetitionSection>
               ))
             )}
           </TabsContent>
 
           {/* Transparência */}
           <TabsContent value="audit" className="mt-6">
+            {temCompeticoes && <CompetitionFilterBar comps={chipsDe(inProgressMatches)} className="mb-6" />}
             {auditError ? (
               <div className="text-destructive text-center py-12">Erro ao carregar partidas: {auditError}</div>
             ) : inProgressMatches.length === 0 ? (
@@ -254,7 +296,8 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                   </div>
                 </div>
                 {groupByCompetition(inProgressMatches).map((g) => (
-                  <section key={g.key ?? 'all'} className="space-y-4">
+                  <CompetitionSection key={g.key ?? 'all'} compKey={g.key}>
+                  <section className="space-y-4">
                     {g.key && (
                       <div className="flex items-baseline justify-between gap-3 border-b border-hairline pb-2">
                         <h2 className="font-mono text-[10.5px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">{g.name}</h2>
@@ -267,6 +310,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                       ))}
                     </div>
                   </section>
+                  </CompetitionSection>
                 ))}
               </div>
             )}
@@ -274,11 +318,13 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
 
           {/* Encerradas */}
           <TabsContent value="finished" className="mt-6">
+            {temCompeticoes && <CompetitionFilterBar comps={chipsDe(finishedMatches)} className="mb-8" />}
             {finishedMatches.length === 0 ? (
               <div className="text-muted-foreground text-center py-12">Nenhuma partida encerrada ainda.</div>
             ) : (
               groupByCompetition(finishedMatches).map((g) => (
-                <section key={g.key ?? 'all'} className="mb-8">
+                <CompetitionSection key={g.key ?? 'all'} compKey={g.key}>
+                <section className="mb-8">
                   {g.key && (
                     <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-hairline pb-2">
                       <h2 className="font-mono text-[10.5px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">{g.name}</h2>
@@ -303,6 +349,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                     ))}
                   </div>
                 </section>
+                </CompetitionSection>
               ))
             )}
           </TabsContent>
@@ -332,6 +379,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
             </TabsContent>
           )}
         </Tabs>
+        </CompetitionFilterProvider>
       </div>
     </div>
   );
