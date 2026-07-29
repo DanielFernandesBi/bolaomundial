@@ -3,42 +3,108 @@
 @tailwind utilities;
 
 @layer base {
-  /* TEMA ESCURO (padrão) — valores em HSL para casar com hsl(var(--x)).
-     Equivalem ao visual atual (slate-950/900/800, texto slate-100, etc.). */
+  /* ─── TEMA ESCURO (padrão) — é a paleta que o app já usa ─── */
   :root {
-    --primary: 45 93% 47%;          /* amber-500 */
-    --primary-foreground: 0 0% 0%;  /* preto */
+    --background: 229 84% 5%;        /* #020617 */
+    --foreground: 210 40% 98%;       /* #f8fafc */
 
-    --background: 229 84% 5%;       /* slate-950 */
-    --foreground: 210 40% 96%;      /* slate-100 */
-
-    --card: 222 47% 11%;            /* slate-900 */
-    --card-foreground: 210 40% 96%;
+    --card: 222 47% 11%;             /* #0f172a */
+    --card-foreground: 213 27% 92%;  /* #e2e8f0 */
     --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 96%;
+    --popover-foreground: 213 27% 92%;
 
-    --border: 217 33% 17%;          /* slate-800 */
+    --surface: 222 47% 11%;          /* #0f172a  superfície de card    */
+    --surface-sunken: 219 51% 9%;    /* #0b1322  campo/linha rebaixada */
+
+    --border: 217 33% 17%;           /* #1e293b */
+    --hairline: 216 36% 14%;         /* #16202f  divisória interna     */
     --input: 217 33% 17%;
-    --ring: 45 93% 47%;             /* amber-500 */
+    --ring: 45 93% 47%;
 
-    --secondary: 217 33% 17%;       /* slate-800 */
-    --secondary-foreground: 210 40% 96%;
+    --primary: 45 93% 47%;           /* #f59e0b  âmbar: MARCA e AÇÃO   */
+    --primary-foreground: 33 65% 7%; /* #1c1206 */
+    --primary-hover: 45 96% 56%;     /* #fbbf24 */
+    --primary-text: 45 93% 47%;      /* no escuro o âmbar já é legível */
 
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 213 27% 92%;
     --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 96%;
+    --accent-foreground: 213 27% 92%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%; /* #94a3b8 */
+    --faint: 215 16% 47%;            /* #64748b  metadado             */
 
-    --destructive: 0 84% 60%;       /* red-500 */
-    --destructive-foreground: 210 40% 96%;
+    --destructive: 351 95% 71%;      /* #fb7185 */
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 45%;          /* #22c55e */
+    --success-foreground: 33 65% 7%;
+    --warning: 45 93% 47%;
+    --warning-foreground: 33 65% 7%;
+    --money: 142 69% 58%;            /* #4ade80  dinheiro ganho       */
 
-    --muted: 217 33% 17%;           /* slate-800 */
-    --muted-foreground: 215 20% 65%;/* slate-400 */
+    /* Estado do palpite/partida */
+    --state-open: 142 69% 58%;       /* #4ade80  aberto / salvo       */
+    --state-closing: 45 93% 47%;     /* #f59e0b  fecha em <24h        */
+    --state-urgent: 27 96% 61%;      /* #fb923c  fecha em <1h         */
+    --state-locked: 215 20% 65%;     /* #94a3b8  travado / encerrado  */
+    --state-missing: 27 96% 61%;     /* #fb923c  sem palpite          */
 
-    --success: 142 71% 45%;         /* green-500 */
-    --success-foreground: 0 0% 0%;
-    --warning: 45 93% 47%;          /* amber-500 */
-    --warning-foreground: 0 0% 0%;
+    /* Escala de pontuação — 3 níveis, não 8 cores */
+    --score-exact: 45 93% 47%;       /* #f59e0b  cravada (30/25/20)   */
+    --score-partial: 45 96% 56%;     /* #fbbf24  parcial (17..3)      */
+    --score-none: 215 20% 65%;       /* #94a3b8  zero                 */
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;               /* era 0.5rem — cards 14–18px    */
+  }
+
+  /* ─── TEMA CLARO (papel quente) ─── */
+  html.light {
+    --background: 42 31% 94%;        /* #f4f1ea */
+    --foreground: 40 12% 10%;        /* #1c1a16 */
+
+    --card: 0 0% 100%;               /* #ffffff */
+    --card-foreground: 40 12% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 40 12% 10%;
+
+    --surface: 0 0% 100%;
+    --surface-sunken: 43 41% 97%;    /* #faf8f3 */
+
+    --border: 40 25% 86%;            /* #e4ded2 */
+    --hairline: 38 33% 91%;          /* #efe9df */
+    --input: 40 25% 86%;
+    --ring: 26 91% 37%;
+
+    --primary: 45 93% 47%;           /* #f59e0b  preenchimento        */
+    --primary-foreground: 33 65% 7%;
+    --primary-hover: 26 91% 37%;     /* #b45309 */
+    --primary-text: 29 89% 29%;      /* #8a4708  âmbar legível em texto */
+
+    --secondary: 43 41% 97%;
+    --secondary-foreground: 40 12% 10%;
+    --accent: 43 41% 97%;
+    --accent-foreground: 40 12% 10%;
+    --muted: 43 41% 97%;
+    --muted-foreground: 37 9% 38%;   /* #6b6459 */
+    --faint: 37 8% 50%;              /* #8a8275 */
+
+    --destructive: 0 74% 42%;        /* #b91c1c */
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 29%;          /* #15803d */
+    --success-foreground: 0 0% 100%;
+    --warning: 21 90% 40%;           /* #c2410c */
+    --warning-foreground: 0 0% 100%;
+    --money: 142 71% 29%;
+
+    --state-open: 142 71% 29%;       /* #15803d */
+    --state-closing: 21 90% 40%;     /* #c2410c */
+    --state-urgent: 0 74% 42%;
+    --state-locked: 37 9% 38%;
+    --state-missing: 21 90% 40%;
+
+    --score-exact: 45 93% 47%;       /* preenchimento âmbar + texto escuro */
+    --score-partial: 29 89% 29%;     /* #8a4708 texto sobre tinta clara    */
+    --score-none: 37 9% 38%;
   }
 }
 
@@ -46,12 +112,12 @@
   * {
     @apply border-border;
   }
-  
+
   body {
-    @apply bg-slate-950 text-slate-100 overflow-x-hidden;
+    @apply bg-background text-foreground overflow-x-hidden;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  
+
   html {
     @apply overflow-x-hidden;
   }
@@ -66,22 +132,22 @@
   border-radius: 2px;
 }
 
-/* Scrollbar personalizada para tema escuro */
+/* Scrollbar personalizada — segue o tema ativo */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-slate-900;
+  @apply bg-surface-sunken;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-700 rounded-full;
+  @apply bg-border rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-600;
+  @apply bg-muted-foreground;
 }
 
 /* Esconder scrollbar horizontal em navegação mobile */

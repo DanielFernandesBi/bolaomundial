@@ -58,6 +58,24 @@ const config: Config = {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          sunken: "hsl(var(--surface-sunken))",
+        },
+        hairline: "hsl(var(--hairline))",
+        state: {
+          open: "hsl(var(--state-open))",
+          closing: "hsl(var(--state-closing))",
+          urgent: "hsl(var(--state-urgent))",
+          locked: "hsl(var(--state-locked))",
+          missing: "hsl(var(--state-missing))",
+        },
+        score: {
+          exact: "hsl(var(--score-exact))",
+          partial: "hsl(var(--score-partial))",
+          none: "hsl(var(--score-none))",
+        },
+        money: "hsl(var(--money))",
       },
       borderRadius: {
         lg: "var(--radius)",
