@@ -7,6 +7,7 @@ import { Lock, ChevronRight, ChevronLeft, Check, AlertCircle, AlertTriangle, Che
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getFlagUrl } from '@/lib/utils/flags';
+import { scoreTier, tierBadge, bonusBadge } from '@/lib/scoring-ui';
 import { savePrediction } from '@/app/[tournament]/matches/actions';
 
 // Função simples de formatação de data em português
@@ -231,25 +232,22 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   function regularBadge() {
     const pts = match.user_prediction?.points_regular ?? 0;
     if (!isFinished || pts === 0) return null;
-    let bg = 'bg-slate-600';
     let text = `+${pts} pts`;
-    if (pts === 30) { bg = 'bg-primary'; text = `+${pts} Cravada!`; }
-    else if (pts === 17) { bg = 'bg-purple-500'; text = `+${pts} Vencedor + Gols`; }
-    else if (pts === 15) { bg = 'bg-blue-500'; text = `+${pts} pts`; }
-    else if (pts === 12) { bg = 'bg-green-500'; text = `+${pts} pts`; }
-    else if (pts === 10 || pts === 9) { bg = 'bg-cyan-500'; text = `+${pts} Vencedor`; }
-    else if (pts === 3) { bg = 'bg-orange-500'; text = `+${pts} Consolação`; }
-    return <span className={`${bg} text-foreground px-3 py-1 rounded-full text-xs font-semibold`}>{text}</span>;
+    if (pts === 30) { text = `+${pts} Cravada!`; }
+    else if (pts === 17) { text = `+${pts} Vencedor + Gols`; }
+    else if (pts === 10 || pts === 9) { text = `+${pts} Vencedor`; }
+    else if (pts === 3) { text = `+${pts} Consolação`; }
+    return <span className={`${tierBadge[scoreTier(pts)]} px-3 py-1 rounded-full text-xs`}>{text}</span>;
   }
   function extraBadge() {
     const pts = match.user_prediction?.points_extra ?? 0;
     if (!isFinished || pts === 0) return null;
-    return <span className="bg-indigo-500 text-foreground px-3 py-1 rounded-full text-xs font-semibold">+{pts} Prorrogação</span>;
+    return <span className={`${bonusBadge} px-3 py-1 rounded-full text-xs`}>+{pts} Prorrogação</span>;
   }
   function penBadge() {
     const pts = match.user_prediction?.points_pen ?? 0;
     if (!isFinished || pts === 0) return null;
-    return <span className="bg-pink-500 text-foreground px-3 py-1 rounded-full text-xs font-semibold">+{pts} Pênaltis</span>;
+    return <span className={`${bonusBadge} px-3 py-1 rounded-full text-xs`}>+{pts} Pênaltis</span>;
   }
   function extraResultLabel(r: 'home' | 'draw' | 'away' | null | undefined) {
     if (r === 'home') return `${match.team_home} vence`;

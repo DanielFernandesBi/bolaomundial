@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ShareMatchCard } from '@/components/share-match-card';
 import { shareAsImage } from '@/lib/shareUtils';
 import { getFlagUrl } from '@/lib/utils/flags';
+import { scoreTier, tierBadge, bonusBadge } from '@/lib/scoring-ui';
 
 interface HistoryItem {
   match_id: number;
@@ -44,16 +45,13 @@ interface HistoryListProps {
 // Etiqueta da pontuação regular (tempo normal) — mesma lógica dos cards de "Encerradas"
 function regularBadge(pts: number) {
   if (pts === 0) return null;
-  let bg = 'bg-slate-600';
   let text = `+${pts} pts`;
-  if (pts === 30) { bg = 'bg-primary'; text = `+${pts} Cravada!`; }
-  else if (pts === 17) { bg = 'bg-purple-500'; text = `+${pts} Vencedor + Gols`; }
-  else if (pts === 15) { bg = 'bg-blue-500'; text = `+${pts} pts`; }
-  else if (pts === 12) { bg = 'bg-green-500'; text = `+${pts} pts`; }
-  else if (pts === 10 || pts === 9) { bg = 'bg-cyan-500'; text = `+${pts} Vencedor`; }
-  else if (pts === 3) { bg = 'bg-orange-500'; text = `+${pts} Consolação`; }
+  if (pts === 30) { text = `+${pts} Cravada!`; }
+  else if (pts === 17) { text = `+${pts} Vencedor + Gols`; }
+  else if (pts === 10 || pts === 9) { text = `+${pts} Vencedor`; }
+  else if (pts === 3) { text = `+${pts} Consolação`; }
   return (
-    <span className={`${bg} text-foreground px-3 py-1 rounded-full text-xs font-semibold`}>{text}</span>
+    <span className={`${tierBadge[scoreTier(pts)]} px-3 py-1 rounded-full text-xs`}>{text}</span>
   );
 }
 
@@ -268,19 +266,19 @@ export function HistoryList({ history, userAvatarUrl, username }: HistoryListPro
                       <span className="text-muted-foreground text-sm mb-1">Tipo</span>
                       <div className="flex items-center gap-2 flex-wrap justify-end">
                         {hasNoPoints ? (
-                          <span className="bg-slate-600 text-foreground px-3 py-1 rounded-full text-xs font-semibold">
+                          <span className={`${tierBadge.none} px-3 py-1 rounded-full text-xs`}>
                             Sem pontos
                           </span>
                         ) : (
                           <>
                             {regularBadge(ptsRegular)}
                             {ptsExtra > 0 && (
-                              <span className="bg-indigo-500 text-foreground px-3 py-1 rounded-full text-xs font-semibold">
+                              <span className={`${bonusBadge} px-3 py-1 rounded-full text-xs`}>
                                 +{ptsExtra} Prorrogação
                               </span>
                             )}
                             {ptsPen > 0 && (
-                              <span className="bg-pink-500 text-foreground px-3 py-1 rounded-full text-xs font-semibold">
+                              <span className={`${bonusBadge} px-3 py-1 rounded-full text-xs`}>
                                 +{ptsPen} Pênaltis
                               </span>
                             )}

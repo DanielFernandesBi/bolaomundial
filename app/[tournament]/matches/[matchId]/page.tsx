@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getFlagUrl } from '@/lib/utils/flags';
+import { scoreTier, tierRow } from '@/lib/scoring-ui';
 import { PredictionSummary } from '@/components/prediction-summary';
 import { getMatchResultDetail } from '../actions';
 
@@ -18,14 +19,10 @@ function getInitials(name: string): string {
 
 // Cor de fundo da linha conforme a faixa de acerto (tempo normal)
 function tierClass(pointsRegular: number, totalPoints: number): string {
-  if (pointsRegular === 30) return 'bg-primary/15 border-primary/40';
-  if (pointsRegular === 17) return 'bg-purple-500/15 border-purple-500/30';
-  if (pointsRegular === 15) return 'bg-muted/15 border-border';
-  if (pointsRegular === 12) return 'bg-state-open/15 border-state-open/30';
-  if (pointsRegular === 10 || pointsRegular === 9) return 'bg-cyan-500/15 border-cyan-500/30';
-  if (pointsRegular === 3) return 'bg-state-missing/15 border-state-missing/30';
-  if (totalPoints > 0) return 'bg-muted/40 border-border/40';
-  return 'bg-muted/40 border-border/40';
+  // Quem zerou o tempo normal mas pontuou no mata-mata (prorrogação/pênaltis)
+  // continua lendo como "parcial", não como zero.
+  if (pointsRegular === 0 && totalPoints > 0) return tierRow.partial;
+  return tierRow[scoreTier(pointsRegular)];
 }
 
 function TeamLogo({ iso, alt }: { iso: string | null; alt: string }) {

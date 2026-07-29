@@ -40,67 +40,9 @@ function formatDate(dateString: string): string {
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-// Função para obter badge de pontos (novo sistema)
-function getPointsBadge(points: number) {
-  if (points === 30 || points === 25) {
-    return {
-      bg: 'bg-primary',
-      text: 'Cravada!',
-      color: 'text-primary',
-      category: 'A. Placar Exato',
-    };
-  } else if (points === 17) {
-    return {
-      bg: 'bg-purple-500',
-      text: 'Vencedor + Gols Vencedor',
-      color: 'text-purple-400',
-      category: 'B. Vencedor + Gols do Vencedor',
-    };
-  } else if (points === 15) {
-    return {
-      bg: 'bg-blue-500',
-      text: 'Vencedor + Saldo / Empate',
-      color: 'text-muted-foreground',
-      category: 'C. Vencedor + Saldo de Gols / E. Empate Seco',
-    };
-  } else if (points === 12) {
-    return {
-      bg: 'bg-green-500',
-      text: 'Vencedor + Gols Perdedor / Empate',
-      color: 'text-state-open',
-      category: 'D. Vencedor + Gols do Perdedor / E. Empate Seco',
-    };
-  } else if (points === 10 || points === 9) {
-    return {
-      bg: 'bg-cyan-500',
-      text: 'Vencedor Seco',
-      color: 'text-cyan-400',
-      category: 'F. Vencedor Seco',
-    };
-  } else if (points === 3) {
-    return {
-      bg: 'bg-orange-500',
-      text: 'Consolação',
-      color: 'text-state-missing',
-      category: 'G. Consolação (Gols Avulsos)',
-    };
-  } else if (points > 0) {
-    // Totais de mata-mata (tempo normal + prorrogação/pênaltis) podem não cair numa faixa única
-    return {
-      bg: 'bg-emerald-600',
-      text: 'Pontuado',
-      color: 'text-emerald-400',
-      category: 'Inclui bônus de mata-mata',
-    };
-  } else {
-    return {
-      bg: 'bg-slate-600',
-      text: 'Sem pontos',
-      color: 'text-muted-foreground',
-      category: 'Sem pontos',
-    };
-  }
-}
+// A antiga getPointsBadge() vivia aqui: 60 linhas com a escala de 8 cores,
+// declaradas e nunca chamadas. Removida na Fase 3 — a exibição da pontuação
+// agora sai de lib/scoring-ui.ts (scoreTier / tierBadge / tierRow).
 
 export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
   const { tournament: tournamentSlug } = await params;
