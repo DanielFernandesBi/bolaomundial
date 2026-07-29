@@ -23,7 +23,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 2 — Card de partida (stepper 44px, pílula de estado, rodapé de estado) | ✅ | `a3735b8` |
 | 3 — Partidas + banner de prazo + pódio | ✅ | `64e25ce` |
 | 4a — Ranking Geral (lista única, currentUserId) | ✅ | `1219a59` |
-| 4b — Ranking do torneio + aba Projeção + barra "Você" | ⬜ | — |
+| 4b — Ranking do torneio: lista única | ✅ | `e9cab18` |
+| 4c — Aba Projeção + escopo "Todos os bolões" + barra "Você" | ⬜ | — |
 | 5 — Desempenho + Perfil (+ perfil de terceiro) | ⬜ | — |
 | 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
 | 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
@@ -70,7 +71,7 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] **`match-card.tsx`**: botões do wizard (bloco 2). Nenhuma classe de cor
       fixa restante no arquivo.
 - [ ] **`app/page.tsx`**: `bg-slate-600/20` do badge de status.
-- [ ] **`ranking-content.tsx`**: `text-amber-200/60` (fica no bloco 4b).
+- [x] **`ranking-content.tsx`**: `text-amber-200/60` → `text-primary/70` (4b).
 - [ ] **Classes com `!important`** ainda presentes fora do login (o login já
       não tinha nenhuma).
 
@@ -80,6 +81,22 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       `app/profile/page.tsx`, `app/profile/[userId]/page.tsx`
       (roxo/ciano/amarelo restantes).
 - [ ] **`admin/admin-matches-table.tsx`**: `indigo-300/500` restantes.
+
+### Restante do bloco 4 → passa a ser o 4c
+
+- [ ] **Aba "Projeção"** no Ranking recebendo o `simulador-content.tsx`
+      (304 linhas). A rota `/[tournament]/simulador` continua existindo; hoje
+      ela é a única forma de chegar lá, já que o Simulador saiu da nav na F4.
+- [ ] **Seletor de escopo** "{Torneio}" ⇄ "Todos os bolões" renderizando na
+      própria tela (decisão do Daniel: renderiza, não navega).
+- [ ] **Barra fixa "Você"** com IntersectionObserver na linha do próprio
+      usuário — some quando ela está visível, sem duplicar.
+- [ ] **Abas de ordenação** (Pontos · Cravadas · Prêmios no geral; a do torneio
+      já tem Pontos/Cravadas/Hoje). Depende de decidir quem ordena: hoje o
+      ranking geral chega pronto do servidor.
+- [ ] **`podium-transparency.tsx`**: destaque âmbar na linha do usuário. Exige
+      receber `currentUserId` — prop nova, e a página que o renderiza precisa
+      buscar o usuário.
 
 ### Vindas do bloco 4a (ranking geral)
 
