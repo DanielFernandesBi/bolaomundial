@@ -123,6 +123,12 @@
   }
 }
 
+/* <summary> sem o triângulo nativo. `list-none` resolve em Chrome/Firefox,
+   mas o Safari (incl. iOS) só respeita este pseudo-elemento. */
+summary::-webkit-details-marker {
+  display: none;
+}
+
 /* Utilitário para bandeiras */
 .flag {
   @apply inline-block;

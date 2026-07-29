@@ -1,5 +1,5 @@
-import { Award, Trophy, Timer, Crosshair } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Award, Trophy, Timer, Crosshair, ChevronDown } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { tierBadge, tierLabel, bonusBadge, type ScoreTier } from '@/lib/scoring-ui';
 
 interface Rule {
@@ -78,13 +78,15 @@ export function ScoringLegend({ variant = 'legacy' }: { variant?: ScoringVariant
 
   return (
     <Card className="bg-card border-border mb-8">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-foreground">
-          <Award className="w-5 h-5 text-primary" />
-          Sistema de Pontuação
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+      {/* Recolhível com <details> nativo: fechada por padrão, sem JavaScript,
+          sem virar client component e acessível por teclado de graça. */}
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center gap-2 p-6 text-foreground marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Award className="h-5 w-5 flex-shrink-0 text-primary" />
+          <span className="font-semibold">Sistema de pontuação</span>
+          <ChevronDown className="ml-auto h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <CardContent className="pt-0">
         <div className="space-y-6">
           {/* Tempo normal — agrupado nas 3 faixas */}
           <div className="space-y-3">
@@ -168,7 +170,8 @@ export function ScoringLegend({ variant = 'legacy' }: { variant?: ScoringVariant
             </span>
           </div>
         </div>
-      </CardContent>
+        </CardContent>
+      </details>
     </Card>
   );
 }

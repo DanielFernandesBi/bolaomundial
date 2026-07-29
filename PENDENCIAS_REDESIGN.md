@@ -28,7 +28,7 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 4d — Abas de ordenação no Ranking Geral | ✅ | `f56622d` |
 | 4e — Escopo "Todos os bolões" na tela do torneio | ⬜ | — |
 | 5a — Perfil: escala em 3 níveis + correção de cópia | ✅ | `80534fa` |
-| 5b — Desempenho: hero, faixa de métricas, últimos 8 jogos, legenda recolhível | ⬜ | — |
+| 5b — Desempenho: hero, métricas, últimos jogos, legenda recolhível | ✅ | `7559221` |
 | 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
 | 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
 
@@ -86,13 +86,12 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 ### Restante do bloco 5 → 5b
 
-- [ ] **Desempenho**: hero de dois cards (Posição âmbar / Pontos neutro), faixa
-      de 4 métricas em grid-cols-4 com divisórias (hoje são 7 cards de peso
-      igual), **últimos 8 jogos** em blocos de 34px coloridos pela escala, e a
-      **legenda de pontuação recolhível**, fechada por padrão.
-- [ ] **Perfil**: cabeçalho centralizado com avatar de 76px, dois cards-herói
-      (Pontos totais / Dinheiro ganho em `text-money`) e "Bolões que você jogou"
-      como linha por torneio.
+- [x] **Desempenho** feito no 5b: hero de dois cards, faixa de 4 métricas com
+      divisórias, últimos 8 jogos e legenda recolhível.
+- [ ] **Perfil (layout)**: cabeçalho centralizado com avatar de 76px, dois
+      cards-herói (Pontos totais / Dinheiro ganho em `text-money`) e "Bolões que
+      você jogou" como linha por torneio. A escala de cores do perfil já foi
+      resolvida no 5a; falta só o rearranjo visual. Levar no bloco 6.
 
 ### Restante do bloco 4 → passa a ser o 4c
 
