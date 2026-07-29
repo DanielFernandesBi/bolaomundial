@@ -1,7 +1,7 @@
 'use client';
 
-import { Trophy, Award, DollarSign } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SHARE, ShareTopBar, ShareWordmark, positionColor } from '@/components/share-chrome';
 
 interface ShareRankingCardProps {
   position: number;
@@ -29,103 +29,107 @@ export function ShareRankingCard({
     .toUpperCase()
     .slice(0, 2);
 
-  const getPositionEmoji = () => {
-    if (position === 1) return '🥇';
-    if (position === 2) return '🥈';
-    if (position === 3) return '🥉';
-    return '🏆';
+  // §16: sem medalhas de emoji. A posição vira o próprio número, grande, na cor
+  // do pódio — que é o que se lê à distância na miniatura do WhatsApp.
+  const cor = positionColor(position);
+
+  const formatMoney = (value: number): string =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const temDinheiro = totalMoney !== undefined && totalMoney > 0;
+
+  const rotuloStyle: React.CSSProperties = {
+    color: SHARE.faint,
+    fontSize: '10px',
+    letterSpacing: '0.18em',
   };
 
-  const getPositionColor = () => {
-    if (position === 1) return 'text-amber-500';
-    if (position === 2) return 'text-slate-400';
-    if (position === 3) return 'text-amber-700';
-    return 'text-white';
-  };
-
-  const formatMoney = (value: number): string => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+  const linha = (label: string, valor: string, corValor: string, ultima = false) => (
+    <div
+      className="flex items-center justify-between px-4 py-3"
+      style={ultima ? undefined : { borderBottom: `1px solid ${SHARE.hairline}` }}
+    >
+      <span className="font-mono uppercase" style={rotuloStyle}>
+        {label}
+      </span>
+      <span className="font-bold tabular-nums" style={{ color: corValor, fontSize: '22px' }}>
+        {valor}
+      </span>
+    </div>
+  );
 
   return (
     <div
       id="share-ranking-card"
-      className="w-[400px] h-[680px] relative overflow-hidden rounded-2xl"
-      style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      }}
+      className="w-[400px] h-[680px] relative overflow-hidden"
+      style={{ background: SHARE.bg }}
     >
-      {/* Logo e nome do ranking no topo */}
-      <div className="absolute top-5 left-5 right-5 flex flex-col items-center gap-2 z-10">
-        <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-          <span className="text-white font-bold text-lg">Arena de Bolões</span>
-        </div>
+      <ShareTopBar />
+
+      {/* Marca e campeonato */}
+      <div className="absolute top-6 left-0 right-0 flex flex-col items-center gap-2 px-7">
+        <ShareWordmark />
         {rankingName && (
-          <div className="bg-white/15 backdrop-blur-sm px-4 py-1.5 rounded-full">
-            <span className="text-white font-semibold text-sm">{rankingName}</span>
+          <div
+            className="truncate max-w-full text-center font-semibold"
+            style={{ color: SHARE.muted, fontSize: '13px' }}
+          >
+            {rankingName}
           </div>
         )}
       </div>
 
-      {/* Conteúdo central */}
-      <div className="flex flex-col items-center justify-center h-full px-8 pb-24 pt-28">
+      <div className="flex flex-col items-center h-full px-7 pt-[104px] pb-[52px]">
         {/* Posição */}
-        <div className="text-7xl mb-2">{getPositionEmoji()}</div>
-        <div className={`text-5xl font-bold mb-5 ${getPositionColor()}`}>
-          {position}º Lugar
+        <div className="flex items-baseline justify-center gap-1">
+          <span className="font-bold tabular-nums" style={{ color: cor, fontSize: '104px', lineHeight: 1 }}>
+            {position}
+          </span>
+          <span className="font-bold" style={{ color: cor, fontSize: '34px' }}>
+            º
+          </span>
+        </div>
+        <div className="mt-1 font-mono uppercase" style={rotuloStyle}>
+          Lugar
         </div>
 
-        {/* Avatar e nome */}
-        <div className="flex flex-col items-center gap-3 mb-6">
-          <Avatar className="w-20 h-20 border-4 border-white shadow-lg">
+        {/* Jogador */}
+        <div className="mt-7 flex flex-col items-center gap-3">
+          <Avatar className="w-[84px] h-[84px]" style={{ border: `2px solid ${cor}` }}>
             <AvatarImage src={userAvatarUrl || undefined} />
-            <AvatarFallback className="text-black text-2xl font-bold bg-amber-500">
+            <AvatarFallback
+              style={{ background: SHARE.surface, color: SHARE.fg, fontSize: '26px', fontWeight: 700 }}
+            >
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="text-white text-xl font-bold text-center max-w-[280px] truncate">
+          <div
+            className="truncate max-w-[300px] text-center font-bold"
+            style={{ color: SHARE.fg, fontSize: '21px' }}
+          >
             {username}
           </div>
         </div>
 
-        {/* Estatísticas */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 w-full space-y-3 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
-              <Award className="w-5 h-5" />
-              <span className="text-base font-medium">Pontos</span>
-            </div>
-            <div className="text-white text-2xl font-bold">{totalPoints.toLocaleString('pt-BR')}</div>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
-              <Trophy className="w-5 h-5" />
-              <span className="text-base font-medium">Cravadas</span>
-            </div>
-            <div className="text-white text-2xl font-bold">{exactMatches}</div>
-          </div>
-          {totalMoney !== undefined && totalMoney > 0 && (
-            <div className="flex items-center justify-between pt-3 border-t border-white/20">
-              <div className="flex items-center gap-2 text-white">
-                <DollarSign className="w-5 h-5" />
-                <span className="text-base font-medium">Dinheiro</span>
-              </div>
-              <div className="text-amber-400 text-2xl font-bold">{formatMoney(totalMoney)}</div>
-            </div>
-          )}
+        {/* Números */}
+        <div
+          className="w-full mt-7 overflow-hidden"
+          style={{ background: SHARE.surface, border: `1px solid ${SHARE.hairline}`, borderRadius: '16px' }}
+        >
+          {linha('Pontos', totalPoints.toLocaleString('pt-BR'), SHARE.fg)}
+          {/* A divisória de baixo só some na última linha — e a de dinheiro
+              nem sempre existe. */}
+          {linha('Cravadas', String(exactMatches), SHARE.amber, !temDinheiro)}
+          {temDinheiro && linha('Dinheiro', formatMoney(totalMoney!), SHARE.money, true)}
         </div>
       </div>
 
       {/* Rodapé */}
-      <div className="absolute bottom-5 left-5 right-5 text-center">
-        <div className="text-white/60 text-xs">
+      <div className="absolute bottom-5 left-0 right-0 text-center">
+        <div className="font-mono" style={{ color: SHARE.faint, fontSize: '10px', letterSpacing: '0.1em' }}>
           bolao-mundial.com
         </div>
       </div>
     </div>
   );
 }
-

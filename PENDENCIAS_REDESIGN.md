@@ -32,8 +32,9 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 5b — Desempenho: hero, métricas, últimos jogos, legenda recolhível | ✅ | `7559221` |
 | 6a — Hall, Login, detalhe, simulador: fim das cores fixas | ✅ | `c0bfa43` |
 | 6b — Folha de troca de campeonato | ✅ | `ffaf5bb` |
-| 6c — Layout do Login e do Perfil | ✅ | este commit |
+| 6c — Layout do Login e do Perfil | ✅ | `3fcf871` |
 | 7 — Cards de compartilhamento: marca + share sob demanda | ✅ | `898b5f8`, `a3f7473` |
+| 8 — Redesenho visual dos cards (§16) | ✅ | este commit |
 
 ---
 
@@ -164,11 +165,22 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 - [x] **Marca** trocada para "Arena de Bolões" nos quatro cards, e geração da
       imagem passou a ser sob demanda (antes montava todos os cards ocultos).
-- [ ] **Redesenho visual dos cards (§16 do handoff)** — NÃO foi feito: falta a
-      barra superior âmbar, o fundo `#0a0e15`, a retirada dos emojis e o fim de
-      "Folha 1 / Folha 2". Os cards continuam com o visual antigo; só a marca e
-      o momento da geração mudaram. É um bloco à parte porque mexe no layout de
-      imagem exportada (html2canvas), não na tela.
+- [x] **Redesenho visual dos cards (§16)** feito no bloco 8: barra âmbar no topo,
+      fundo `#0a0e15`, zero emoji, fim de "Folha 1 / Folha 2". Paleta comum em
+      `components/share-chrome.tsx` — **fixa em hexadecimal de propósito**: a
+      imagem exportada não pode depender do tema de quem gerou, senão o mesmo
+      ranking sai claro para uns e escuro para outros no mesmo grupo.
+- [ ] **`lib/shareUtils.ts` ainda diz "Bolão Mundial"** no título e no texto que
+      vão para a folha de compartilhamento nativa do celular ("Olha só minha
+      cravada no Bolão Mundial! 🏆"). É `lib/`, que está na lista de não mexer —
+      precisa de liberação explícita. São duas strings, sem lógica.
+- [ ] **`share-extra-ranking-card.tsx` é código morto**: ninguém o importa, nem
+      antes do redesign (conferido contra `main`). Foi redesenhado junto para não
+      deixar duas linguagens visuais no repositório, mas pode ser apagado.
+- [ ] **Canto arredondado** foi removido do elemento exportado dos quatro cards:
+      o `shareUtils` pinta o fundo do PNG de branco e o canto transparente sairia
+      como orelha branca sobre o fundo escuro. Se um dia `lib/` for liberado,
+      trocar o `backgroundColor` para `#0a0e15` e o raio pode voltar.
 
 ### Vindas da Fase 5
 
