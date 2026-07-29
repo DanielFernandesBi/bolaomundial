@@ -32,8 +32,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 5b — Desempenho: hero, métricas, últimos jogos, legenda recolhível | ✅ | `7559221` |
 | 6a — Hall, Login, detalhe, simulador: fim das cores fixas | ✅ | `c0bfa43` |
 | 6b — Folha de troca de campeonato | ✅ | `ffaf5bb` |
-| 6c — Layout do Login e do Perfil | ⬜ | — |
-| 7 — Cards de compartilhamento + share sob demanda | ✅ | `898b5f8` |
+| 6c — Layout do Login e do Perfil | ✅ | este commit |
+| 7 — Cards de compartilhamento: marca + share sob demanda | ✅ | `898b5f8`, `a3f7473` |
 
 ---
 
@@ -93,20 +93,20 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] **Folha de troca de campeonato** feita no 6b: `components/tournament-sheet.tsx`,
       aberta pelo nome do torneio no cabeçalho. Consulta a lista com o cliente de
       browser e SÓ ao abrir — nenhuma action criada, `lib/` não tocado.
-- [ ] **Login (layout)**: segmentado "Entrar · Criar conta", rótulos visíveis
-      acima dos campos, erro inline com `role="alert"`. As cores já foram
-      tokenizadas no 6a; falta o rearranjo.
-- [ ] **Perfil (layout)**: cabeçalho centralizado, cards-herói, "Bolões que
-      você jogou" como linha.
+- [x] **Login (layout)** feito no 6c: segmentado "Entrar · Criar conta" no topo
+      do cartão (era link de texto no rodapé), rótulos visíveis acima dos campos,
+      ícones de dentro dos campos removidos e erro inline com `role="alert"`.
+      As duas actions e os `name` dos campos são os mesmos.
+- [x] **Perfil (layout)** feito no 6c: cabeçalho centralizado com avatar de 76px,
+      dois cards-herói (Pontos totais / Dinheiro ganho em `text-money`), duas
+      faixas de 4 métricas e "Bolões que você jogou" como linha por torneio.
+      Nenhuma métrica foi retirada — só hierarquizada.
 
 ### Restante do bloco 5 → 5b
 
 - [x] **Desempenho** feito no 5b: hero de dois cards, faixa de 4 métricas com
       divisórias, últimos 8 jogos e legenda recolhível.
-- [ ] **Perfil (layout)**: cabeçalho centralizado com avatar de 76px, dois
-      cards-herói (Pontos totais / Dinheiro ganho em `text-money`) e "Bolões que
-      você jogou" como linha por torneio. A escala de cores do perfil já foi
-      resolvida no 5a; falta só o rearranjo visual. Levar no bloco 6.
+- [x] **Perfil (layout)** — feito no 6c (ver acima).
 
 ### Restante do bloco 4 → passa a ser o 4c
 
@@ -159,6 +159,16 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [ ] **Aba "Projeção"** no Ranking, recebendo o simulador (hoje o Simulador
       saiu da nav e só é alcançável por URL).
 - [x] **Folha de troca de campeonato** (bloco 6b).
+
+### Vindas do bloco 7 (cards de compartilhamento)
+
+- [x] **Marca** trocada para "Arena de Bolões" nos quatro cards, e geração da
+      imagem passou a ser sob demanda (antes montava todos os cards ocultos).
+- [ ] **Redesenho visual dos cards (§16 do handoff)** — NÃO foi feito: falta a
+      barra superior âmbar, o fundo `#0a0e15`, a retirada dos emojis e o fim de
+      "Folha 1 / Folha 2". Os cards continuam com o visual antigo; só a marca e
+      o momento da geração mudaram. É um bloco à parte porque mexe no layout de
+      imagem exportada (html2canvas), não na tela.
 
 ### Vindas da Fase 5
 
