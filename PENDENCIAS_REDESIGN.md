@@ -25,7 +25,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 4a — Ranking Geral (lista única, currentUserId) | ✅ | `e7bffdd` |
 | 4b — Ranking do torneio: lista única | ✅ | `37d0fdd` |
 | 4c — Aba Projeção + barra "Você" | ✅ | `30d4c64` |
-| 4d — Escopo "Todos os bolões" + abas de ordenação | ⬜ | — |
+| 4d — Abas de ordenação no Ranking Geral | ✅ | `f56622d` |
+| 4e — Escopo "Todos os bolões" na tela do torneio | ⬜ | — |
 | 5 — Desempenho + Perfil (+ perfil de terceiro) | ⬜ | — |
 | 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
 | 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
@@ -88,26 +89,28 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] **Aba "Projeção"** feita no 4c: o `SimuladorContent` é montado dentro do
       Ranking. O Radix só o monta quando a aba abre, e ele carrega os próprios
       dados — não precisou de plumbing. A rota antiga segue funcionando.
-- [ ] **Seletor de escopo** "{Torneio}" ⇄ "Todos os bolões" renderizando na
-      própria tela (decisão do Daniel: renderiza, não navega).
+- [ ] **Seletor de escopo** "{Torneio}" ⇄ "Todos os bolões" na tela do torneio
+      (decisão do Daniel: renderiza, não navega). Custo real: o ranking geral é
+      montado em `app/ranking-geral/page.tsx` com um laço N+1 (uma consulta de
+      `tournament_rankings` por usuário). Para renderizar na tela do torneio é
+      preciso extrair esse carregamento para um módulo compartilhado e chamá-lo
+      também em `app/[tournament]/ranking/page.tsx` — senão seria duplicar a
+      consulta. É a única pendência do redesign que mexe em busca de dados.
 - [x] **Barra fixa "Você"** feita no 4c, com IntersectionObserver na própria
       linha e `rootMargin` descontando a barra de navegação.
-- [ ] **Abas de ordenação** (Pontos · Cravadas · Prêmios no geral; a do torneio
-      já tem Pontos/Cravadas/Hoje). Depende de decidir quem ordena: hoje o
-      ranking geral chega pronto do servidor.
+- [x] **Abas de ordenação** feitas no 4d. Não era decisão de arquitetura: o
+      ranking do torneio JÁ ordenava no cliente com useMemo. A aba só reordena
+      o array que veio do servidor — nada é recalculado.
 - [ ] **`podium-transparency.tsx`**: destaque âmbar na linha do usuário. Exige
       receber `currentUserId` — prop nova, e a página que o renderiza precisa
       buscar o usuário.
 
 ### Vindas do bloco 4a (ranking geral)
 
-- [ ] **Abas Pontos · Cravadas · Prêmios** no Ranking Geral: NÃO feitas. Hoje a
-      tela não tem abas e a lista chega pronta do servidor, ordenada por pontos.
-      Criar as abas exige ordenação no cliente — estado novo e uma decisão sobre
-      quem ordena. Fica para o 4b, junto com as abas do ranking do torneio.
-- [ ] **Destaque âmbar na linha do usuário** em `podium-transparency.tsx`
-      (herdado do bloco 3): precisa receber `currentUserId`, o que muda a
-      `interface Props`. Resolver junto do 4b.
+- [x] **Abas Pontos · Cravadas · Prêmios** no Ranking Geral (bloco 4d).
+- [ ] **Destaque âmbar na linha do usuário** em `podium-transparency.tsx`:
+      precisa receber `currentUserId` (prop nova) e a página precisa buscar o
+      usuário. Levar junto do 4e.
 
 ### Vindas do bloco 3 (partidas / pódio)
 

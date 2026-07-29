@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Award, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,6 +9,7 @@ import { ShareRankingCard } from '@/components/share-ranking-card';
 import { ShareFullRankingCard } from '@/components/share-full-ranking-card';
 import { shareAsImage } from '@/lib/shareUtils';
 import { Toast } from '@/components/toast';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface GeneralRankingProfile {
   id: string;
@@ -28,6 +29,38 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Abas de ordenação. O servidor continua sendo a fonte de quem está no
+  // ranking e de quanto cada um tem; a aba só REORDENA o mesmo array para
+  // exibir — nada é recalculado. É o mesmo padrão que o ranking do torneio já
+  // usa (useMemo sobre `profiles`).
+  const [activeTab, setActiveTab] = useState<'pontos' | 'cravadas' | 'premios'>('pontos');
+  const showPrizes = activeTab === 'premios';
+  const showCravadas = activeTab === 'cravadas';
+
+  const sortedProfiles = useMemo(() => {
+    const sorted = [...profiles];
+    if (activeTab === 'cravadas') {
+      sorted.sort((a, b) =>
+        b.total_exact_matches !== a.total_exact_matches
+          ? b.total_exact_matches - a.total_exact_matches
+          : b.total_points - a.total_points
+      );
+    } else if (activeTab === 'premios') {
+      sorted.sort((a, b) =>
+        Number(b.total_money) !== Number(a.total_money)
+          ? Number(b.total_money) - Number(a.total_money)
+          : b.total_points - a.total_points
+      );
+    } else {
+      sorted.sort((a, b) =>
+        b.total_points !== a.total_points
+          ? b.total_points - a.total_points
+          : b.total_exact_matches - a.total_exact_matches
+      );
+    }
+    return sorted;
+  }, [profiles, activeTab]);
 
 
   function formatMoney(value: number): string {
@@ -155,11 +188,30 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
         </Button>
       </div>
 
+      {/* Abas de ordenação */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as 'pontos' | 'cravadas' | 'premios')}
+        className="mb-4"
+      >
+        <TabsList className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+          {([['pontos', 'Pontos'], ['cravadas', 'Cravadas'], ['premios', 'Prêmios']] as const).map(([v, label]) => (
+            <TabsTrigger
+              key={v}
+              value={v}
+              className="h-9 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
       {/* Lista única, responsiva. Antes havia dois blocos: cards md:hidden e
           tabela hidden md:block, com o mesmo conteúdo mantido em dobro. */}
       <div className="space-y-2">
-        {profiles.length > 0 ? (
-          profiles.map((profile, index) => {
+        {sortedProfiles.length > 0 ? (
+          sortedProfiles.map((profile, index) => {
             const position = index + 1;
             const isMe = !!currentUserId && profile.id === currentUserId;
             const isTop3 = position <= 3;
@@ -201,14 +253,30 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
                     {isMe && <span className="ml-1.5 text-[11px] font-normal text-primary">você</span>}
                   </Link>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    {profile.total_exact_matches} {profile.total_exact_matches === 1 ? 'cravada' : 'cravadas'}
-                    {' · '}
-                    {hasPrize ? `${formatMoney(profile.total_money)} em prêmios` : 'sem prêmio ainda'}
+                    {showPrizes
+                      ? `${profile.total_points.toLocaleString('pt-BR')} pontos · ${profile.total_exact_matches} ${
+                          profile.total_exact_matches === 1 ? 'cravada' : 'cravadas'
+                        }`
+                      : showCravadas
+                      ? `${profile.total_points.toLocaleString('pt-BR')} pontos`
+                      : `${profile.total_exact_matches} ${
+                          profile.total_exact_matches === 1 ? 'cravada' : 'cravadas'
+                        } · ${hasPrize ? `${formatMoney(profile.total_money)} em prêmios` : 'sem prêmio ainda'}`}
                   </p>
                 </div>
 
-                <span className="flex-shrink-0 text-base font-bold tabular-nums text-foreground">
-                  {profile.total_points.toLocaleString('pt-BR')}
+                <span
+                  className={`flex-shrink-0 text-base font-bold tabular-nums ${
+                    showPrizes && !hasPrize ? 'text-muted-foreground' : 'text-foreground'
+                  }`}
+                >
+                  {showPrizes
+                    ? hasPrize
+                      ? formatMoney(profile.total_money)
+                      : 'sem prêmio'
+                    : showCravadas
+                    ? profile.total_exact_matches
+                    : profile.total_points.toLocaleString('pt-BR')}
                 </span>
 
                 {/* Irmão do link, nunca aninhado dentro dele */}
