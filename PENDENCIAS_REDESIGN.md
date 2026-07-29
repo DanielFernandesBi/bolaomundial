@@ -22,7 +22,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 1 — Toast único no rodapé | ✅ | `a2ac0aa` |
 | 2 — Card de partida (stepper 44px, pílula de estado, rodapé de estado) | ✅ | `a3735b8` |
 | 3 — Partidas + banner de prazo + pódio | ✅ | `64e25ce` |
-| 4 — Ranking + Ranking Geral + aba Projeção | ⬜ | — |
+| 4a — Ranking Geral (lista única, currentUserId) | ✅ | `1219a59` |
+| 4b — Ranking do torneio + aba Projeção + barra "Você" | ⬜ | — |
 | 5 — Desempenho + Perfil (+ perfil de terceiro) | ⬜ | — |
 | 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
 | 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
@@ -69,7 +70,7 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] **`match-card.tsx`**: botões do wizard (bloco 2). Nenhuma classe de cor
       fixa restante no arquivo.
 - [ ] **`app/page.tsx`**: `bg-slate-600/20` do badge de status.
-- [ ] **`ranking-content.tsx`**: `text-amber-200/60`.
+- [ ] **`ranking-content.tsx`**: `text-amber-200/60` (fica no bloco 4b).
 - [ ] **Classes com `!important`** ainda presentes fora do login (o login já
       não tinha nenhuma).
 
@@ -80,12 +81,17 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       (roxo/ciano/amarelo restantes).
 - [ ] **`admin/admin-matches-table.tsx`**: `indigo-300/500` restantes.
 
-### Vindas do bloco 3 (partidas / pódio)
+### Vindas do bloco 4a (ranking geral)
 
-- [ ] **Destaque âmbar na linha do usuário** em `podium-transparency.tsx`: o
-      componente não recebe `currentUserId` e a `interface Props` não pode
-      mudar nesta refatoração. Precisa entrar junto com o bloco 4, quando o
-      ranking também passar a usar `currentUserId`.
+- [ ] **Abas Pontos · Cravadas · Prêmios** no Ranking Geral: NÃO feitas. Hoje a
+      tela não tem abas e a lista chega pronta do servidor, ordenada por pontos.
+      Criar as abas exige ordenação no cliente — estado novo e uma decisão sobre
+      quem ordena. Fica para o 4b, junto com as abas do ranking do torneio.
+- [ ] **Destaque âmbar na linha do usuário** em `podium-transparency.tsx`
+      (herdado do bloco 3): precisa receber `currentUserId`, o que muda a
+      `interface Props`. Resolver junto do 4b.
+
+### Vindas do bloco 3 (partidas / pódio)
 
 ### Vindas do bloco 2 (card de partida)
 
@@ -118,8 +124,8 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 - [ ] **Barra fixa "Você"** no ranking quando a linha sai da viewport
       (IntersectionObserver na própria linha; sumir quando visível).
-- [ ] **`currentUserId` passa a ser usado** no Ranking Geral para destacar a
-      sua linha (hoje chega na tela e é ignorado).
+- [x] **`currentUserId` usado no Ranking Geral** (bloco 4a) para destacar a
+      sua linha.
 - [ ] **Cards `share-*` sob demanda** — hoje os 28 são montados em toda visita.
       Fazer **por último** e validar a geração dos 4 PNGs depois.
 - [ ] **Blindar bandeira sem ISO** — resolver **no componente** (tile com a

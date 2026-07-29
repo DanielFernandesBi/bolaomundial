@@ -1,19 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Award, DollarSign, Share2 } from 'lucide-react';
+import { Award, Share2 } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { ShareRankingCard } from '@/components/share-ranking-card';
 import { ShareFullRankingCard } from '@/components/share-full-ranking-card';
 import { shareAsImage } from '@/lib/shareUtils';
@@ -164,182 +155,87 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
         </Button>
       </div>
 
-      {/* Cards Mobile (md:hidden) */}
-      <div className="md:hidden space-y-3">
+      {/* Lista única, responsiva. Antes havia dois blocos: cards md:hidden e
+          tabela hidden md:block, com o mesmo conteúdo mantido em dobro. */}
+      <div className="space-y-2">
         {profiles.length > 0 ? (
           profiles.map((profile, index) => {
             const position = index + 1;
+            const isMe = !!currentUserId && profile.id === currentUserId;
             const isTop3 = position <= 3;
+            const hasPrize = Number(profile.total_money) > 0;
+
+            // Três pesos: você, top 3, demais.
+            const row = isMe
+              ? 'border-primary/45 bg-primary/10'
+              : isTop3
+              ? 'border-border bg-card'
+              : 'border-hairline bg-surface-sunken';
 
             return (
-              <Card
+              <div
                 key={profile.id}
-                className={`bg-card border-border ${
-                  isTop3 ? 'border-primary/50 bg-primary/5' : ''
-                }`}
+                className={`flex items-center gap-3 rounded-[14px] border px-3 py-2.5 ${row}`}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className={`font-bold text-lg min-w-[40px] ${
-                        isTop3 ? 'text-primary' : 'text-muted-foreground'
-                      }`}>
-                        {position}º
-                      </span>
-                      <Avatar className="w-12 h-12 border-2 border-border">
-                        <AvatarImage src={profile.avatar_url || undefined} />
-                        <AvatarFallback className="bg-muted text-foreground">
-                          {getInitials(profile.username)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <Link 
-                        href={`/profile/${profile.id}`}
-                        className="text-foreground font-semibold flex-1 truncate hover:text-primary transition-colors"
-                      >
-                        {profile.username}
-                      </Link>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleShareRanking(profile, position)}
-                      disabled={sharingId === profile.id}
-                      className="text-primary hover:text-primary hover:bg-primary/10"
-                    >
-                      {sharingId === profile.id ? (
-                        'Gerando...'
-                      ) : (
-                        <Share2 className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <div className="space-y-2 pt-2 border-t border-border">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-sm">Pontos</span>
-                      <span className="text-primary font-bold text-lg">
-                        {profile.total_points.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-sm">Dinheiro</span>
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4 text-primary" />
-                        <span className="text-primary font-semibold">
-                          {formatMoney(profile.total_money)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                <span
+                  className={`w-7 flex-shrink-0 text-center text-[15px] font-bold tabular-nums ${
+                    isMe || isTop3 ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  {position}
+                </span>
+
+                <Avatar className="h-9 w-9 flex-shrink-0 border border-border">
+                  <AvatarImage src={profile.avatar_url || undefined} />
+                  <AvatarFallback className="bg-muted text-xs text-foreground">
+                    {getInitials(profile.username)}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/profile/${profile.id}`}
+                    className="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                  >
+                    {profile.username}
+                    {isMe && <span className="ml-1.5 text-[11px] font-normal text-primary">você</span>}
+                  </Link>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {profile.total_exact_matches} {profile.total_exact_matches === 1 ? 'cravada' : 'cravadas'}
+                    {' · '}
+                    {hasPrize ? `${formatMoney(profile.total_money)} em prêmios` : 'sem prêmio ainda'}
+                  </p>
+                </div>
+
+                <span className="flex-shrink-0 text-base font-bold tabular-nums text-foreground">
+                  {profile.total_points.toLocaleString('pt-BR')}
+                </span>
+
+                {/* Irmão do link, nunca aninhado dentro dele */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleShareRanking(profile, position)}
+                  disabled={sharingId === profile.id}
+                  aria-label={`Compartilhar a posição de ${profile.username}`}
+                  className="h-9 w-9 flex-shrink-0 p-0 text-primary hover:bg-primary/10 hover:text-primary"
+                >
+                  {sharingId === profile.id ? '...' : <Share2 className="h-4 w-4" />}
+                </Button>
+              </div>
             );
           })
         ) : (
-          <Card className="bg-card border-border">
-            <CardContent className="p-8 text-center text-muted-foreground">
-              Nenhum jogador encontrado.
-            </CardContent>
-          </Card>
+          <div className="rounded-[14px] border border-hairline bg-surface-sunken p-8 text-center text-muted-foreground">
+            Nenhum jogador encontrado.
+          </div>
         )}
       </div>
-
-      {/* Tabela Desktop (hidden md:block) */}
-      <Card className="bg-card border-border hidden md:block">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border">
-                  <TableHead className="text-card-foreground w-16">#</TableHead>
-                  <TableHead className="text-card-foreground">Jogador</TableHead>
-                  <TableHead className="text-card-foreground text-right">Dinheiro Total</TableHead>
-                  <TableHead className="text-card-foreground text-right">Pontos Totais</TableHead>
-                  <TableHead className="text-card-foreground text-right">Cravadas Totais</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {profiles.length > 0 ? (
-                  profiles.map((profile, index) => {
-                    const position = index + 1;
-                    const isTop3 = position <= 3;
-
-                    return (
-                      <TableRow
-                        key={profile.id}
-                        className={`border-border ${
-                          isTop3
-                            ? 'bg-primary/10 hover:bg-primary/20'
-                            : 'hover:bg-accent/50'
-                        }`}
-                      >
-                        <TableCell className="text-card-foreground font-bold">
-                          {position}º
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-10 h-10 border-2 border-border">
-                              <AvatarImage
-                                src={profile.avatar_url || undefined}
-                              />
-                              <AvatarFallback className="bg-muted text-foreground">
-                                {getInitials(profile.username)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <Link
-                              href={`/profile/${profile.id}`}
-                              className="text-foreground font-medium hover:text-primary transition-colors"
-                            >
-                              {profile.username}
-                            </Link>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleShareRanking(profile, position)}
-                              disabled={sharingId === profile.id}
-                              className="text-primary hover:text-primary hover:bg-primary/10 ml-auto"
-                            >
-                              {sharingId === profile.id ? (
-                                'Gerando...'
-                              ) : (
-                                <Share2 className="w-4 h-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <DollarSign className="w-5 h-5 text-primary" />
-                            <span className="text-primary font-bold text-lg">
-                              {formatMoney(profile.total_money)}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-card-foreground text-right">
-                          {profile.total_points.toLocaleString('pt-BR')}
-                        </TableCell>
-                        <TableCell className="text-card-foreground text-right">
-                          {profile.total_exact_matches}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      Nenhum jogador encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Legenda */}
       <div className="mt-6 text-muted-foreground text-sm">
         <p>
-          💰 <strong>Dinheiro Total:</strong> Soma de todos os prêmios ganhos em todos os torneios.
+          <strong className="text-card-foreground">Dinheiro total:</strong> soma de todos os prêmios ganhos em todos os torneios.
         </p>
       </div>
     </div>
