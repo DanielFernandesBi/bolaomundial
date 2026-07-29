@@ -168,6 +168,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                     tournamentSlug={tournamentSlug}
                     competitionKey={c.key}
                     competitionName={c.name}
+                    mode={c.mode}
                     teams={c.teams}
                     locked={c.locked}
                     userPick={c.userPick}

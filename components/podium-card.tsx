@@ -12,12 +12,13 @@ interface Team {
   iso: string | null;
 }
 
-type SlotKey = 'champion' | 'vice';
+type SlotKey = 'champion' | 'vice' | 'third';
 
 interface PodiumCardProps {
   tournamentSlug: string;
-  competitionKey: string;
+  competitionKey: string; // chave da competição, ou '__legacy__' no modo legado
   competitionName: string;
+  mode: 'competition' | 'legacy';
   teams: Team[];
   locked: boolean;
   userPick: {
@@ -25,6 +26,8 @@ interface PodiumCardProps {
     championIso: string | null;
     viceTeam: string | null;
     viceIso: string | null;
+    thirdTeam: string | null;
+    thirdIso: string | null;
   } | null;
 }
 
@@ -38,46 +41,56 @@ function TeamFlag({ iso, alt, size = 32 }: { iso: string | null; alt: string; si
   return <Image src={getFlagUrl(iso)} alt={alt} width={size} height={size} className="rounded" style={{ height: 'auto' }} />;
 }
 
-const SLOTS: { key: SlotKey; label: string; pts: number; color: string }[] = [
-  { key: 'champion', label: 'Campeão', pts: 40, color: 'text-amber-400' },
-  { key: 'vice', label: 'Vice', pts: 25, color: 'text-slate-300' },
-];
+export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mode, teams, locked, userPick }: PodiumCardProps) {
+  const slotDefs: { key: SlotKey; label: string; pts: number; color: string }[] =
+    mode === 'legacy'
+      ? [
+          { key: 'champion', label: 'Campeão', pts: 40, color: 'text-amber-400' },
+          { key: 'vice', label: 'Vice', pts: 20, color: 'text-slate-300' },
+          { key: 'third', label: '3º lugar', pts: 25, color: 'text-orange-400' },
+        ]
+      : [
+          { key: 'champion', label: 'Campeão', pts: 40, color: 'text-amber-400' },
+          { key: 'vice', label: 'Vice', pts: 25, color: 'text-slate-300' },
+        ];
 
-export function PodiumCard({ tournamentSlug, competitionKey, competitionName, teams, locked, userPick }: PodiumCardProps) {
   const [picks, setPicks] = useState<Record<SlotKey, Team | null>>({
     champion: userPick?.championTeam ? { name: userPick.championTeam, iso: userPick.championIso } : null,
     vice: userPick?.viceTeam ? { name: userPick.viceTeam, iso: userPick.viceIso } : null,
+    third: userPick?.thirdTeam ? { name: userPick.thirdTeam, iso: userPick.thirdIso } : null,
   });
   const [activeSlot, setActiveSlot] = useState<SlotKey>('champion');
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const pickedNames = new Set(Object.values(picks).filter(Boolean).map((t) => (t as Team).name));
+  const slotKeys = slotDefs.map((s) => s.key);
+  const pickedNames = new Set(slotKeys.map((k) => picks[k]).filter(Boolean).map((t) => (t as Team).name));
 
   function selectTeam(team: Team) {
     if (locked) return;
     setPicks((prev) => {
       const next = { ...prev };
-      // Remove o time de qualquer outro slot (mantém distintos)
-      (Object.keys(next) as SlotKey[]).forEach((k) => {
+      slotKeys.forEach((k) => {
         if (next[k]?.name === team.name) next[k] = null;
       });
       next[activeSlot] = team;
       return next;
     });
-    // Avança para o outro slot se estiver vazio
-    const other: SlotKey = activeSlot === 'champion' ? 'vice' : 'champion';
-    if (!picks[other]) setActiveSlot(other);
+    const nextEmpty = slotKeys.find((k) => k !== activeSlot && !picks[k]);
+    if (nextEmpty) setActiveSlot(nextEmpty);
   }
 
   async function handleSave() {
     setIsSaving(true);
     setToast(null);
-    const result = await savePodiumPrediction(tournamentSlug, competitionKey, {
+    const competition = mode === 'legacy' ? null : competitionKey;
+    const result = await savePodiumPrediction(tournamentSlug, competition, {
       championTeam: picks.champion?.name ?? null,
       championIso: picks.champion?.iso ?? null,
       viceTeam: picks.vice?.name ?? null,
       viceIso: picks.vice?.iso ?? null,
+      thirdTeam: mode === 'legacy' ? picks.third?.name ?? null : null,
+      thirdIso: mode === 'legacy' ? picks.third?.iso ?? null : null,
     });
     if (result.error) setToast(result.error);
     else setToast('Pódio salvo com sucesso!');
@@ -85,7 +98,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, te
     setIsSaving(false);
   }
 
-  const hasAnyPick = picks.champion || picks.vice;
+  const hasAnyPick = slotKeys.some((k) => picks[k]);
 
   return (
     <Card className="bg-slate-900 border-slate-800 relative">
@@ -96,7 +109,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, te
 
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="w-5 h-5 text-amber-500 flex-shrink-0" />
-          <h3 className="text-white font-bold text-sm">Pódio — {competitionName}</h3>
+          <h3 className="text-white font-bold text-sm">{mode === 'legacy' ? 'Palpite de Pódio' : `Pódio — ${competitionName}`}</h3>
           {locked && (
             <span className="flex items-center gap-1 text-slate-400 text-xs ml-auto">
               <Lock className="w-3 h-3" /> Encerrado
@@ -104,9 +117,9 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, te
           )}
         </div>
 
-        {/* Slots: campeão / vice */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {SLOTS.map((slot) => {
+        {/* Slots */}
+        <div className={`grid ${mode === 'legacy' ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-4`}>
+          {slotDefs.map((slot) => {
             const team = picks[slot.key];
             const isActive = !locked && activeSlot === slot.key;
             return (
@@ -133,7 +146,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, te
         {!locked && (
           <>
             <p className="text-xs text-slate-400 mb-2">
-              Escolhendo: <span className="text-amber-400 font-semibold">{SLOTS.find((s) => s.key === activeSlot)?.label}</span>
+              Escolhendo: <span className="text-amber-400 font-semibold">{slotDefs.find((s) => s.key === activeSlot)?.label}</span>
             </p>
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto mb-4">
               {teams.map((team) => {
@@ -170,7 +183,9 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, te
         )}
 
         {locked && !hasAnyPick && (
-          <p className="text-slate-500 text-sm text-center">Você não palpitou o pódio desta competição.</p>
+          <p className="text-slate-500 text-sm text-center">
+            {mode === 'legacy' ? 'Você não palpitou o pódio deste torneio.' : 'Você não palpitou o pódio desta competição.'}
+          </p>
         )}
       </CardContent>
     </Card>

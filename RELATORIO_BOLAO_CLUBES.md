@@ -190,6 +190,11 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 |---|---|
 | A `000003` trocou `UNIQUE (user_id, tournament_id)` por `UNIQUE (user_id, tournament_id, competition)`. Como o pódio legado (Mundial) usa `competition = NULL` e `NULL` não é igual a `NULL` num UNIQUE comum, o banco passou a **aceitar múltiplos palpites de pódio do mesmo usuário no mesmo torneio** (o Mundial não tem duplicados, mas a garantia sumiu). | Adicionado **índice único parcial** `podium_predictions_legacy_uidx ON (user_id, tournament_id) WHERE competition IS NULL` — restaura "um pódio legado por usuário/torneio". O UNIQUE composto continua (necessário para o `onConflict` do upsert dos clubes, onde `competition` nunca é NULL). |
 
+### ❌ Regressão — Pódio do Mundial sumiu do frontend (corrigido no código, sem migration)
+| Como estava | O que mudou |
+|---|---|
+| Ao migrar o pódio para "por competição", `getPodiumData`/`getPodiumTransparency` passaram a **ignorar** partidas sem `competition` (`if (!m.competition) return;`). O Mundial legado tem `competition = NULL` em todos os jogos → **nenhum card de pódio nem transparência** na tela pública, embora banco/ranking/admin mantivessem o pódio. | O pódio agora tem **dois modos**: `competition` (clubes: campeão+vice por competição) e **`legacy`** (Mundial: campeão+vice+**3º**, resultado real em `tournaments.*`). Quando o torneio não tem partidas com `competition`, é montado um bloco legado único. `PodiumCard` renderiza 2 ou 3 slots conforme o modo; `PodiumTransparency` mostra o 3º quando aplicável; `savePodiumPrediction` aceita `competition` nulo (grava via select-then-write, já que `NULL` não casa no `onConflict` composto). Arquivos: `matches/actions.ts`, `components/podium-card.tsx`, `components/podium-transparency.tsx`, `matches/page.tsx`. |
+
 ---
 
 ## 12. Índice de arquivos

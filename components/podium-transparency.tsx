@@ -13,12 +13,15 @@ interface PodiumPrediction {
   championIso: string | null;
   viceTeam: string | null;
   viceIso: string | null;
+  thirdTeam: string | null;
+  thirdIso: string | null;
 }
 
 interface CompetitionBlock {
   key: string;
   name: string;
   started: boolean;
+  hasThird: boolean;
   predictions: PodiumPrediction[];
 }
 
@@ -98,6 +101,9 @@ export function PodiumTransparency({ tournamentSlug, competitions }: Props) {
                       <div className="flex items-start gap-2">
                         <Slot label="Campeão" team={p.championTeam} iso={p.championIso} color="text-amber-400" />
                         <Slot label="Vice" team={p.viceTeam} iso={p.viceIso} color="text-slate-300" />
+                        {comp.hasThird && (
+                          <Slot label="3º lugar" team={p.thirdTeam} iso={p.thirdIso} color="text-orange-400" />
+                        )}
                       </div>
                     </CardContent>
                   </Card>
