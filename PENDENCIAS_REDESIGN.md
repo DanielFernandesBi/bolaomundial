@@ -20,11 +20,12 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | Bloco | Estado | Commit |
 | --- | --- | --- |
 | 1 — Toast único no rodapé | ✅ | `a2ac0aa` |
-| 2 — Card de partida (stepper 44px, pílula de estado, rodapé de estado) | ✅ | `a3735b8` |
-| 3 — Partidas + banner de prazo + pódio | ✅ | `64e25ce` |
-| 4a — Ranking Geral (lista única, currentUserId) | ✅ | `1219a59` |
-| 4b — Ranking do torneio: lista única | ✅ | `e9cab18` |
-| 4c — Aba Projeção + escopo "Todos os bolões" + barra "Você" | ⬜ | — |
+| 2 — Card de partida (stepper 44px, pílula de estado, rodapé de estado) | ✅ | `79c820f` |
+| 3 — Partidas + banner de prazo + pódio | ✅ | `8f0b593` |
+| 4a — Ranking Geral (lista única, currentUserId) | ✅ | `e7bffdd` |
+| 4b — Ranking do torneio: lista única | ✅ | `37d0fdd` |
+| 4c — Aba Projeção + barra "Você" | ✅ | `30d4c64` |
+| 4d — Escopo "Todos os bolões" + abas de ordenação | ⬜ | — |
 | 5 — Desempenho + Perfil (+ perfil de terceiro) | ⬜ | — |
 | 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
 | 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
@@ -84,13 +85,13 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 ### Restante do bloco 4 → passa a ser o 4c
 
-- [ ] **Aba "Projeção"** no Ranking recebendo o `simulador-content.tsx`
-      (304 linhas). A rota `/[tournament]/simulador` continua existindo; hoje
-      ela é a única forma de chegar lá, já que o Simulador saiu da nav na F4.
+- [x] **Aba "Projeção"** feita no 4c: o `SimuladorContent` é montado dentro do
+      Ranking. O Radix só o monta quando a aba abre, e ele carrega os próprios
+      dados — não precisou de plumbing. A rota antiga segue funcionando.
 - [ ] **Seletor de escopo** "{Torneio}" ⇄ "Todos os bolões" renderizando na
       própria tela (decisão do Daniel: renderiza, não navega).
-- [ ] **Barra fixa "Você"** com IntersectionObserver na linha do próprio
-      usuário — some quando ela está visível, sem duplicar.
+- [x] **Barra fixa "Você"** feita no 4c, com IntersectionObserver na própria
+      linha e `rootMargin` descontando a barra de navegação.
 - [ ] **Abas de ordenação** (Pontos · Cravadas · Prêmios no geral; a do torneio
       já tem Pontos/Cravadas/Hoje). Depende de decidir quem ordena: hoje o
       ranking geral chega pronto do servidor.
@@ -139,8 +140,7 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 ### Item 7 aprovado pelo Daniel (comportamento), ainda a fazer
 
-- [ ] **Barra fixa "Você"** no ranking quando a linha sai da viewport
-      (IntersectionObserver na própria linha; sumir quando visível).
+- [x] **Barra fixa "Você"** no ranking (bloco 4c).
 - [x] **`currentUserId` usado no Ranking Geral** (bloco 4a) para destacar a
       sua linha.
 - [ ] **Cards `share-*` sob demanda** — hoje os 28 são montados em toda visita.
@@ -180,11 +180,17 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
    final, não só o build.
 3. **`public/sw.js` é regenerado pelo `next-pwa` a cada build.** Está na lista
    de intocáveis: reverter (`git checkout -- public/sw.js`) antes de commitar.
-4. **Arbitrárias com decimal são minificadas.** `tracking-[0.13em]` vira
+4. **`ignoreBuildErrors: true` — o `next build` NÃO valida tipos.** Um import
+   faltando (`TrendingUp`) passou pelo build e só apareceu no `npx tsc
+   --noEmit`. O projeto tem 252 erros de tipo pré-existentes (tipagem do
+   Supabase nas actions), então o filtro útil é procurar as classes
+   TS2304/TS2552/TS2686 — "nome não encontrado" —, que denunciam componente
+   usado sem import. Rodar isso a cada bloco.
+5. **Arbitrárias com decimal são minificadas.** `tracking-[0.13em]` vira
    `letter-spacing:.13em` no CSS — procurar por "0.13em" dá falso negativo.
    O mesmo vale para grep de classes com colchetes: escapar direito ou buscar
    só o valor.
-5. **Aviso de `middleware` deprecado** é anterior ao redesign e fora de escopo
+6. **Aviso de `middleware` deprecado** é anterior ao redesign e fora de escopo
    (`middleware.ts` é intocável).
 
 ---

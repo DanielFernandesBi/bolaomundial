@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Trophy, Share2, CalendarDays } from 'lucide-react';
+import { Trophy, Share2, CalendarDays, TrendingUp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,7 @@ import { ShareRankingCard } from '@/components/share-ranking-card';
 import { ShareFullRankingCard } from '@/components/share-full-ranking-card';
 import { shareAsImage } from '@/lib/shareUtils';
 import { Toast } from '@/components/toast';
+import { SimuladorContent } from '@/app/[tournament]/simulador/simulador-content';
 
 interface Profile {
   id: string;
@@ -38,10 +39,30 @@ interface RankingContentProps {
 }
 
 export function RankingContent({ profiles, currentUserId, tournamentName, tournamentSlug, dailyEntries = [], hasMatchesToday = false, todayLabel }: RankingContentProps) {
-  const [activeTab, setActiveTab] = useState<'general' | 'cravadas' | 'daily'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'cravadas' | 'daily' | 'projecao'>('general');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Barra fixa "Você": aparece quando a sua linha sai da viewport e some
+  // quando ela volta — nunca as duas ao mesmo tempo. É só apresentação; não
+  // altera dado nenhum do ranking.
+  const myRowRef = useRef<HTMLDivElement | null>(null);
+  const [myRowVisible, setMyRowVisible] = useState(true);
+
+  useEffect(() => {
+    const el = myRowRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setMyRowVisible(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => setMyRowVisible(entry.isIntersecting),
+      { rootMargin: '-8px 0px -88px 0px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [activeTab, currentUserId, sortedProfiles.length]);
 
   // Ordenar perfis baseado na aba ativa
   const sortedProfiles = useMemo(() => {
@@ -160,16 +181,37 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
       
       {/* Tabs com botão de compartilhar */}
       <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'daily')}>
-          <TabsList className="bg-card">
-            <TabsTrigger value="general">Classificação Geral</TabsTrigger>
-            <TabsTrigger value="cravadas">Reis da Cravada</TabsTrigger>
-            <TabsTrigger value="daily" className="flex items-center gap-1.5">
-              <CalendarDays className="w-3.5 h-3.5" />
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'daily' | 'projecao')}>
+          <TabsList className="grid auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+            <TabsTrigger
+              value="general"
+              className="h-9 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Pontos
+            </TabsTrigger>
+            <TabsTrigger
+              value="cravadas"
+              className="h-9 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Cravadas
+            </TabsTrigger>
+            <TabsTrigger
+              value="daily"
+              className="flex h-9 items-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
               Hoje {todayLabel ? `(${todayLabel})` : ''}
+            </TabsTrigger>
+            <TabsTrigger
+              value="projecao"
+              className="flex h-9 items-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <TrendingUp className="h-3.5 w-3.5" />
+              Projeção
             </TabsTrigger>
           </TabsList>
         </Tabs>
+        {activeTab !== 'projecao' && (
         <Button
           size="sm"
           variant="outline"
@@ -186,11 +228,20 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
             </>
           )}
         </Button>
+        )}
       </div>
+
+      {/* Aba Projeção: o simulador passa a morar aqui. A rota
+          /[tournament]/simulador continua existindo e funcionando — só o
+          caminho de navegação mudou. O componente carrega os próprios dados,
+          e o Radix só o monta quando a aba é aberta. */}
+      {activeTab === 'projecao' && (
+        <SimuladorContent tournamentSlug={tournamentSlug} tournamentName={tournamentName} />
+      )}
 
       {/* Lista única, responsiva. Antes eram DOIS blocos com o mesmo conteúdo:
           cards md:hidden e tabela hidden md:block. */}
-      {activeTab !== 'daily' && (
+      {activeTab !== 'daily' && activeTab !== 'projecao' && (
         <div className="space-y-2">
           {sortedProfiles.length > 0 ? (
             sortedProfiles.map((profile, index) => {
@@ -206,6 +257,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
               return (
                 <div
                   key={profile.id}
+                  ref={isMe ? myRowRef : undefined}
                   className={`flex items-center gap-3 rounded-[14px] border px-3 py-2.5 ${row}`}
                 >
                   <span
@@ -360,7 +412,33 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
         </div>
       )}
 
+
+      {/* Barra fixa "Você" — só quando a sua linha não está visível */}
+      {(() => {
+        if (myRowVisible) return null;
+        if (activeTab === 'daily' || activeTab === 'projecao') return null;
+        const idx = sortedProfiles.findIndex((pr) => pr.id === currentUserId);
+        if (idx < 0) return null;
+        const me = sortedProfiles[idx];
+        return (
+          <div
+            className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-4"
+            aria-hidden="true"
+          >
+            <div className="mx-auto flex max-w-2xl items-center gap-3 rounded-[14px] border border-primary/45 bg-card/95 px-3 py-2.5 shadow-lg backdrop-blur">
+              <span className="w-7 flex-shrink-0 text-center text-[15px] font-bold tabular-nums text-primary">
+                {idx + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                {me.username} <span className="text-[11px] font-normal text-primary">você</span>
+              </span>
+              <span className="flex-shrink-0 text-base font-bold tabular-nums text-foreground">
+                {showCravadas ? me.exact_matches : me.total_points.toLocaleString('pt-BR')}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
-
