@@ -141,7 +141,7 @@ Cria o torneio unificado `mata-mata-clubes-2026` (`format='knockout'`, `has_simu
 
 ## 10. Limitações conhecidas e pendências
 
-- **Correção que inverte o classificado após a próxima fase já criada:** o `advanceBracket` só cria os jogos seguintes se ainda não existirem, então os jogos já gerados ficam com o time antigo → ajuste manual (dá para automatizar um "desfazer" depois).
+- ~~**Correção que inverte o classificado após a próxima fase já criada:**~~ **Resolvido** no item 18 (`20260728000015`): a correção é propagada aos jogos seguintes se ainda não começaram/receberam palpites; senão a operação é bloqueada com mensagem para ajuste manual (transação revertida).
 - **Simulador** não foi adaptado para clubes (só escondido) — decisão de deixar para depois.
 - **Aplicar no Supabase:** as 4 migrations e o seed (com os sorteios reais) ainda precisam ser executados no banco.
 - Tipagem: o projeto compila com `ignoreBuildErrors: true` (baseline pré‑existente); a validação usada é `next build`, que **passou**.
@@ -217,6 +217,15 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 |---|---|
 | `distribute_tournament_prizes` ordenava por `(total_points DESC, exact_matches DESC)` e dava 1º/2º/3º sem regra determinística para empates completos → a ordem dos empatados dependia do PostgreSQL. | Regra do usuário: em empate completo, **posição compartilhada**; quando envolve dinheiro, **soma‑se o prêmio das posições ocupadas pelo grupo e divide‑se pelo nº de empatados** (ex.: 2 no topo → cada um `(1º+2º)/2`; 3 no topo → `(1º+2º+3º)/3`; fora do pódio → 0). Implementado com `ROW_NUMBER`/janela por `(total_points, exact_matches)`. *(A exibição do ranking ainda numera sequencialmente — mostrar a posição compartilhada na tabela é um ajuste de UI opcional; o dinheiro já é justo/determinístico.)* |
 
+### 🔴 Chaveamento atômico + correção + anti‑duplicação (itens 17,18,19 — `20260728000015_bracket_atomic_rpc.sql`)
+| # | Como estava | O que mudou |
+|---|---|---|
+| 17 | `lib/bracket.ts` fazia várias chamadas Supabase soltas (UPDATE tie, UPDATE next_tie, INSERT ida/volta, UPDATE ids) **sem transação** e sem checar todos os `.error` → falha no meio deixava estado parcial e ainda podia reportar sucesso. | Toda a lógica foi portada para a função SQL **`advance_tie` / `advance_bracket_for_match`** (plpgsql, `SECURITY DEFINER`, atômica: qualquer `RAISE` reverte tudo). `lib/bracket.ts` virou um **wrapper** que só chama a RPC e propaga a mensagem. |
+| 18 | Corrigir um resultado que **invertia o classificado** deixava os jogos da fase seguinte já criados com o time antigo (tie e matches discordavam). | A função **propaga** a correção aos jogos seguintes **se ainda não começaram nem receberam palpites**; caso contrário **bloqueia** com mensagem pedindo ajuste manual (e, sendo atômica, reverte — nada fica pela metade). |
+| 19 | `maybeCreateNextMatches` checava e depois criava; duas chamadas concorrentes podiam **duplicar** ida/volta (sem constraint). | Índice único **`UNIQUE (tie_id, leg) WHERE tie_id IS NOT NULL`** + criação tratando `unique_violation` → o perdedor da corrida sai limpo, sem duplicar. |
+
+Segurança: `advance_bracket_for_match` tem checagem interna de admin e é a única com `EXECUTE` para `authenticated`; `advance_tie` fica sem `EXECUTE` de cliente (só é chamada internamente).
+
 ---
 
 ## 12. Índice de arquivos
@@ -236,6 +245,7 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 - `supabase/migrations/20260728000012_pen_winner_only_clubs.sql`
 - `supabase/migrations/20260728000013_scoring_pen_gate_and_reopen_reversal.sql`
 - `supabase/migrations/20260728000014_prize_shared_positions.sql`
+- `supabase/migrations/20260728000015_bracket_atomic_rpc.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
