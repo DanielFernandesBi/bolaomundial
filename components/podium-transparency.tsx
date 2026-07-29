@@ -27,6 +27,8 @@ interface CompetitionBlock {
 interface Props {
   tournamentSlug: string;
   competitions: CompetitionBlock[];
+  /** Opcional: destaca a linha do próprio jogador. Sem ele nada muda. */
+  currentUserId?: string | null;
 }
 
 function getInitials(name: string): string {
@@ -70,7 +72,7 @@ function TeamChip({
   );
 }
 
-export function PodiumTransparency({ tournamentSlug, competitions }: Props) {
+export function PodiumTransparency({ tournamentSlug, competitions, currentUserId }: Props) {
   const startedComps = competitions.filter((c) => c.started);
 
   return (
@@ -100,10 +102,14 @@ export function PodiumTransparency({ tournamentSlug, competitions }: Props) {
               <div className="text-[hsl(var(--faint))] text-sm py-4">Nenhum palpite de pódio nesta competição.</div>
             ) : (
               <div className="space-y-2">
-                {comp.predictions.map((p) => (
+                {comp.predictions.map((p) => {
+                  const isVoce = !!currentUserId && p.user_id === currentUserId;
+                  return (
                   <div
                     key={`${comp.key}-${p.user_id}`}
-                    className="flex items-center gap-3 rounded-[14px] border border-hairline bg-card px-3 py-2.5"
+                    className={`flex items-center gap-3 rounded-[14px] border px-3 py-2.5 ${
+                      isVoce ? 'border-primary/45 bg-primary/10' : 'border-hairline bg-card'
+                    }`}
                   >
                     <Avatar className="h-8 w-8 flex-shrink-0 border border-border">
                       <AvatarImage src={p.avatar_url || undefined} />
@@ -117,13 +123,19 @@ export function PodiumTransparency({ tournamentSlug, competitions }: Props) {
                     >
                       {p.username}
                     </Link>
+                    {isVoce && (
+                      <span className="flex-shrink-0 rounded-full bg-primary px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.13em] text-primary-foreground">
+                        Você
+                      </span>
+                    )}
                     <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
                       <TeamChip team={p.championTeam} iso={p.championIso} variant="champion" />
                       <TeamChip team={p.viceTeam} iso={p.viceIso} variant="other" />
                       {comp.hasThird && <TeamChip team={p.thirdTeam} iso={p.thirdIso} variant="other" />}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

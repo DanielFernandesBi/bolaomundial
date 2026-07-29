@@ -109,7 +109,7 @@ export function PrizeEntry({ tournamentSlug, current }: PrizeEntryProps) {
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button disabled={distributing} variant="outline" className="text-state-open border-green-500 hover:bg-state-open/10">
+              <Button disabled={distributing} variant="outline" className="text-state-open border-state-open hover:bg-state-open/10">
                 {distributing ? 'Distribuindo...' : 'Distribuir aos vencedores'}
               </Button>
             </AlertDialogTrigger>
@@ -124,7 +124,7 @@ export function PrizeEntry({ tournamentSlug, current }: PrizeEntryProps) {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel className="text-card-foreground hover:text-foreground">Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDistribute} className="bg-green-600 hover:bg-green-700">
+                <AlertDialogAction onClick={handleDistribute} className="bg-success text-success-foreground hover:bg-success/90">
                   Distribuir
                 </AlertDialogAction>
               </AlertDialogFooter>

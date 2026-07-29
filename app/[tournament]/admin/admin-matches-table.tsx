@@ -168,9 +168,11 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
     const showExtraTime = match.has_extra_time !== false;
     const penMode = match.penalty_prediction_mode ?? (showExtraTime ? 'score' : 'winner');
     const penWinnerMode = penMode === 'winner';
+    // Agrupamento do mata-mata. Era o último indigo do app — e indigo não
+    // significava nada aqui: é uma subseção do formulário, não um estado.
     return (
-      <div className="mt-2 rounded-md border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
-        <p className="text-indigo-300 text-xs font-semibold">Mata-mata (deixe vazio se não houve)</p>
+      <div className="mt-2 rounded-md border border-hairline bg-surface-sunken p-3 space-y-2">
+        <p className="text-card-foreground text-xs font-semibold">Mata-mata (deixe vazio se não houve)</p>
         {showExtraTime && (
           <div className="flex items-center gap-2">
             <label className="text-muted-foreground text-xs w-20">Prorrogação</label>
@@ -335,7 +337,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                           variant="destructive"
                           size="sm"
                           disabled={deleting === match.id || saving === match.id}
-                          className="flex-1 bg-red-600 hover:bg-red-700 h-10"
+                          className="flex-1 h-10"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Deletar
@@ -365,7 +367,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                           <AlertDialogAction
                             onClick={() => handleDelete(match.id)}
                             disabled={deleting === match.id}
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             {deleting === match.id ? 'Deletando...' : 'Deletar'}
                           </AlertDialogAction>
@@ -480,7 +482,6 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                                 variant="destructive"
                                 size="sm"
                                 disabled={deleting === match.id || saving === match.id}
-                                className="bg-red-600 hover:bg-red-700"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -509,7 +510,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                                 <AlertDialogAction
                                   onClick={() => handleDelete(match.id)}
                                   disabled={deleting === match.id}
-                                  className="bg-red-600 hover:bg-red-700"
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                   {deleting === match.id ? 'Deletando...' : 'Deletar'}
                                 </AlertDialogAction>

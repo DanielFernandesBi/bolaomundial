@@ -8,7 +8,10 @@ async function elementToPng(elementId: string): Promise<string> {
   return toPng(element, {
     quality: 1.0,
     pixelRatio: 2,
-    backgroundColor: '#ffffff',
+    // Cor de fundo do PNG, usada em qualquer região transparente do card.
+    // Era branca, de quando os cards eram claros; com o redesenho (§16) o fundo
+    // é escuro e o branco apareceria como borda clara na imagem exportada.
+    backgroundColor: '#0a0e15',
     width: element.offsetWidth,
     height: element.offsetHeight,
   });
@@ -29,8 +32,8 @@ export async function shareAsImage(
 
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
-            title: 'Bolão Mundial - Minha Conquista!',
-            text: 'Olha só minha cravada no Bolão Mundial! 🏆',
+            title: 'Arena de Bolões — minha conquista',
+            text: 'Olha só o meu palpite na Arena de Bolões!',
             files: [file],
           });
           return;
@@ -65,8 +68,8 @@ export async function shareMultipleAsImages(
         );
         if (navigator.canShare({ files })) {
           await navigator.share({
-            title: 'Bolão Mundial - Ranking Completo!',
-            text: 'Confira o ranking completo do Bolão! 🏆',
+            title: 'Arena de Bolões — ranking completo',
+            text: 'Confira o ranking completo do bolão!',
             files,
           });
           return;

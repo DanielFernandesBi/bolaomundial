@@ -158,7 +158,7 @@ export function AdminBracket({ tournamentSlug, tournamentId, competitions }: Pro
                             <Input value={rLogo} onChange={(e) => setRLogo(e.target.value)} placeholder="URL do escudo"
                               className="h-8 text-sm bg-background border-border text-foreground" />
                             <div className="flex gap-2">
-                              <Button size="sm" className="h-7 bg-green-600 hover:bg-green-700" onClick={doResolve} disabled={isPending || !rTeam.trim()}>
+                              <Button size="sm" className="h-7 bg-success text-success-foreground hover:bg-success/90" onClick={doResolve} disabled={isPending || !rTeam.trim()}>
                                 <Check className="w-3 h-3 mr-1" /> Salvar
                               </Button>
                               <Button size="sm" variant="ghost" className="h-7 text-muted-foreground" onClick={() => setResolving(null)}>Cancelar</Button>

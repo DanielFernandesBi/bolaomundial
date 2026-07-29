@@ -34,7 +34,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 6b — Folha de troca de campeonato | ✅ | `ffaf5bb` |
 | 6c — Layout do Login e do Perfil | ✅ | `3fcf871` |
 | 7 — Cards de compartilhamento: marca + share sob demanda | ✅ | `898b5f8`, `a3f7473` |
-| 8 — Redesenho visual dos cards (§16) | ✅ | este commit |
+| 8 — Redesenho visual dos cards (§16) | ✅ | `fead8e3` |
+| 9 — Admin tokenizado, destaque no pódio, marca na folha nativa | ✅ | este commit |
 
 ---
 
@@ -67,7 +68,10 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] Emoji removidos das 5 mensagens de toast (bloco 5a).
 - [x] **Botão Salvar** em `match-card.tsx` (bloco 2) e `podium-card.tsx`
       (bloco 3) → `bg-primary`.
-- [ ] **Botões de excluir** `bg-red-600/700` → `destructive` (só no admin agora).
+- [x] **Botões de excluir** `bg-red-600/700` → `destructive` (bloco 9). Os que já
+      tinham `variant="destructive"` estavam com a cor sobrescrita pela classe;
+      bastou tirar o override. Os `AlertDialogAction` ganharam o token na mão.
+      Os confirmar em verde do admin (`bg-green-600`) viraram `bg-success`.
 - [x] **Medalhas do Hall** (bloco 6a): 2º e 3º viraram linhas discretas e a
       lanterna virou nota tracejada, sem card vermelho neon.
 - [x] **Barras do simulador** todas em âmbar (bloco 6a).
@@ -87,7 +91,11 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] **Distribuição de pontos do perfil** → 3 níveis (bloco 5a). As duas telas
       de perfil não têm mais NENHUMA classe de cor fixa. Com isso a escala de 8
       cores está extinta do app — só resta `indigo` no admin.
-- [ ] **`admin/admin-matches-table.tsx`**: `indigo-300/500` restantes.
+- [x] **`admin/admin-matches-table.tsx`**: o indigo saiu (bloco 9). Era o
+      agrupamento do mata-mata — uma subseção de formulário, não um estado, então
+      virou `border-hairline bg-surface-sunken`. **Com isso não resta NENHUMA
+      classe de cor fixa em `app/` nem em `components/`**, fora os cards de
+      compartilhamento, que são fixos de propósito (imagem exportada).
 
 ### Restante do bloco 6 → 6b
 
@@ -130,16 +138,14 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] **Abas de ordenação** feitas no 4d. Não era decisão de arquitetura: o
       ranking do torneio JÁ ordenava no cliente com useMemo. A aba só reordena
       o array que veio do servidor — nada é recalculado.
-- [ ] **`podium-transparency.tsx`**: destaque âmbar na linha do usuário. Exige
-      receber `currentUserId` — prop nova, e a página que o renderiza precisa
-      buscar o usuário.
+- [x] **`podium-transparency.tsx`**: destaque âmbar na própria linha, feito no
+      bloco 9. A prop `currentUserId` é opcional — sem ela nada muda. A lista
+      continua mostrando todo mundo, que é o ponto da transparência.
 
 ### Vindas do bloco 4a (ranking geral)
 
 - [x] **Abas Pontos · Cravadas · Prêmios** no Ranking Geral (bloco 4d).
-- [ ] **Destaque âmbar na linha do usuário** em `podium-transparency.tsx`:
-      precisa receber `currentUserId` (prop nova) e a página precisa buscar o
-      usuário. Levar junto do 4e.
+- [x] **Destaque âmbar na linha do usuário** em `podium-transparency.tsx` (bloco 9).
 
 ### Vindas do bloco 3 (partidas / pódio)
 
@@ -170,10 +176,11 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       `components/share-chrome.tsx` — **fixa em hexadecimal de propósito**: a
       imagem exportada não pode depender do tema de quem gerou, senão o mesmo
       ranking sai claro para uns e escuro para outros no mesmo grupo.
-- [ ] **`lib/shareUtils.ts` ainda diz "Bolão Mundial"** no título e no texto que
-      vão para a folha de compartilhamento nativa do celular ("Olha só minha
-      cravada no Bolão Mundial! 🏆"). É `lib/`, que está na lista de não mexer —
-      precisa de liberação explícita. São duas strings, sem lógica.
+- [x] **`lib/shareUtils.ts`**: marca corrigida na folha de compartilhamento
+      nativa (bloco 9, com liberação explícita do Daniel para este arquivo).
+      Aproveitei para trocar o `backgroundColor` do PNG de `#ffffff` para
+      `#0a0e15` — com card escuro, o branco aparecia em qualquer região
+      transparente.
 - [ ] **`share-extra-ranking-card.tsx` é código morto**: ninguém o importa, nem
       antes do redesign (conferido contra `main`). Foi redesenhado junto para não
       deixar duas linguagens visuais no repositório, mas pode ser apagado.

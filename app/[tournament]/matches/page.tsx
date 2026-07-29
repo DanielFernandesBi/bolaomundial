@@ -93,6 +93,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   const showPodium = tournamentFormat === 'knockout' || tournamentFormat === 'mixed';
   const podium = showPodium ? await getPodiumData(tournamentSlug) : null;
   const podiumTransparency = showPodium ? await getPodiumTransparency(tournamentSlug) : null;
+  // Só para destacar a própria linha na transparência do pódio. A lista em si
+  // não muda: continua mostrando todo mundo, que é o ponto da transparência.
+  const {
+    data: { user: currentUser },
+  } = await supabase.auth.getUser();
   const podiumCompetitions = podium && !podium.error ? podium.competitions : [];
 
   // Confrontos de oitavas ainda sem os dois participantes (playoffs pendentes)
@@ -318,7 +323,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                   </p>
                 </div>
               ) : (
-                <PodiumTransparency tournamentSlug={tournamentSlug} competitions={podiumTransparency.competitions} />
+                <PodiumTransparency
+                  tournamentSlug={tournamentSlug}
+                  competitions={podiumTransparency.competitions}
+                  currentUserId={currentUser?.id ?? null}
+                />
               )}
             </TabsContent>
           )}
