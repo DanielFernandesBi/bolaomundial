@@ -129,6 +129,15 @@ summary::-webkit-details-marker {
   display: none;
 }
 
+/* No tema claro o âmbar de PREENCHIMENTO (#f59e0b) não tem contraste como
+   TEXTO sobre o creme do fundo. `--primary-text` (#8a4708) existe para isso
+   desde a Fase 1 — mas nada o consumia, e todo `text-primary` da tela clara
+   saía no âmbar de botão. Esta regra liga os dois.
+   Vale só no claro: no escuro --primary-text é igual a --primary. */
+html.light .text-primary {
+  color: hsl(var(--primary-text));
+}
+
 /* Utilitário para bandeiras */
 .flag {
   @apply inline-block;

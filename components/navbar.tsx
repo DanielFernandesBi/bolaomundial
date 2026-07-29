@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useParams } from 'next/navigation';
 import { Calendar, Award, User, LogOut, Settings, Home, Crown, BarChart3, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { logoutAction } from '@/app/actions/auth';
 import { getTournamentNavInfo } from '@/app/actions/tournament';
 
@@ -207,6 +208,11 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
                 <span className="font-medium hidden md:inline">Admin</span>
               </Link>
             )}
+
+            {/* Tema claro/escuro. Esta barra só existe no desktop (o layout a
+                esconde abaixo de md), então até agora o alternador só chegava
+                pelo Perfil. Nada mais do arquivo mudou. */}
+            <ThemeToggle variant="icon" />
 
             {/* Sair */}
             <form action={logoutAction}>

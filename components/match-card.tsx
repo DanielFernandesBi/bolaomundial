@@ -229,6 +229,21 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   const dateTbd = !match.match_date;
   const isLocked = (matchDate ? new Date() > matchDate : false) || isFinished;
 
+  // Contagem regressiva fina da pílula ("Fecha em 3h 12m").
+  // Só passa a valer DEPOIS da montagem: no primeiro render o cliente precisa
+  // desenhar exatamente o que o servidor mandou, senão a hidratação diverge.
+  // Até lá a pílula continua dizendo "Aberto". O passo é de 30s porque a pílula
+  // não mostra segundos — quem mostra é o banner de prazo, que tem relógio de 1s.
+  const [msAteFechar, setMsAteFechar] = useState<number | null>(null);
+  useEffect(() => {
+    if (!match.match_date || isFinished) return;
+    const alvo = new Date(match.match_date).getTime();
+    const tick = () => setMsAteFechar(alvo - Date.now());
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, [match.match_date, isFinished]);
+
   const hasUnsavedChanges =
     homeScore !== saved.home ||
     awayScore !== saved.away ||
@@ -369,13 +384,14 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     );
   }
 
-  // Pílula única de estado. Usa apenas valores já derivados (isFinished,
-  // isLocked, dateTbd) — sem relógio próprio, para não introduzir setInterval
-  // nem divergência de hidratação. A contagem regressiva fina ("Fecha em 3h
-  // 12m") é do banner de prazo, que já tem essa maquinaria.
+  // Pílula única de estado. O prazo só vira contagem regressiva na última
+  // véspera — antes disso "faltam 6 dias" não é informação acionável e só
+  // deixaria a tela piscando números.
   function statePill() {
     let tone: string;
     let text: string;
+    const UMA_HORA = 3_600_000;
+    const UM_DIA = 24 * UMA_HORA;
     if (isFinished) {
       tone = 'text-state-locked bg-state-locked/10';
       text = 'Encerrada';
@@ -385,6 +401,17 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     } else if (dateTbd) {
       tone = 'text-state-closing bg-state-closing/15';
       text = 'Data a definir';
+    } else if (msAteFechar !== null && msAteFechar > 0 && msAteFechar < UM_DIA) {
+      const horas = Math.floor(msAteFechar / UMA_HORA);
+      const minutos = Math.floor((msAteFechar % UMA_HORA) / 60_000);
+      text =
+        horas > 0
+          ? `Fecha em ${horas}h ${String(minutos).padStart(2, '0')}m`
+          : `Fecha em ${minutos}m`;
+      tone =
+        msAteFechar < UMA_HORA
+          ? 'text-state-urgent bg-state-urgent/15'
+          : 'text-state-closing bg-state-closing/15';
     } else {
       tone = 'text-state-open bg-state-open/10';
       text = 'Aberto';

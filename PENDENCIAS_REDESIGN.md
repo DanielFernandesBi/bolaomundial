@@ -35,7 +35,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 6c — Layout do Login e do Perfil | ✅ | `3fcf871` |
 | 7 — Cards de compartilhamento: marca + share sob demanda | ✅ | `898b5f8`, `a3f7473` |
 | 8 — Redesenho visual dos cards (§16) | ✅ | `fead8e3` |
-| 9 — Admin tokenizado, destaque no pódio, marca na folha nativa | ✅ | este commit |
+| 9 — Admin tokenizado, destaque no pódio, marca na folha nativa | ✅ | `afc6306` |
+| 10 — Contagem regressiva, tema no desktop, QA do claro | ✅ | este commit |
 
 ---
 
@@ -155,11 +156,12 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       DENTRO do `<Link>` que já embrulha o card. Sem link aninhado, sem mudar a
       Props do MatchCard. Ficou sem o número N — a contagem de palpites não
       chega nessa tela e buscá-la exigiria mexer numa action.
-- [ ] **Contagem regressiva fina na pílula** ("Fecha em 3h 12m"): a pílula
-      mostra só Aberto/Apostas fechadas/Encerrada/Data a definir, sem relógio
-      próprio, para não criar setInterval nem divergência de hidratação dentro
-      do card. O banner de prazo (bloco 3) já tem essa maquinaria — avaliar se
-      vale reaproveitar aqui.
+- [x] **Contagem regressiva fina na pílula** feita no bloco 10. O relógio só
+      começa DEPOIS da montagem (`useEffect`), então o primeiro render do cliente
+      é idêntico ao do servidor e a hidratação não diverge. Passo de 30s, porque
+      a pílula não mostra segundos. Só aparece na última véspera: acima de 24h
+      "faltam 6 dias" não é acionável e deixaria a tela piscando números.
+      Abaixo de 1h a pílula vai para `state-urgent`.
 
 ### Vindas da Fase 4 (lacunas abertas de propósito)
 
@@ -191,11 +193,19 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 ### Vindas da Fase 5
 
-- [ ] **Botão de tema no desktop**: hoje só o `mobile-header` e o Perfil têm.
-      A `navbar.tsx` não pode ser editada, então o desktop chega pelo Perfil —
-      se quiser no topo do desktop, é preciso liberar a navbar.
-- [ ] **Scrollbar no tema claro**: já usa tokens, mas conferir na prática.
-- [ ] **QA do tema claro** em todos os estados (ver checklist do handoff).
+- [x] **Botão de tema no desktop** feito no bloco 10. A `navbar.tsx` nunca
+      esteve na lista de arquivos proibidos (essa era `supabase/`, `lib/`,
+      `middleware.ts` e os `actions.ts`) — foi cautela minha. A barra só existe
+      acima de `md`, então a inserção não toca o mobile.
+- [x] **Scrollbar no tema claro**: usa `bg-surface-sunken`/`bg-border`, ambos
+      redefinidos em `html.light`. Nada a fazer no código.
+- [~] **QA do tema claro**: varredura estática feita no bloco 10 e achou um bug
+      real — `--primary-text` (#8a4708) foi definido na Fase 1 e **nunca era
+      consumido**, então todo `text-primary` da tela clara saía no âmbar de
+      botão (#f59e0b) sobre o creme do fundo. Corrigido com uma regra
+      `html.light .text-primary` em globals.css. O `bg-white` do thumb do slider
+      (recorte de avatar) virou `bg-foreground`. Falta o QA com olho humano —
+      varredura estática não vê contraste.
 
 ### Item 7 aprovado pelo Daniel (comportamento), ainda a fazer
 
