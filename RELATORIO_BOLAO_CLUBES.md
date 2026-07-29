@@ -238,6 +238,16 @@ Segurança: `advance_bracket_for_match` tem checagem interna de admin e é a ún
 | ⚠️ | `statusHeader()` do card checava `penHome/penAway` para todo mata‑mata → nos clubes (que usam vencedor) o card dizia **"Palpite incompleto — falta pênaltis"** mesmo com o palpite salvo. | Ramo por modelo: clubes exigem `penWinner`; Mundial exige `penHome/penAway` (+prorrogação). |
 | ⚠️ | `getMatchesInProgressWithAllPredictions` não enviava `pred_pen_winner` → a Transparência não mostrava "Pên.: <time>" nos clubes. | Passou a incluir `pred_pen_winner` no `all_predictions`. |
 
+### 🧭 Frontend desatualizado após as mudanças de hoje (legenda/cards)
+| Área | Como estava | O que mudou |
+|---|---|---|
+| **Desempenho — Sistema de Pontuação** (`ScoringLegend`) | Mostrava sempre as regras do **Mundial**: prorrogação, pênaltis 5/10 e pódio 40/20/25 com 3º. | Ficou **ciente do torneio** (`variant`): clubes → pênaltis **vencedor +7** (sem prorrogação/placar), pódio **campeão 40 / vice 25 / consolação 10** por competição; Mundial mantém o legado; grupos mostra só o tempo normal. Variante calculada nas telas `desempenho` e `desempenho/[userId]`. |
+| **Histórico do Desempenho** (`history-list`) | Nos clubes omitia o pênalti (mostrava só placar/`pen_home`). | Passa a exibir **"Pênaltis: <time>"** (vencedor) tanto do resultado real quanto do palpite; `getUserProfile` agora traz `has_extra_time`/`pen_winner`/`pred_pen_winner`. |
+| **Card de compartilhar** (`share-match-card`) | "Eu cravei!"/cor pela soma `points_earned` → cravada **com bônus de pênalti** não era reconhecida. | Categoria passa a usar `points_regular` (tempo normal); corrigido também `10/9`. |
+| **Perfil — Distribuição de Pontos** | Buckets por `points_earned` com o valor antigo **9** e rótulo "Cravadas (25/20)". | Buckets por `points_regular` (categoria do tempo normal), `9 → 10`, rótulo "Cravadas (30)". |
+
+*(Observações menores não alteradas: `getPointsBadge` em `desempenho/page.tsx` é código morto; textos "Bolão Mundial" nos cards de share e `shareUtils` são branding pré‑existente — não vieram das mudanças de hoje.)*
+
 ---
 
 ## 12. Índice de arquivos

@@ -48,13 +48,23 @@ export default async function DesempenhoUserPage({ params }: DesempenhoUserPageP
   const supabase = await createServerSupabaseClient();
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('id, name, slug')
+    .select('id, name, slug, format')
     .eq('slug', tournamentSlug)
     .single();
 
   if (!tournament) {
     notFound();
   }
+
+  const { data: compMatch } = await supabase
+    .from('matches')
+    .select('id')
+    .eq('tournament_id', tournament.id)
+    .not('competition', 'is', null)
+    .limit(1)
+    .maybeSingle();
+  const scoringVariant: 'groups' | 'clubs' | 'legacy' =
+    tournament.format === 'groups' ? 'groups' : compMatch ? 'clubs' : 'legacy';
 
   const { profile, error } = await getUserProfile(tournamentSlug, userId);
 
@@ -212,7 +222,7 @@ export default async function DesempenhoUserPage({ params }: DesempenhoUserPageP
         )}
 
         {/* Regras de Pontuação */}
-        <ScoringLegend />
+        <ScoringLegend variant={scoringVariant} />
 
         {/* Histórico de Palpites */}
         <Card className="bg-slate-900 border-slate-800">

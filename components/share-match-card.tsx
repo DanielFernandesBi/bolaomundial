@@ -15,6 +15,7 @@ interface ShareMatchCardProps {
   predHome: number;
   predAway: number;
   pointsEarned: number;
+  pointsRegular?: number;
   userAvatarUrl?: string | null;
   username: string;
   cardId?: string;
@@ -30,6 +31,7 @@ export function ShareMatchCard({
   predHome,
   predAway,
   pointsEarned,
+  pointsRegular,
   userAvatarUrl,
   username,
   cardId = 'share-match-card',
@@ -41,21 +43,24 @@ export function ShareMatchCard({
     .toUpperCase()
     .slice(0, 2);
 
+  // Categoria pela pontuação do TEMPO NORMAL (o total pode incluir bônus de pênaltis)
+  const cat = pointsRegular ?? pointsEarned;
+
   const getMessage = () => {
-    if (pointsEarned === 30 || pointsEarned === 25 || pointsEarned === 20) return 'Eu cravei! 🎯';
-    if (pointsEarned >= 15) return 'Mandei bem! 🔥';
-    if (pointsEarned >= 9) return 'Acertou! ⚽';
-    if (pointsEarned >= 3) return 'Quase lá! 💪';
+    if (cat === 30 || cat === 25 || cat === 20) return 'Eu cravei! 🎯';
+    if (cat >= 15) return 'Mandei bem! 🔥';
+    if (cat >= 9) return 'Acertou! ⚽';
+    if (cat >= 3) return 'Quase lá! 💪';
     return 'Participei! 🏆';
   };
 
   const getBadgeColor = () => {
-    if (pointsEarned === 30 || pointsEarned === 25 || pointsEarned === 20) return 'bg-amber-500';
-    if (pointsEarned === 17) return 'bg-purple-500';
-    if (pointsEarned === 15) return 'bg-blue-500';
-    if (pointsEarned === 12) return 'bg-green-500';
-    if (pointsEarned === 9) return 'bg-cyan-500';
-    if (pointsEarned === 3) return 'bg-orange-500';
+    if (cat === 30 || cat === 25 || cat === 20) return 'bg-amber-500';
+    if (cat === 17) return 'bg-purple-500';
+    if (cat === 15) return 'bg-blue-500';
+    if (cat === 12) return 'bg-green-500';
+    if (cat === 10 || cat === 9) return 'bg-cyan-500';
+    if (cat === 3) return 'bg-orange-500';
     return 'bg-slate-600';
   };
 

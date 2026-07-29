@@ -225,7 +225,7 @@ export default async function GeneralProfilePage() {
                 <p className="text-slate-400 text-sm mb-2">Distribuição de Pontos</p>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-300">Cravadas (25/20 pts)</span>
+                    <span className="text-slate-300">Cravadas (30 pts)</span>
                     <span className="text-amber-500 font-semibold">
                       {profile.points_distribution?.exact || 0}
                     </span>
@@ -249,7 +249,7 @@ export default async function GeneralProfilePage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-300">9 pts</span>
+                    <span className="text-slate-300">10 pts</span>
                     <span className="text-cyan-400 font-semibold">
                       {profile.points_distribution?.category9 || 0}
                     </span>

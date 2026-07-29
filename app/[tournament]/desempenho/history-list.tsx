@@ -18,14 +18,17 @@ interface HistoryItem {
   score_home: number | null;
   score_away: number | null;
   is_knockout?: boolean;
+  has_extra_time?: boolean;
   extra_time_result?: 'home' | 'draw' | 'away' | null;
   pen_home?: number | null;
   pen_away?: number | null;
+  pen_winner?: 'home' | 'away' | null;
   pred_home: number;
   pred_away: number;
   pred_extra_result?: 'home' | 'draw' | 'away' | null;
   pred_pen_home?: number | null;
   pred_pen_away?: number | null;
+  pred_pen_winner?: 'home' | 'away' | null;
   points_earned: number;
   points_regular?: number;
   points_extra?: number;
@@ -114,6 +117,7 @@ export function HistoryList({ history, userAvatarUrl, username }: HistoryListPro
               predHome={match.pred_home}
               predAway={match.pred_away}
               pointsEarned={match.points_earned}
+              pointsRegular={match.points_regular}
               userAvatarUrl={userAvatarUrl}
               username={username}
               cardId={cardId}
@@ -137,6 +141,9 @@ export function HistoryList({ history, userAvatarUrl, username }: HistoryListPro
             if (r === 'draw') return 'Empate';
             return '—';
           };
+          const penWinnerLabel = (w: 'home' | 'away' | null | undefined) =>
+            w === 'home' ? match.team_home : w === 'away' ? match.team_away : '—';
+          const clubsPen = match.has_extra_time === false;
           return (
             <Card
               key={match.match_id}
@@ -205,14 +212,16 @@ export function HistoryList({ history, userAvatarUrl, username }: HistoryListPro
                 </div>
 
                 {/* Resultado real de prorrogação/pênaltis (mata-mata) */}
-                {match.is_knockout && (match.extra_time_result || match.pen_home != null) && (
+                {match.is_knockout && (match.extra_time_result || match.pen_home != null || match.pen_winner) && (
                   <div className="text-slate-400 text-xs text-center mb-3 space-y-0.5">
                     {match.extra_time_result && (
                       <div>Prorrogação: {extraResultLabel(match.extra_time_result)}</div>
                     )}
-                    {match.pen_home != null && match.pen_away != null && (
-                      <div>Pênaltis: {match.pen_home} x {match.pen_away}</div>
-                    )}
+                    {clubsPen
+                      ? match.pen_winner && <div>Pênaltis: {penWinnerLabel(match.pen_winner)}</div>
+                      : match.pen_home != null && match.pen_away != null && (
+                          <div>Pênaltis: {match.pen_home} x {match.pen_away}</div>
+                        )}
                   </div>
                 )}
 
@@ -230,9 +239,14 @@ export function HistoryList({ history, userAvatarUrl, username }: HistoryListPro
                           Prorrogação: {extraResultLabel(match.pred_extra_result)}
                         </span>
                       )}
-                      {match.is_knockout && match.pred_pen_home != null && match.pred_pen_away != null && (
+                      {match.is_knockout && !clubsPen && match.pred_pen_home != null && match.pred_pen_away != null && (
                         <span className="text-slate-400 text-xs">
                           Pênaltis: {match.pred_pen_home} x {match.pred_pen_away}
+                        </span>
+                      )}
+                      {match.is_knockout && clubsPen && match.pred_pen_winner && (
+                        <span className="text-slate-400 text-xs">
+                          Pênaltis: {penWinnerLabel(match.pred_pen_winner)}
                         </span>
                       )}
                     </div>

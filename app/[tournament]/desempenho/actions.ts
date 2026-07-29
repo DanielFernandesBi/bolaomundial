@@ -94,7 +94,7 @@ export async function getUserProfile(tournamentSlug: string, userId?: string) {
   const { data: finishedPredictions } = await supabase
     .from('predictions')
     .select(
-      'pred_home, pred_away, pred_extra_result, pred_pen_home, pred_pen_away, points_earned, points_regular, points_extra, points_pen, match_id'
+      'pred_home, pred_away, pred_extra_result, pred_pen_home, pred_pen_away, pred_pen_winner, points_earned, points_regular, points_extra, points_pen, match_id'
     )
     .eq('user_id', targetUserId)
     .in('match_id', finishedMatchIds.length > 0 ? finishedMatchIds : [0]);
@@ -107,7 +107,7 @@ export async function getUserProfile(tournamentSlug: string, userId?: string) {
     const { data } = await supabase
       .from('matches')
       .select(
-        'id, team_home, team_away, home_iso, away_iso, score_home, score_away, match_date, is_knockout, extra_time_result, pen_home, pen_away'
+        'id, team_home, team_away, home_iso, away_iso, score_home, score_away, match_date, is_knockout, has_extra_time, extra_time_result, pen_home, pen_away, pen_winner'
       )
       .in('id', matchIds)
       .order('match_date', { ascending: false });
@@ -130,14 +130,17 @@ export async function getUserProfile(tournamentSlug: string, userId?: string) {
         score_away: match.score_away,
         match_date: match.match_date,
         is_knockout: match.is_knockout ?? false,
+        has_extra_time: match.has_extra_time ?? true,
         extra_time_result: match.extra_time_result ?? null,
         pen_home: match.pen_home ?? null,
         pen_away: match.pen_away ?? null,
+        pen_winner: match.pen_winner ?? null,
         pred_home: pred.pred_home,
         pred_away: pred.pred_away,
         pred_extra_result: pred.pred_extra_result ?? null,
         pred_pen_home: pred.pred_pen_home ?? null,
         pred_pen_away: pred.pred_pen_away ?? null,
+        pred_pen_winner: pred.pred_pen_winner ?? null,
         points_earned: pred.points_earned,
         points_regular: pred.points_regular ?? 0,
         points_extra: pred.points_extra ?? 0,

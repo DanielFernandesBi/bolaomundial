@@ -73,12 +73,12 @@ export async function getGeneralProfile() {
   // Distribuição de pontos por categoria
   const pointsDistribution = {
     exact: allPredictions?.filter((p) => p.points_regular === 30).length || 0,
-    category17: allPredictions?.filter((p) => p.points_earned === 17).length || 0,
-    category15: allPredictions?.filter((p) => p.points_earned === 15).length || 0,
-    category12: allPredictions?.filter((p) => p.points_earned === 12).length || 0,
-    category9: allPredictions?.filter((p) => p.points_earned === 9).length || 0,
-    category3: allPredictions?.filter((p) => p.points_earned === 3).length || 0,
-    zero: allPredictions?.filter((p) => p.points_earned === 0 || !p.points_earned).length || 0,
+    category17: allPredictions?.filter((p) => p.points_regular === 17).length || 0,
+    category15: allPredictions?.filter((p) => p.points_regular === 15).length || 0,
+    category12: allPredictions?.filter((p) => p.points_regular === 12).length || 0,
+    category9: allPredictions?.filter((p) => p.points_regular === 10).length || 0,
+    category3: allPredictions?.filter((p) => p.points_regular === 3).length || 0,
+    zero: allPredictions?.filter((p) => (p.points_regular ?? 0) === 0).length || 0,
   };
 
   // Formatar dados dos torneios
@@ -247,12 +247,12 @@ export async function getPublicProfile(userId: string) {
   // Distribuição de pontos por categoria
   const pointsDistribution = {
     exact: allPredictions?.filter((p) => p.points_regular === 30).length || 0,
-    category17: allPredictions?.filter((p) => p.points_earned === 17).length || 0,
-    category15: allPredictions?.filter((p) => p.points_earned === 15).length || 0,
-    category12: allPredictions?.filter((p) => p.points_earned === 12).length || 0,
-    category9: allPredictions?.filter((p) => p.points_earned === 9).length || 0,
-    category3: allPredictions?.filter((p) => p.points_earned === 3).length || 0,
-    zero: allPredictions?.filter((p) => p.points_earned === 0 || !p.points_earned).length || 0,
+    category17: allPredictions?.filter((p) => p.points_regular === 17).length || 0,
+    category15: allPredictions?.filter((p) => p.points_regular === 15).length || 0,
+    category12: allPredictions?.filter((p) => p.points_regular === 12).length || 0,
+    category9: allPredictions?.filter((p) => p.points_regular === 10).length || 0,
+    category3: allPredictions?.filter((p) => p.points_regular === 3).length || 0,
+    zero: allPredictions?.filter((p) => (p.points_regular ?? 0) === 0).length || 0,
   };
 
   // Formatar dados dos torneios
