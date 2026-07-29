@@ -227,7 +227,7 @@ export function ShareFullRankingCard({
           className="font-black uppercase leading-tight mt-1"
           style={{ color: '#1E293B', fontSize: '19px', letterSpacing: '0.06em' }}
         >
-          BOLÃO MUNDIAL
+          ARENA DE BOLÕES
         </div>
       </div>
 
