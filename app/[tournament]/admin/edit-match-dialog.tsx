@@ -61,6 +61,7 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
     competition: match.competition ?? '',
     leg: match.leg ?? '',
     hasExtraTime: match.has_extra_time !== false,
+    venue: match.venue ?? '',
   });
 
   // Atualizar formData quando o match mudar

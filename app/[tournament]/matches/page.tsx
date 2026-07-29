@@ -35,7 +35,7 @@ function groupByCompetition<T extends { competition?: string | null }>(items: T[
     const gi = items.filter((i) => i.competition === c.key);
     if (gi.length) groups.push({ key: c.key, name: c.name, items: gi });
   }
-  const known = new Set(COMPETITIONS.map((c) => c.key));
+  const known = new Set<string>(COMPETITIONS.map((c) => c.key));
   const others = items.filter((i) => i.competition && !known.has(i.competition));
   if (others.length) groups.push({ key: 'outros', name: 'Outros', items: others });
   return groups;

@@ -218,6 +218,10 @@ export async function createMatch(
   const knockoutValue = isKnockout ?? tournament.format === 'knockout';
   const competitionValue = competition?.trim() || null;
   const legValue = leg?.trim() || null;
+  // Jogos de clubes NÃO dependem dos defaults legados do banco:
+  const isClub = competitionValue !== null;
+  const finalPenMode = penaltyMode ?? (isClub ? 'winner' : null);
+  const finalExtraEnabled = extraEnabled ?? (isClub ? false : undefined);
 
   const { error } = await supabase
     .from('matches')
@@ -231,8 +235,8 @@ export async function createMatch(
       tournament_id: tournament.id,
       is_knockout: knockoutValue,
       ...(hasExtraTime !== undefined && { has_extra_time: hasExtraTime }),
-      ...(penaltyMode != null && { penalty_prediction_mode: penaltyMode }),
-      ...(extraEnabled !== undefined && { extra_prediction_enabled: extraEnabled }),
+      ...(finalPenMode != null && { penalty_prediction_mode: finalPenMode }),
+      ...(finalExtraEnabled !== undefined && { extra_prediction_enabled: finalExtraEnabled }),
       ...(competitionValue !== null && { competition: competitionValue }),
       ...(legValue !== null && { leg: legValue }),
       ...(venue != null && venue.trim() !== '' && { venue: venue.trim() }),
@@ -365,6 +369,12 @@ export async function updateMatch(
   }
   if (venue !== undefined) {
     updatePayload.venue = venue?.trim() || null;
+  }
+  // Jogo de clubes: aplica os defaults corretos (não os legados) quando não vier explícito.
+  const effComp = competition !== undefined ? (competition?.trim() || null) : undefined;
+  if (effComp) {
+    if (penaltyMode === undefined) updatePayload.penalty_prediction_mode = 'winner';
+    if (extraEnabled === undefined) updatePayload.extra_prediction_enabled = false;
   }
 
   const { error } = await supabase
@@ -599,6 +609,97 @@ export async function resolveTieParticipant(
   revalidatePath(`/${tournamentSlug}/admin`);
   revalidatePath(`/${tournamentSlug}/matches`);
   return { success: true, result: data };
+}
+
+export async function swapTieHomeAway(tournamentSlug: string, tieId: number) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc('swap_tie_home_away', { p_tie_id: tieId });
+  if (error) {
+    return { error: error.message || 'Erro ao inverter mandos' };
+  }
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+  return { success: true };
+}
+
+export async function getAdminBracket(tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado', competitions: [] } as const;
+  }
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+  if (!tournament) return { error: 'Torneio não encontrado', competitions: [] } as const;
+
+  const { data: ties } = await supabase
+    .from('ties')
+    .select(
+      'id, competition, round, slot, series_type, team_a, team_a_iso, team_a_source_label, team_b, team_b_iso, team_b_source_label, winner_team, ida_match_id, volta_match_id'
+    )
+    .eq('tournament_id', tournament.id)
+    .order('slot', { ascending: true });
+
+  if (!ties || ties.length === 0) {
+    return { error: null, tournamentId: tournament.id, competitions: [] as any[] } as const;
+  }
+
+  const matchIds = ties.flatMap((t: any) => [t.ida_match_id, t.volta_match_id].filter(Boolean));
+  const { data: matches } = matchIds.length
+    ? await supabase.from('matches').select('id, leg, status, match_date, venue').in('id', matchIds)
+    : { data: [] as any[] };
+  const matchMap = new Map((matches || []).map((m: any) => [m.id, m]));
+
+  const ROUNDS = ['oitavas', 'quartas', 'semi', 'final'];
+  const ROUND_LABELS: Record<string, string> = {
+    oitavas: 'Oitavas de final',
+    quartas: 'Quartas de final',
+    semi: 'Semifinal',
+    final: 'Final',
+  };
+
+  const view = (t: any) => {
+    const ms = [t.ida_match_id, t.volta_match_id].filter(Boolean).map((id: number) => matchMap.get(id)).filter(Boolean);
+    const hasMatches = ms.length > 0;
+    const allScheduledFuture = ms.every(
+      (m: any) => m.status === 'SCHEDULED' && (!m.match_date || new Date(m.match_date) > new Date())
+    );
+    return {
+      id: t.id,
+      round: t.round,
+      slot: t.slot,
+      series_type: t.series_type,
+      winner_team: t.winner_team,
+      sideA: { team: t.team_a, iso: t.team_a_iso, label: t.team_a_source_label },
+      sideB: { team: t.team_b, iso: t.team_b_iso, label: t.team_b_source_label },
+      hasMatches,
+      canSwap: t.series_type === 'two_leg' && ms.length === 2 && allScheduledFuture,
+      matches: ms.map((m: any) => ({ id: m.id, leg: m.leg, status: m.status, match_date: m.match_date, venue: m.venue })),
+    };
+  };
+
+  const competitions = COMPETITIONS.filter((c) => ties.some((t: any) => t.competition === c.key)).map((c) => {
+    const compTies = ties.filter((t: any) => t.competition === c.key);
+    return {
+      key: c.key,
+      name: c.name,
+      rounds: ROUNDS.filter((r) => compTies.some((t: any) => t.round === r)).map((r) => ({
+        round: r,
+        label: ROUND_LABELS[r],
+        ties: compTies.filter((t: any) => t.round === r).sort((a: any, b: any) => a.slot - b.slot).map(view),
+      })),
+    };
+  });
+
+  return { error: null, tournamentId: tournament.id, competitions } as const;
 }
 
 interface DrawMapping {

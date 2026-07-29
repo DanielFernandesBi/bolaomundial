@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
-import { checkAdminAccess, getAdminMatches, getAdminTournamentInfo, getAdminCompetitionResults } from './actions';
+import { checkAdminAccess, getAdminMatches, getAdminTournamentInfo, getAdminCompetitionResults, getAdminBracket } from './actions';
 import { AdminMatchesTable } from './admin-matches-table';
+import { AdminBracket } from './admin-bracket';
 import { CreateMatchDialog } from './create-match-dialog';
 import { CreateTournamentDialog } from './create-tournament-dialog';
 import { EditTournamentDialog } from './edit-tournament-dialog';
@@ -46,6 +47,9 @@ export default async function AdminPage({ params }: AdminPageProps) {
   const compResults = await getAdminCompetitionResults(tournamentSlug);
   const competitions = !compResults.error ? compResults.competitions : [];
   const hasCompetitions = competitions.length > 0;
+  // Chaveamento (ties) para a seção de administração do bracket
+  const bracket = await getAdminBracket(tournamentSlug);
+  const bracketCompetitions = !bracket.error ? bracket.competitions : [];
   // Pódio antigo (Mundial): só quando NÃO é o bolão por competição
   const showPodium =
     !hasCompetitions && !info.error && (info.tournament.format === 'knockout' || info.tournament.format === 'mixed');
@@ -98,6 +102,14 @@ export default async function AdminPage({ params }: AdminPageProps) {
               second: Number(info.tournament.prize_second) || 0,
               third: Number(info.tournament.prize_third) || 0,
             }}
+          />
+        )}
+
+        {bracketCompetitions.length > 0 && (
+          <AdminBracket
+            tournamentSlug={tournamentSlug}
+            tournamentId={(bracket as any).tournamentId}
+            competitions={bracketCompetitions as any}
           />
         )}
 
