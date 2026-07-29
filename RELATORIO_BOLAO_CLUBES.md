@@ -168,6 +168,13 @@ Confirmado que o **único** `rpc` chamado pelo app é `distribute_tournament_pri
 ### 🔒 Hardening — EXECUTE de funções por padrão (`20260728000007_harden_function_execute.sql`)
 Generaliza o achado do item 2c/3 (funções de teste abertas). Como no Postgres toda função nasce com `EXECUTE` para `PUBLIC`, esta migração **revoga EXECUTE de PUBLIC/anon/authenticated em todas as funções do schema `public`** (exceto as de extensões), **reconcede** apenas `distribute_tournament_prizes` ao `authenticated` (a única chamada via `rpc`, com checagem interna de admin) e ajusta o **default** para funções futuras não concederem EXECUTE a `PUBLIC`. Triggers continuam funcionando (não exigem EXECUTE) e chamadas internas em funções `SECURITY DEFINER` rodam como o dono.
 
+### 🔴 P0 — Palpites públicos antes do jogo (`20260728000008_rls_hide_predictions_before_kickoff.sql`)
+| Como estava | O que mudou |
+|---|---|
+| A interface só mostrava os palpites de terceiros depois do início, mas `predictions` e `podium_predictions` tinham `SELECT USING (true)` e `anon` tinha SELECT — qualquer um lia **todos os palpites** direto pela Data API (anon key) antes dos jogos. O segredo do palpite não existia de fato. | A regra passa a ser **do banco (RLS)**: em `predictions`, o palpite de outro usuário só é visível quando a **partida** já começou (`match_date <= now()`) ou terminou; em `podium_predictions`, quando a **competição** já começou. O próprio usuário sempre vê o seu; **admin** vê tudo; **anon (não logado) não vê nada**. |
+
+Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparência" e "Encerradas" consultam jogos já iniciados/finalizados; "Desempenho" usa jogos finalizados. A trava de **alterar** o palpite após o início já existia (trigger `check_prediction_window`); agora o **esconder** até o início também é garantido no banco.
+
 ---
 
 ## 12. Índice de arquivos
@@ -180,6 +187,7 @@ Generaliza o achado do item 2c/3 (funções de teste abertas). Como no Postgres 
 - `supabase/migrations/20260728000005_secure_profiles_privileged_columns.sql`
 - `supabase/migrations/20260728000006_secure_predictions_and_functions.sql`
 - `supabase/migrations/20260728000007_harden_function_execute.sql`
+- `supabase/migrations/20260728000008_rls_hide_predictions_before_kickoff.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
