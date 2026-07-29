@@ -156,6 +156,15 @@ Cria o torneio unificado `mata-mata-clubes-2026` (`format='knockout'`, `has_simu
 
 Colunas que o usuário legitimamente edita (confirmado no código): `avatar_url` (`updateProfileAvatar`) e `username` (cadastro). Nada de frontend foi usado como proteção — o bloqueio é do banco. Observação: o tipo TS ainda expõe `is_admin` como gravável em `profiles.Update`, mas isso é cosmético (tipos gerados); a barreira real é o banco.
 
+### 🔴 P0 — Adulteração de pontos e backdoors (`20260728000006_secure_predictions_and_functions.sql`)
+| Como estava | O que mudou |
+|---|---|
+| **(2a)** A policy de UPDATE de `predictions` só checava `auth.uid() = user_id` e o role `authenticated` tinha UPDATE na tabela inteira. A trigger `check_prediction_window` libera o UPDATE quando os campos do palpite não mudam (para o sistema pontuar), mas **não distingue sistema de usuário** → o usuário podia gravar `points_earned/regular/extra/pen` na própria linha. O ranking lê `points_earned` direto. | **Privilégio por coluna**: `REVOKE INSERT/UPDATE ON predictions FROM cliente` + `GRANT` só nas colunas do palpite (`pred_home/away`, `pred_extra_result`, `pred_pen_home/away`, `user_id`, `match_id`) — **nunca `points_*`**. Trigger `protect_prediction_points` bloqueia mudança de pontos e zera no INSERT do cliente. |
+| **(2b)** `recalculate_user_points` e `recompute_competition_podium` eram `SECURITY DEFINER` sem checagem de admin e **executáveis por anon/authenticated**. | **`REVOKE EXECUTE`** dessas funções dos roles de cliente (os triggers que as usam rodam como `SECURITY DEFINER` e não precisam do grant; o app não as chama). |
+| **(2c)** `create_test_user` e `update_test_profile` (`SECURITY DEFINER`) estavam executáveis por cliente — criavam `auth.users` e gravavam pontos/`is_admin` em qualquer perfil, furando até a proteção anterior. | **Funções removidas** (`DROP`). Permanecem só nos arquivos `supabase_test_users*.sql` para ambiente de dev; **não recriar em produção**. |
+
+Confirmado que o **único** `rpc` chamado pelo app é `distribute_tournament_prizes` (que tem checagem interna de admin) — por isso os REVOKE de EXECUTE acima não afetam o app.
+
 ---
 
 ## 12. Índice de arquivos
@@ -166,6 +175,7 @@ Colunas que o usuário legitimamente edita (confirmado no código): `avatar_url`
 - `supabase/migrations/20260728000003_podium_per_competition.sql`
 - `supabase/migrations/20260728000004_tournament_has_simulator.sql`
 - `supabase/migrations/20260728000005_secure_profiles_privileged_columns.sql`
+- `supabase/migrations/20260728000006_secure_predictions_and_functions.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
