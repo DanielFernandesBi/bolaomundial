@@ -59,7 +59,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8">
         <div className="text-destructive">Erro ao carregar jogos: {error}</div>
       </div>
     );
@@ -100,7 +100,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto px-4 py-8 max-w-full">
+      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-full">
         <div className="mb-6">
           <h1 className="text-4xl font-bold text-foreground mb-2">Partidas</h1>
           <p className="text-muted-foreground">Faça seus palpites para as partidas do {tournament.name}</p>

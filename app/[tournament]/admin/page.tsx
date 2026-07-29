@@ -57,7 +57,7 @@ export default async function AdminPage({ params }: AdminPageProps) {
   if (fetchError) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 pb-28 md:pb-8">
           <div className="text-destructive">Erro ao carregar jogos: {fetchError}</div>
         </div>
       </div>
@@ -66,7 +66,7 @@ export default async function AdminPage({ params }: AdminPageProps) {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto px-4 py-8 max-w-full">
+      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-full">
         {/* Cabeçalho */}
         <div className="mb-8 flex items-center justify-between">
           <div>

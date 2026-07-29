@@ -71,7 +71,7 @@ export default async function DesempenhoUserPage({ params }: DesempenhoUserPageP
   if (error || !profile) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 pb-28 md:pb-8">
           <div className="text-destructive">
             Erro ao carregar desempenho: {error || 'Desempenho não encontrado'}
           </div>
@@ -91,7 +91,7 @@ export default async function DesempenhoUserPage({ params }: DesempenhoUserPageP
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto px-4 py-8 max-w-full">
+      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-full">
         {/* Cabeçalho do Desempenho */}
         <Card className="bg-card border-border mb-8">
           <CardContent className="p-6">

@@ -39,7 +39,7 @@ export default async function RankingPage({ params }: RankingPageProps) {
   if (error) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 pb-28 md:pb-8">
           <div className="text-destructive">Erro ao carregar ranking: {error}</div>
         </div>
       </div>
@@ -48,7 +48,7 @@ export default async function RankingPage({ params }: RankingPageProps) {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto px-4 py-8 max-w-full">
+      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-full">
         {/* Cabeçalho */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Ranking</h1>

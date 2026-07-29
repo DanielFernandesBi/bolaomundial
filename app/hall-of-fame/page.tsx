@@ -51,7 +51,7 @@ export default async function HallOfFamePage() {
   if (!finishedTournaments || finishedTournaments.length === 0) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto px-4 py-12 pb-28 md:pb-12">
           <div className="text-center py-16">
             <Trophy className="w-24 h-24 text-slate-700 mx-auto mb-4" />
             <h1 className="text-4xl font-bold text-foreground mb-4">Hall da Fama</h1>
@@ -215,7 +215,7 @@ export default async function HallOfFamePage() {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto px-4 py-12 max-w-full">
+      <div className="container mx-auto px-4 py-12 pb-28 md:pb-12 max-w-full">
         {/* Hero Section */}
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-4 mb-4">

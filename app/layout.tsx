@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/navbar';
+import { BottomNav } from '@/components/bottom-nav';
+import { MobileHeader } from '@/components/mobile-header';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 export const metadata: Metadata = {
@@ -58,8 +60,16 @@ export default async function RootLayout({
   return (
     <html lang="pt-BR" className="overflow-x-hidden">
       <body className="overflow-x-hidden">
-        {user && <Navbar isAdmin={isAdmin} />}
+        {user && (
+          <>
+            <div className="hidden md:block">
+              <Navbar isAdmin={isAdmin} />
+            </div>
+            <MobileHeader />
+          </>
+        )}
         {children}
+        {user && <BottomNav isAdmin={isAdmin} />}
       </body>
     </html>
   );
