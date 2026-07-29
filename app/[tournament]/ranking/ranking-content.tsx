@@ -179,6 +179,22 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
         />
       </div>
       
+      {/* Seletor de escopo. A barra inferior tem 5 destinos e "Ranking" aponta
+          para o do torneio — sem isto o Ranking Geral ficou INALCANÇÁVEL depois
+          que a navbar virou desktop-only na Fase 4. Por ora navega; render na
+          própria tela fica para o 4e. */}
+      <div className="mb-4 grid grid-cols-2 gap-1 rounded-[12px] border border-border bg-card p-1">
+        <span className="flex h-9 items-center justify-center rounded-[9px] bg-primary px-2 text-center text-xs font-semibold text-primary-foreground">
+          <span className="truncate">{tournamentName}</span>
+        </span>
+        <Link
+          href="/ranking-geral"
+          className="flex h-9 items-center justify-center rounded-[9px] px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Todos os bolões
+        </Link>
+      </div>
+
       {/* Tabs com botão de compartilhar */}
       <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'daily' | 'projecao')}>
@@ -236,7 +252,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
           caminho de navegação mudou. O componente carrega os próprios dados,
           e o Radix só o monta quando a aba é aberta. */}
       {activeTab === 'projecao' && (
-        <SimuladorContent tournamentSlug={tournamentSlug} tournamentName={tournamentName} />
+        <SimuladorContent tournamentSlug={tournamentSlug ?? ''} tournamentName={tournamentName ?? ''} />
       )}
 
       {/* Lista única, responsiva. Antes eram DOIS blocos com o mesmo conteúdo:

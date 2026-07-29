@@ -35,7 +35,11 @@ export function MobileHeader() {
   }, [tournamentSlug]);
 
   return (
-    <header className="md:hidden sticky top-0 z-40 border-b border-hairline bg-background/90 backdrop-blur">
+    <header className="md:hidden sticky top-0 z-40 border-b border-hairline">
+      {/* O blur fica NUMA CAMADA INTERNA, não no <header>. backdrop-filter cria
+          bloco de contenção para descendentes `fixed`, e isso fazia a folha de
+          troca de campeonato abrir espremida na altura do cabeçalho. */}
+      <div className="absolute inset-0 -z-10 bg-background/90 backdrop-blur" aria-hidden="true" />
       <div className="flex items-center justify-between gap-2 px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <Link href={tournamentSlug ? `/${tournamentSlug}/matches` : '/'} className="flex-shrink-0">

@@ -34,6 +34,10 @@ export function TournamentSheet({ currentSlug, currentName }: Props) {
   const [rows, setRows] = useState<TournamentRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // NOTA: a sobreposição depende de o cabeçalho NÃO ter backdrop-filter — um
+  // filtro cria bloco de contenção para descendentes `fixed`, e o inset-0
+  // passaria a resolver para a caixa do cabeçalho (a folha abria como faixa
+  // fina no topo). Por isso o blur do mobile-header vive numa camada interna.
 
   async function abrir() {
     setOpen(true);
