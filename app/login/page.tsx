@@ -8,12 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { loginAction, signupAction } from './actions';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Controlado de propósito: no React 19 o <form action> RESETA o formulário
+  // depois que a action roda. Com o campo não-controlado, o e-mail era apagado
+  // a cada tentativa falha e o usuário tinha de redigitar no celular.
+  const [email, setEmail] = useState('');
 
   async function handleSubmit(formData: FormData) {
     setIsLoading(true);
@@ -102,6 +107,8 @@ export default function LoginPage() {
                   type="email"
                   placeholder="seu@email.com"
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 bg-muted/50 border-border text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
                 />
               </div>
@@ -109,9 +116,19 @@ export default function LoginPage() {
 
             {/* Campo Senha */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground">
-                Senha
-              </Label>
+              <div className="flex items-baseline justify-between gap-3">
+                <Label htmlFor="password" className="text-foreground">
+                  Senha
+                </Label>
+                {!isSignup && (
+                  <Link
+                    href="/login/esqueci"
+                    className="text-xs font-semibold text-primary transition-opacity hover:opacity-80"
+                  >
+                    Esqueci minha senha
+                  </Link>
+                )}
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary/70 z-10" />
                 <Input
