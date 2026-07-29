@@ -10,9 +10,14 @@ interface Props {
   teamAway: string;
   predictions: Pred[];
   className?: string;
+  /** Desfecho real do tempo normal. Opcional: sem ele nenhuma barra é
+      destacada, que é o caso do jogo em andamento (audit-match-card). */
+  actual?: 'home' | 'draw' | 'away' | null;
+  /** Título do bloco. Default serve ao jogo encerrado. */
+  title?: string;
 }
 
-export function PredictionSummary({ teamHome, teamAway, predictions, className = '' }: Props) {
+export function PredictionSummary({ teamHome, teamAway, predictions, className = '', actual = null, title = 'Resumo dos palpites (tempo normal)' }: Props) {
   const total = predictions.length;
   if (total === 0) return null;
 
@@ -22,17 +27,27 @@ export function PredictionSummary({ teamHome, teamAway, predictions, className =
 
   const pct = (n: number) => Math.round((n / total) * 100);
 
+  // O desfecho que ACONTECEU ganha destaque âmbar; os outros ficam neutros.
+  // Antes eram verde/cinza/azul, cores sem relação nenhuma com o resultado.
   const rows = [
-    { label: `Vitória ${teamHome}`, count: homeWin, bar: 'bg-green-500', text: 'text-state-open' },
-    { label: 'Empate', count: draw, bar: 'bg-slate-400', text: 'text-card-foreground' },
-    { label: `Vitória ${teamAway}`, count: awayWin, bar: 'bg-blue-500', text: 'text-muted-foreground' },
-  ];
+    { key: 'home' as const, label: `Vitória ${teamHome}`, count: homeWin },
+    { key: 'draw' as const, label: 'Empate', count: draw },
+    { key: 'away' as const, label: `Vitória ${teamAway}`, count: awayWin },
+  ].map((r) => {
+    const aconteceu = !!actual && actual === r.key;
+    return {
+      ...r,
+      aconteceu,
+      bar: aconteceu ? 'bg-primary' : 'bg-[hsl(var(--score-none))]',
+      text: aconteceu ? 'text-primary' : 'text-muted-foreground',
+    };
+  });
 
   return (
     <div className={`rounded-lg border border-border bg-surface-sunken p-3 ${className}`}>
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 className="w-4 h-4 text-primary" />
-        <h4 className="text-foreground text-sm font-semibold">Resumo dos palpites (tempo normal)</h4>
+        <h4 className="text-foreground text-sm font-semibold">{title}</h4>
       </div>
       <div className="space-y-2">
         {rows.map((r) => {
@@ -42,7 +57,10 @@ export function PredictionSummary({ teamHome, teamAway, predictions, className =
               <div className="flex items-center justify-between text-sm mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`font-bold tabular-nums w-10 ${r.text}`}>{p}%</span>
-                  <span className="text-card-foreground truncate">{r.label}</span>
+                  <span className={`truncate ${r.aconteceu ? 'font-semibold text-primary' : 'text-card-foreground'}`}>
+                    {r.label}
+                    {r.aconteceu && <span className="text-[hsl(var(--faint))]"> · aconteceu</span>}
+                  </span>
                 </div>
                 <span className="text-muted-foreground text-xs flex-shrink-0">
                   {r.count} {r.count === 1 ? 'palpite' : 'palpites'}

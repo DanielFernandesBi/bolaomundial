@@ -52,7 +52,7 @@ export default async function HomePage() {
           statusText = 'Torneio encerrado';
           statusColor = 'text-muted-foreground';
           borderColor = 'border-border';
-          badgeBg = 'bg-slate-600/20';
+          badgeBg = 'bg-score-none/10';
           badgeText = 'text-muted-foreground';
         } else {
           // Torneio pendente
@@ -121,7 +121,7 @@ export default async function HomePage() {
                 // Inativo: encerrado (clicável -> ranking) ou pendente (bloqueado)
                 if (!isActive) {
                   const cardInner = (
-                    <Card className={`bg-card border-2 ${tournament.borderColor} ${isFinished ? 'opacity-90 hover:border-slate-400 hover:scale-105 transition-all cursor-pointer' : 'opacity-70 cursor-not-allowed'} h-full relative`}>
+                    <Card className={`bg-card border-2 ${tournament.borderColor} ${isFinished ? 'opacity-90 hover:border-border hover:scale-105 transition-all cursor-pointer' : 'opacity-70 cursor-not-allowed'} h-full relative`}>
                       <CardContent className="p-8 flex flex-col items-center text-center">
                         {tournament.logo_url ? (
                           <img
@@ -192,7 +192,7 @@ export default async function HomePage() {
                     href={`/${tournament.slug}/matches`}
                     className="block"
                   >
-                    <Card className="bg-card border-2 border-state-open/30 hover:border-green-500 transition-all duration-300 hover:scale-105 cursor-pointer h-full">
+                    <Card className="bg-card border-2 border-state-open/30 hover:border-state-open transition-all duration-300 hover:scale-105 cursor-pointer h-full">
                       <CardContent className="p-8 flex flex-col items-center text-center">
                         {tournament.logo_url ? (
                           <img

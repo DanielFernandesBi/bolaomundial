@@ -53,7 +53,7 @@ export default async function HallOfFamePage() {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-12 pb-28 md:pb-12">
           <div className="text-center py-16">
-            <Trophy className="w-24 h-24 text-slate-700 mx-auto mb-4" />
+            <Trophy className="w-24 h-24 text-[hsl(var(--faint))] mx-auto mb-4" />
             <h1 className="text-4xl font-bold text-foreground mb-4">Hall da Fama</h1>
             <p className="text-muted-foreground text-lg">
               Ainda não há torneios finalizados.
@@ -194,7 +194,7 @@ export default async function HallOfFamePage() {
       case 2:
         return <Medal className="w-6 h-6 text-muted-foreground" />;
       case 3:
-        return <Award className="w-6 h-6 text-amber-700" />;
+        return <Award className="w-6 h-6 text-muted-foreground" />;
       default:
         return <Flame className="w-6 h-6 text-destructive" />;
     }
@@ -205,11 +205,11 @@ export default async function HallOfFamePage() {
       case 1:
         return 'border-primary bg-primary/10';
       case 2:
-        return 'border-slate-400 bg-slate-400/10';
+        return 'border-border bg-surface-sunken';
       case 3:
-        return 'border-amber-700 bg-amber-700/10';
+        return 'border-border bg-surface-sunken';
       default:
-        return 'border-red-500 bg-destructive/10';
+        return 'border-dashed border-border bg-surface-sunken';
     }
   }
 
@@ -302,13 +302,13 @@ export default async function HallOfFamePage() {
                     Lanterna
                   </h3>
                   {last ? (
-                    <Card className="border-2 border-red-500 bg-destructive/10">
+                    <Card className="border border-dashed border-border bg-surface-sunken">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
                           <div className="flex items-center justify-center w-12 h-12 rounded-full bg-card">
                             <Flame className="w-6 h-6 text-destructive" />
                           </div>
-                          <Avatar className="w-12 h-12 border-2 border-red-500">
+                          <Avatar className="w-12 h-12 border border-border">
                             <AvatarImage
                               src={last.avatar_url || undefined}
                             />

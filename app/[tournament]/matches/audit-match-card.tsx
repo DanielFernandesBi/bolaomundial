@@ -131,6 +131,7 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
       <CardContent>
         {match.all_predictions.length > 0 && (
           <PredictionSummary
+            title="O que a galera espera"
             teamHome={match.team_home}
             teamAway={match.team_away}
             predictions={match.all_predictions}

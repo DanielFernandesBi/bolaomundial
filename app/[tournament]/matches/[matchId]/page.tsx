@@ -104,6 +104,15 @@ export default async function MatchResultDetailPage({ params }: PageProps) {
             teamHome={match.team_home}
             teamAway={match.team_away}
             predictions={predictions}
+            actual={
+              match.score_home == null || match.score_away == null
+                ? null
+                : match.score_home > match.score_away
+                ? 'home'
+                : match.score_away > match.score_home
+                ? 'away'
+                : 'draw'
+            }
             className="mb-6"
           />
         )}

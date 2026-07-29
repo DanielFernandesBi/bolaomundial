@@ -83,7 +83,7 @@ export default function LoginPage() {
                     type="text"
                     placeholder="seuusername"
                     required
-                    className="pl-10 !bg-muted/50 !border-border !text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
+                    className="pl-10 bg-muted/50 border-border text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
                   />
                 </div>
               </div>
@@ -102,7 +102,7 @@ export default function LoginPage() {
                   type="email"
                   placeholder="seu@email.com"
                   required
-                  className="pl-10 !bg-muted/50 !border-border !text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
+                  className="pl-10 bg-muted/50 border-border text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
                 />
               </div>
             </div>
@@ -120,7 +120,7 @@ export default function LoginPage() {
                   type="password"
                   placeholder="••••••••"
                   required
-                  className="pl-10 !bg-muted/50 !border-border !text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
+                  className="pl-10 bg-muted/50 border-border text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
                 />
               </div>
             </div>
@@ -143,7 +143,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full !bg-primary !text-primary-foreground hover:!bg-amber-400 h-11 text-base font-semibold shadow-lg shadow-amber-500/20 transition-all"
+              className="w-full bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))] h-11 text-base font-semibold shadow-lg shadow-primary/20 transition-all"
             >
               {isLoading ? (
                 'Carregando...'

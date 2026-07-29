@@ -22,9 +22,9 @@ type Metric = 'title' | 'top3' | 'z4' | 'lanterna';
 
 const METRICS: { key: Metric; label: string; icon: any; bar: string; chip: string; field: keyof PlayerResult }[] = [
   { key: 'title', label: 'Campeão', icon: Trophy, bar: 'bg-primary', chip: 'text-primary', field: 'chance_title' },
-  { key: 'top3', label: 'Top 3', icon: Medal, bar: 'bg-green-500', chip: 'text-state-open', field: 'chance_top3' },
-  { key: 'z4', label: 'Zona (Z4)', icon: AlertTriangle, bar: 'bg-orange-500', chip: 'text-state-missing', field: 'chance_z4' },
-  { key: 'lanterna', label: 'Lanterna', icon: ArrowDown, bar: 'bg-red-500', chip: 'text-destructive', field: 'chance_lanterna' },
+  { key: 'top3', label: 'Top 3', icon: Medal, bar: 'bg-primary', chip: 'text-state-open', field: 'chance_top3' },
+  { key: 'z4', label: 'Zona (Z4)', icon: AlertTriangle, bar: 'bg-primary', chip: 'text-state-missing', field: 'chance_z4' },
+  { key: 'lanterna', label: 'Lanterna', icon: ArrowDown, bar: 'bg-primary', chip: 'text-destructive', field: 'chance_lanterna' },
 ];
 
 function pct(x: number): string {

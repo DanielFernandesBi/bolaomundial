@@ -29,7 +29,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 4e — Escopo "Todos os bolões" na tela do torneio | ⬜ | — |
 | 5a — Perfil: escala em 3 níveis + correção de cópia | ✅ | `80534fa` |
 | 5b — Desempenho: hero, métricas, últimos jogos, legenda recolhível | ✅ | `7559221` |
-| 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
+| 6a — Hall, Login, detalhe, simulador: fim das cores fixas | ✅ | `c0bfa43` |
+| 6b — Folha de troca de campeonato + layout do Perfil e do Login | ⬜ | — |
 | 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
 
 ---
@@ -63,19 +64,20 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] Emoji removidos das 5 mensagens de toast (bloco 5a).
 - [x] **Botão Salvar** em `match-card.tsx` (bloco 2) e `podium-card.tsx`
       (bloco 3) → `bg-primary`.
-- [ ] **Botões de excluir** `bg-red-600/700` → `destructive`.
-- [ ] **Medalhas do Hall** (prata/bronze: `border-slate-400`, `amber-700`) →
-      2º e 3º viram linhas discretas; lanterna vira nota tracejada.
-- [ ] **Barras do simulador** `bg-green-500` → todas em âmbar; a métrica
-      selecionada é identificada pelo botão, não pela cor.
-- [ ] **`prediction-summary.tsx`**: o desfecho que aconteceu vai a `bg-primary`
-      com "· aconteceu"; os outros a `bg-[hsl(var(--score-none))]`.
+- [ ] **Botões de excluir** `bg-red-600/700` → `destructive` (só no admin agora).
+- [x] **Medalhas do Hall** (bloco 6a): 2º e 3º viraram linhas discretas e a
+      lanterna virou nota tracejada, sem card vermelho neon.
+- [x] **Barras do simulador** todas em âmbar (bloco 6a).
+- [x] **`prediction-summary.tsx`** (bloco 6a): props opcionais `actual` e
+      `title`. O desfecho que aconteceu fica âmbar com "· aconteceu"; sem
+      `actual` (jogo em andamento) nenhuma barra é destacada e o título vira
+      "O que a galera espera".
 - [x] **`match-card.tsx`**: botões do wizard (bloco 2). Nenhuma classe de cor
       fixa restante no arquivo.
-- [ ] **`app/page.tsx`**: `bg-slate-600/20` do badge de status.
+- [x] **`app/page.tsx`**: badge de status tokenizado (bloco 6a).
 - [x] **`ranking-content.tsx`**: `text-amber-200/60` → `text-primary/70` (4b).
-- [ ] **Classes com `!important`** ainda presentes fora do login (o login já
-      não tinha nenhuma).
+- [x] **`!important`**: o login tinha voltado a ter alguns (`!bg-primary`,
+      `hover:!bg-amber-400`). Removidos no 6a — zero `!` no app do jogador.
 
 ### Vindas da Fase 3 (escala antiga ainda viva)
 
@@ -83,6 +85,16 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       de perfil não têm mais NENHUMA classe de cor fixa. Com isso a escala de 8
       cores está extinta do app — só resta `indigo` no admin.
 - [ ] **`admin/admin-matches-table.tsx`**: `indigo-300/500` restantes.
+
+### Restante do bloco 6 → 6b
+
+- [ ] **Folha (sheet) de troca de campeonato**, acionada pelo nome do torneio no
+      `mobile-header.tsx`. É o último item estrutural de navegação.
+- [ ] **Login (layout)**: segmentado "Entrar · Criar conta", rótulos visíveis
+      acima dos campos, erro inline com `role="alert"`. As cores já foram
+      tokenizadas no 6a; falta o rearranjo.
+- [ ] **Perfil (layout)**: cabeçalho centralizado, cards-herói, "Bolões que
+      você jogou" como linha.
 
 ### Restante do bloco 5 → 5b
 
