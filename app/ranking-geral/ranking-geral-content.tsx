@@ -23,9 +23,13 @@ interface GeneralRankingProfile {
 interface RankingGeralContentProps {
   profiles: GeneralRankingProfile[];
   currentUserId?: string;
+  /** true quando renderizado DENTRO do ranking do torneio: esconde o título e
+      o botão de topo, que já existem na tela hospedeira. Opcional e default
+      false — a página própria não muda. */
+  embedded?: boolean;
 }
 
-export function RankingGeralContent({ profiles, currentUserId }: RankingGeralContentProps) {
+export function RankingGeralContent({ profiles, currentUserId, embedded = false }: RankingGeralContentProps) {
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -160,6 +164,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
       </div>
 
       {/* Cabeçalho com botão de compartilhar */}
+      {!embedded && (
       <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-3 mb-4">
@@ -187,6 +192,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
           )}
         </Button>
       </div>
+      )}
 
       {/* Abas de ordenação */}
       <Tabs

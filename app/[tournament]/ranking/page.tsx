@@ -1,6 +1,7 @@
 import { getRanking, getDailyRanking } from './actions';
 import { RankingContent } from './ranking-content';
 import { createServerSupabaseClient } from '@/lib/supabase';
+import { loadGeneralRanking } from '@/app/ranking-geral/load';
 import { notFound } from 'next/navigation';
 
 interface RankingPageProps {
@@ -14,6 +15,8 @@ export default async function RankingPage({ params }: RankingPageProps) {
   
   // Verificar se o torneio existe
   const supabase = await createServerSupabaseClient();
+  const { profiles: generalProfiles } = await loadGeneralRanking(supabase);
+
   const { data: tournament } = await supabase
     .from('tournaments')
     .select('id, name, slug')
@@ -58,6 +61,7 @@ export default async function RankingPage({ params }: RankingPageProps) {
         {/* Conteúdo com Abas */}
         <RankingContent
           profiles={profiles}
+          generalProfiles={generalProfiles}
           currentUserId={currentUserId}
           tournamentName={tournament.name}
           tournamentSlug={tournamentSlug}

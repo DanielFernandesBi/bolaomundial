@@ -11,6 +11,8 @@ import { ShareFullRankingCard } from '@/components/share-full-ranking-card';
 import { shareAsImage } from '@/lib/shareUtils';
 import { Toast } from '@/components/toast';
 import { SimuladorContent } from '@/app/[tournament]/simulador/simulador-content';
+import { RankingGeralContent } from '@/app/ranking-geral/ranking-geral-content';
+import type { GeneralRankingProfile } from '@/app/ranking-geral/load';
 
 interface Profile {
   id: string;
@@ -31,6 +33,7 @@ interface DailyEntry {
 interface RankingContentProps {
   profiles: Profile[];
   currentUserId?: string;
+  generalProfiles?: GeneralRankingProfile[];
   tournamentName?: string;
   tournamentSlug?: string;
   dailyEntries?: DailyEntry[];
@@ -38,11 +41,13 @@ interface RankingContentProps {
   todayLabel?: string;
 }
 
-export function RankingContent({ profiles, currentUserId, tournamentName, tournamentSlug, dailyEntries = [], hasMatchesToday = false, todayLabel }: RankingContentProps) {
+export function RankingContent({ profiles, currentUserId, generalProfiles = [], tournamentName, tournamentSlug, dailyEntries = [], hasMatchesToday = false, todayLabel }: RankingContentProps) {
   const [activeTab, setActiveTab] = useState<'general' | 'cravadas' | 'daily' | 'projecao'>('general');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Escopo: torneio (padrão) ou todos os bolões, renderizado aqui mesmo.
+  const [escopo, setEscopo] = useState<'torneio' | 'geral'>('torneio');
 
   // Ordenar perfis baseado na aba ativa
   const sortedProfiles = useMemo(() => {
@@ -179,23 +184,30 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
         />
       </div>
       
-      {/* Seletor de escopo. A barra inferior tem 5 destinos e "Ranking" aponta
-          para o do torneio — sem isto o Ranking Geral ficou INALCANÇÁVEL depois
-          que a navbar virou desktop-only na Fase 4. Por ora navega; render na
-          própria tela fica para o 4e. */}
+      {/* Seletor de escopo. Renderiza na própria tela (decisão do Daniel); a
+          rota /ranking-geral continua existindo e respondendo. */}
       <div className="mb-4 grid grid-cols-2 gap-1 rounded-[12px] border border-border bg-card p-1">
-        <span className="flex h-9 items-center justify-center rounded-[9px] bg-primary px-2 text-center text-xs font-semibold text-primary-foreground">
-          <span className="truncate">{tournamentName}</span>
-        </span>
-        <Link
-          href="/ranking-geral"
-          className="flex h-9 items-center justify-center rounded-[9px] px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Todos os bolões
-        </Link>
+        {([['torneio', tournamentName], ['geral', 'Todos os bolões']] as const).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setEscopo(v)}
+            className={`flex h-9 items-center justify-center rounded-[9px] px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              escopo === v
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            }`}
+          >
+            <span className="truncate">{label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Tabs com botão de compartilhar */}
+      {escopo === 'geral' && (
+        <RankingGeralContent profiles={generalProfiles} currentUserId={currentUserId} embedded />
+      )}
+
+      {escopo === 'torneio' && (
       <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'daily' | 'projecao')}>
           <TabsList className="grid auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
@@ -246,18 +258,19 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
         </Button>
         )}
       </div>
+      )}
 
       {/* Aba Projeção: o simulador passa a morar aqui. A rota
           /[tournament]/simulador continua existindo e funcionando — só o
           caminho de navegação mudou. O componente carrega os próprios dados,
           e o Radix só o monta quando a aba é aberta. */}
-      {activeTab === 'projecao' && (
+      {escopo === 'torneio' && activeTab === 'projecao' && (
         <SimuladorContent tournamentSlug={tournamentSlug ?? ''} tournamentName={tournamentName ?? ''} />
       )}
 
       {/* Lista única, responsiva. Antes eram DOIS blocos com o mesmo conteúdo:
           cards md:hidden e tabela hidden md:block. */}
-      {activeTab !== 'daily' && activeTab !== 'projecao' && (
+      {escopo === 'torneio' && activeTab !== 'daily' && activeTab !== 'projecao' && (
         <div className="space-y-2">
           {sortedProfiles.length > 0 ? (
             sortedProfiles.map((profile, index) => {
@@ -333,7 +346,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
       )}
 
       {/* ── Aba: Mini-ranking do dia ──────────────────────────────────────────── */}
-      {activeTab === 'daily' && (
+      {escopo === 'torneio' && activeTab === 'daily' && (
         <div>
           {!hasMatchesToday ? (
             <div className="text-muted-foreground text-center py-16">
@@ -432,6 +445,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
       {/* Barra fixa "Você" — só quando a sua linha não está visível */}
       {(() => {
         if (myRowVisible) return null;
+        if (escopo !== 'torneio') return null;
         if (activeTab === 'daily' || activeTab === 'projecao') return null;
         const idx = sortedProfiles.findIndex((pr) => pr.id === currentUserId);
         if (idx < 0) return null;

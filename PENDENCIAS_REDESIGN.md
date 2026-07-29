@@ -26,7 +26,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 4b — Ranking do torneio: lista única | ✅ | `37d0fdd` |
 | 4c — Aba Projeção + barra "Você" | ✅ | `30d4c64` |
 | 4d — Abas de ordenação no Ranking Geral | ✅ | `f56622d` |
-| 4e — Escopo "Todos os bolões" na tela do torneio | ⬜ | — |
+| 4e — Escopo "Todos os bolões" renderizado na tela | ✅ | `c6c122f` |
+| Recuperação de senha (funcional, fora do redesign) | ✅ | `c80c958` |
 | 5a — Perfil: escala em 3 níveis + correção de cópia | ✅ | `80534fa` |
 | 5b — Desempenho: hero, métricas, últimos jogos, legenda recolhível | ✅ | `7559221` |
 | 6a — Hall, Login, detalhe, simulador: fim das cores fixas | ✅ | `c0bfa43` |
@@ -112,7 +113,11 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] **Aba "Projeção"** feita no 4c: o `SimuladorContent` é montado dentro do
       Ranking. O Radix só o monta quando a aba abre, e ele carrega os próprios
       dados — não precisou de plumbing. A rota antiga segue funcionando.
-- [ ] **Seletor de escopo** "{Torneio}" ⇄ "Todos os bolões" na tela do torneio
+- [x] **Seletor de escopo** feito no 4e: renderiza na própria tela. O laço N+1
+      foi EXTRAÍDO para `app/ranking-geral/load.ts` (movido sem alteração) e é
+      chamado pelas duas páginas. `RankingGeralContent` ganhou a prop opcional
+      `embedded`, que esconde título e botão de topo quando embutido.
+      ~~Pendência anterior:~~
       (decisão do Daniel: renderiza, não navega). Custo real: o ranking geral é
       montado em `app/ranking-geral/page.tsx` com um laço N+1 (uma consulta de
       `tournament_rankings` por usuário). Para renderizar na tela do torneio é
