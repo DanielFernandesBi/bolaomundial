@@ -62,6 +62,7 @@ function regularBadge(pts: number) {
 export function HistoryList({ history, userAvatarUrl, username, isOwn = true }: HistoryListProps) {
   const [sharingId, setSharingId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
 
   const handleShare = async (match: HistoryItem) => {
     setSharingId(match.match_id);
@@ -76,9 +77,11 @@ export function HistoryList({ history, userAvatarUrl, username, isOwn = true }: 
       // Gerar e compartilhar imagem
       await shareAsImage(cardId, `bolao-cravada-${match.match_id}.png`);
       
+      setToastTone('success');
       setToast('Imagem gerada! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
+      setToastTone('error');
       setToast(error.message || 'Erro ao gerar imagem');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -97,7 +100,7 @@ export function HistoryList({ history, userAvatarUrl, username, isOwn = true }: 
   return (
     <>
       {/* Toast */}
-      <Toast message={toast} />
+      <Toast message={toast} tone={toastTone} />
 
       {/* Cards ocultos para compartilhamento */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>

@@ -187,6 +187,10 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // O tom acompanha a mensagem: "não foi possível salvar" não pode sair na
+  // pílula verde de sucesso. Só apresentação — savePrediction e os bloqueios
+  // seguem intactos.
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
 
   useEffect(() => {
     const newHome = match.user_prediction?.pred_home?.toString() ?? '';
@@ -280,6 +284,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     const home = parseInt(homeScore) || 0;
     const away = parseInt(awayScore) || 0;
     if (home < 0 || away < 0) {
+      setToastTone('error');
       setToastMessage('Os placares devem ser números positivos');
       setTimeout(() => setToastMessage(null), 3000);
       return;
@@ -297,8 +302,10 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
 
     const result = await savePrediction(match.id, home, away, tournamentSlug, extra);
     if (result.error) {
+      setToastTone('error');
       setToastMessage(result.error);
     } else {
+      setToastTone('success');
       setToastMessage('Palpite salvo com sucesso!');
       setSaved({ home: home.toString(), away: away.toString(), extra: extraResult, penHome, penAway, penWinner });
     }
@@ -432,7 +439,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   return (
     <Card className={`bg-card border-border relative ${isLocked && !isFinished ? 'opacity-70' : ''}`}>
       <CardContent className="p-4">
-        <Toast message={toastMessage} />
+        <Toast message={toastMessage} tone={toastTone} />
 
         {/* Topo */}
         <div className="flex items-center justify-between gap-2 mb-4 pb-2.5 border-b border-hairline">

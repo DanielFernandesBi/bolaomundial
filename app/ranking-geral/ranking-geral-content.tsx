@@ -33,6 +33,7 @@ export function RankingGeralContent({ profiles, currentUserId, embedded = false 
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
 
   // Abas de ordenação. O servidor continua sendo a fonte de quem está no
   // ranking e de quanto cada um tem; a aba só REORDENA o mesmo array para
@@ -96,9 +97,11 @@ export function RankingGeralContent({ profiles, currentUserId, embedded = false 
       // Gerar e compartilhar imagem
       await shareAsImage(cardId, `bolao-ranking-geral-${profile.id}.png`);
       
+      setToastTone('success');
       setToast('Imagem gerada! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
+      setToastTone('error');
       setToast(error.message || 'Erro ao gerar imagem');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -113,9 +116,11 @@ export function RankingGeralContent({ profiles, currentUserId, embedded = false 
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
       await shareAsImage('share-full-ranking-card-geral', 'bolao-ranking-geral-completo.png');
+      setToastTone('success');
       setToast('Ranking completo gerado! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
+      setToastTone('error');
       setToast(error.message || 'Erro ao gerar imagem');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -126,12 +131,16 @@ export function RankingGeralContent({ profiles, currentUserId, embedded = false 
   return (
     <div>
       {/* Toast */}
-      <Toast message={toast} />
+      <Toast message={toast} tone={toastTone} />
 
       {/* Cards ocultos para compartilhamento individual */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
         {/* SOB DEMANDA — ver nota no ranking do torneio. */}
-        {profiles.map((profile, index) => {
+        {/* sortedProfiles, NÃO profiles: a posição da imagem tem de ser a mesma
+            que o jogador está vendo na tela. Com o array original, quem era 1º
+            em Cravadas compartilhava uma imagem dizendo 7º (a posição dele por
+            pontos). */}
+        {sortedProfiles.map((profile, index) => {
           if (sharingId !== profile.id) return null;
           const position = index + 1;
           return (
@@ -154,14 +163,17 @@ export function RankingGeralContent({ profiles, currentUserId, embedded = false 
       {sharingFullRanking && (
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
         <ShareFullRankingCard
-          profiles={profiles.map((profile, index) => ({
+          profiles={sortedProfiles.map((profile, index) => ({
             position: index + 1,
             username: profile.username,
             avatar_url: profile.avatar_url,
             total_points: profile.total_points,
             exact_matches: profile.total_exact_matches,
+            total_money: Number(profile.total_money) || 0,
           }))}
           isGeneralRanking={true}
+          showCravadas={showCravadas}
+          showPrizes={showPrizes}
           cardId="share-full-ranking-card-geral"
         />
       </div>

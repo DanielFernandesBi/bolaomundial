@@ -64,6 +64,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
   const [activeSlot, setActiveSlot] = useState<SlotKey>('champion');
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
 
   const slotKeys = slotDefs.map((s) => s.key);
   const pickedNames = new Set(slotKeys.map((k) => picks[k]).filter(Boolean).map((t) => (t as Team).name));
@@ -94,8 +95,13 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
       thirdTeam: mode === 'legacy' ? picks.third?.name ?? null : null,
       thirdIso: mode === 'legacy' ? picks.third?.iso ?? null : null,
     });
-    if (result.error) setToast(result.error);
-    else setToast('Pódio salvo com sucesso!');
+    if (result.error) {
+      setToastTone('error');
+      setToast(result.error);
+    } else {
+      setToastTone('success');
+      setToast('Pódio salvo com sucesso!');
+    }
     setTimeout(() => setToast(null), 3000);
     setIsSaving(false);
   }
@@ -105,7 +111,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
   return (
     <Card className="relative border-primary/30 bg-primary/5">
       <CardContent className="p-4">
-        <Toast message={toast} />
+        <Toast message={toast} tone={toastTone} />
 
         <div className="mb-4 flex items-center gap-2">
           <Trophy className="w-5 h-5 flex-shrink-0 text-primary" />

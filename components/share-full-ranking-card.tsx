@@ -10,6 +10,8 @@ interface Profile {
   avatar_url: string | null;
   total_points: number;
   exact_matches: number;
+  /** Só usado no modo Prêmios. Opcional: quem não passa não muda de comportamento. */
+  total_money?: number;
 }
 
 interface ShareFullRankingCardProps {
@@ -17,6 +19,10 @@ interface ShareFullRankingCardProps {
   tournamentName?: string;
   isGeneralRanking?: boolean;
   showCravadas?: boolean;
+  /** Ordenação por prêmios: o valor em destaque passa a ser o dinheiro. Sem
+      isto, a aba Prêmios gerava uma imagem ordenada por dinheiro mas exibindo
+      pontos — dois rankings diferentes na mesma arte. */
+  showPrizes?: boolean;
   cardId?: string;
 }
 
@@ -25,8 +31,15 @@ export function ShareFullRankingCard({
   tournamentName,
   isGeneralRanking = false,
   showCravadas = false,
+  showPrizes = false,
   cardId = 'share-full-ranking-card',
 }: ShareFullRankingCardProps) {
+  const formatMoney = (v: number) =>
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0,
+    }).format(v);
   const getInitials = (name: string): string =>
     name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
@@ -38,9 +51,11 @@ export function ShareFullRankingCard({
   const now = new Date();
   const updatedAt = `${String(now.getDate()).padStart(2, '0')} ${months[now.getMonth()]} ${now.getFullYear()} - ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  const titulo = isGeneralRanking
-    ? 'Classificação geral consolidada'
-    : `Classificação ${tournamentName || 'ranking'}`;
+  const criterio = showPrizes ? ' · por prêmios' : showCravadas ? ' · por cravadas' : '';
+  const titulo =
+    (isGeneralRanking
+      ? 'Classificação geral consolidada'
+      : `Classificação ${tournamentName || 'ranking'}`) + criterio;
 
   const leftFirst = leftColumn[0]?.position ?? 1;
   const leftLast = leftColumn[leftColumn.length - 1]?.position ?? splitIndex;
@@ -69,7 +84,11 @@ export function ShareFullRankingCard({
   };
 
   const renderCard = (profile: Profile, key: string, isLanterna: boolean) => {
-    const mainValue = showCravadas ? profile.exact_matches : profile.total_points;
+    const mainValue = showPrizes
+      ? formatMoney(profile.total_money ?? 0)
+      : showCravadas
+      ? profile.exact_matches
+      : profile.total_points;
     const cor = positionColor(profile.position, isLanterna);
     const destaque = isLanterna || profile.position <= 3;
 
@@ -116,10 +135,13 @@ export function ShareFullRankingCard({
 
         {/* Pontuação */}
         <div className="flex-shrink-0 text-right">
-          <div className="font-black leading-none tabular-nums" style={{ color: SHARE.fg, fontSize: '20px' }}>
+          <div
+            className="font-black leading-none tabular-nums"
+            style={{ color: showPrizes ? SHARE.money : SHARE.fg, fontSize: showPrizes ? '15px' : '20px' }}
+          >
             {mainValue}
           </div>
-          {!showCravadas && (
+          {!showCravadas && !showPrizes && (
             <div
               className="flex items-center justify-end gap-1 mt-1 leading-none"
               style={{ color: SHARE.amber, fontSize: '10px', fontWeight: 600 }}

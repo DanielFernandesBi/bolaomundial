@@ -37,7 +37,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 8 — Redesenho visual dos cards (§16) | ✅ | `fead8e3` |
 | 9 — Admin tokenizado, destaque no pódio, marca na folha nativa | ✅ | `afc6306` |
 | 10 — Contagem regressiva, tema no desktop, QA do claro | ✅ | `2a77db1` |
-| 11 — Filtro por competição nas Partidas | ✅ | este commit |
+| 11 — Filtro por competição nas Partidas | ✅ | `eaa6b9b`, `ec33dc8` |
+| 12 — Correções da auditoria externa (6 achados) | ✅ | este commit |
 
 ---
 
@@ -70,6 +71,59 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 - **`--radius`**: aplicado 0.75rem (era 0.5rem). Reverter é uma linha.
 - **Tema claro**: tokens prontos desde a Fase 1; alternador na Fase 5. Validar o
   layout no escuro primeiro — o claro dobra a matriz de QA.
+
+---
+
+## Auditoria externa do branch — os 6 achados (bloco 12)
+
+Todos verificados no código e todos procedentes. Nenhum foi descartado.
+
+1. **Aba "Projeção" em torneio sem simulador** (bloqueador, correto).
+   `ranking/page.tsx` buscava só `id, name, slug`, e a aba era criada sempre —
+   carregando o `SimuladorContent`, que fala de ranking FIFA, seleções, fase de
+   grupos e 3º lugar. A navbar já acertava, com `has_simulator`. Agora a página
+   traz a coluna e a aba só existe quando `hasSimulator`. A prop tem default
+   `false`: quem não passar não ganha a aba.
+2. **Callback não entregava os cookies da sessão** (bloqueador, correto).
+   O `setAll` gravava apenas em `request.cookies` e a rota devolvia um
+   `NextResponse.redirect()` novo. Num Route Handler, mexer nos cookies da
+   REQUISIÇÃO não manda nada ao navegador. A troca funcionava no servidor e
+   morria ali. **O arquivo é pré-existente e idêntico à `main`** — o bug não
+   nasceu no redesign; passou a importar quando a recuperação de senha começou a
+   depender dele. Agora a resposta é montada antes da troca e os cookies são
+   gravados nela (e também em `request.cookies`, para leituras na mesma
+   requisição).
+3. **Compartilhamento com o array errado** (correto, e só no Ranking Geral).
+   `ranking-geral-content.tsx` usava `profiles` nos cards ocultos enquanto a
+   lista visível usava `sortedProfiles`: quem era 1º em Cravadas compartilhava
+   uma imagem dizendo 7º. Corrigido nos dois cards. O ranking do TORNEIO já
+   usava `sortedProfiles` — ali não havia bug.
+   No modo Prêmios havia o segundo problema apontado: `ShareFullRankingCard` não
+   tinha modalidade de prêmio. Em vez de esconder o compartilhamento, foi
+   implementado `showPrizes` (valor em destaque = dinheiro, em `SHARE.money`), e
+   o título da arte agora diz o critério ("· por prêmios" / "· por cravadas").
+4. **Erro saindo com aparência de sucesso** (correto). O `Toast` tem
+   `tone = 'success'` por padrão e as telas do jogador não informavam o tom, então
+   "não foi possível salvar seu palpite" saía na pílula verde. Cada tela ganhou um
+   estado `toastTone` setado na própria ramificação que já definia a mensagem —
+   nenhum handler de salvamento teve a lógica alterada. Hoje **todos** os
+   `<Toast>` do projeto informam o tom.
+5. **Folha de troca chamando torneio pendente de "Encerrado"** (correto, e mais
+   grave do que parece). Dividir em `active` / `!active` não só rotulava errado:
+   dava link para `/matches` de torneio pendente, que a home BLOQUEIA de
+   propósito — a folha era um desvio em volta do bloqueio. Agora são três grupos,
+   espelhando a home: Em disputa → `/matches`, Encerrados → `/ranking` (o mesmo
+   destino da home), Em breve → linha com cadeado, sem link. A separação usa UMA
+   consulta a `matches` com `.in(tournament_id)`, não uma por torneio.
+6. **Barra "Você" presa após alternar escopo** (correto). O observer não tinha
+   `escopo` nas dependências; ao ir para "Todos os bolões" a lista do torneio
+   desmontava e o observer seguia preso ao nó antigo, já fora do DOM. Ao voltar,
+   a barra ficava acesa para sempre. `escopo` entrou nas dependências e o efeito só
+   observa quando `escopo === 'torneio'`.
+
+Sobre o baseline citado na auditoria: conferido, **251 erros de TypeScript na
+`main` e 251 no branch** — o redesign não adicionou nenhum. E a avaliação do
+bloco 11 (filtro por competição) como sem bug bate com o que eu havia verificado.
 
 ---
 

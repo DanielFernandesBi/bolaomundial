@@ -36,16 +36,21 @@ interface RankingContentProps {
   generalProfiles?: GeneralRankingProfile[];
   tournamentName?: string;
   tournamentSlug?: string;
+  /** Só com simulador a aba "Projeção" existe — ele é específico do modelo de
+      seleções (ranking FIFA, grupos, disputa de 3º). Default false: quem não
+      passar a prop não ganha a aba. */
+  hasSimulator?: boolean;
   dailyEntries?: DailyEntry[];
   hasMatchesToday?: boolean;
   todayLabel?: string;
 }
 
-export function RankingContent({ profiles, currentUserId, generalProfiles = [], tournamentName, tournamentSlug, dailyEntries = [], hasMatchesToday = false, todayLabel }: RankingContentProps) {
+export function RankingContent({ profiles, currentUserId, generalProfiles = [], tournamentName, tournamentSlug, hasSimulator = false, dailyEntries = [], hasMatchesToday = false, todayLabel }: RankingContentProps) {
   const [activeTab, setActiveTab] = useState<'general' | 'cravadas' | 'daily' | 'projecao'>('general');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
   // Escopo: torneio (padrão) ou todos os bolões, renderizado aqui mesmo.
   const [escopo, setEscopo] = useState<'torneio' | 'geral'>('torneio');
 
@@ -80,7 +85,11 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
 
   useEffect(() => {
     const el = myRowRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
+    // `escopo` ENTRA nas dependências: ao ir para "Todos os bolões" a lista do
+    // torneio desmonta, e sem isto o observer continuava preso ao elemento
+    // antigo (já fora do DOM). Ao voltar, a barra "Você" ficava acesa para
+    // sempre, porque o nó observado nunca mais intersectava.
+    if (escopo !== 'torneio' || !el || typeof IntersectionObserver === 'undefined') {
       setMyRowVisible(true);
       return;
     }
@@ -90,7 +99,7 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [activeTab, currentUserId, sortedProfiles.length]);
+  }, [escopo, activeTab, currentUserId, sortedProfiles.length]);
 
   const showCravadas = activeTab === 'cravadas';
 
@@ -117,9 +126,11 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
       // Gerar e compartilhar imagem
       await shareAsImage(cardId, `bolao-ranking-${profile.id}.png`);
       
+      setToastTone('success');
       setToast('Imagem gerada! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
+      setToastTone('error');
       setToast(error.message || 'Erro ao gerar imagem');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -134,9 +145,11 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
       await shareAsImage('share-full-ranking-card', `bolao-ranking-completo-${activeTab}.png`);
+      setToastTone('success');
       setToast('Ranking completo gerado! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
+      setToastTone('error');
       setToast(error.message || 'Erro ao gerar imagem');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -147,7 +160,7 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
   return (
     <div>
       {/* Toast */}
-      <Toast message={toast} />
+      <Toast message={toast} tone={toastTone} />
 
       {/* Cards ocultos para compartilhamento individual */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
@@ -237,13 +250,15 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
               <CalendarDays className="h-3.5 w-3.5" />
               Hoje {todayLabel ? `(${todayLabel})` : ''}
             </TabsTrigger>
-            <TabsTrigger
-              value="projecao"
-              className="flex h-9 items-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              <TrendingUp className="h-3.5 w-3.5" />
-              Projeção
-            </TabsTrigger>
+            {hasSimulator && (
+              <TabsTrigger
+                value="projecao"
+                className="flex h-9 items-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+                Projeção
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
         {activeTab !== 'projecao' && (
@@ -271,7 +286,7 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
           /[tournament]/simulador continua existindo e funcionando — só o
           caminho de navegação mudou. O componente carrega os próprios dados,
           e o Radix só o monta quando a aba é aberta. */}
-      {escopo === 'torneio' && activeTab === 'projecao' && (
+      {hasSimulator && escopo === 'torneio' && activeTab === 'projecao' && (
         <SimuladorContent tournamentSlug={tournamentSlug ?? ''} tournamentName={tournamentName ?? ''} />
       )}
 
