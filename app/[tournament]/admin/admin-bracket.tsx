@@ -28,7 +28,7 @@ function Logo({ iso, alt }: { iso: string | null; alt: string }) {
   const t = iso.trim();
   return t.toLowerCase().startsWith('http') ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={t} alt={alt} className="w-6 h-6 rounded object-contain bg-slate-800" loading="lazy" />
+    <img src={t} alt={alt} className="w-6 h-6 rounded object-contain bg-muted" loading="lazy" />
   ) : (
     <Image src={getFlagUrl(iso)} alt={alt} width={24} height={24} className="w-6 h-auto rounded" />
   );
@@ -37,12 +37,12 @@ function Logo({ iso, alt }: { iso: string | null; alt: string }) {
 function SideLabel({ side }: { side: Side }) {
   if (side.team) {
     return (
-      <span className="flex items-center gap-1.5 text-white text-sm">
+      <span className="flex items-center gap-1.5 text-foreground text-sm">
         <Logo iso={side.iso} alt={side.team} /> {side.team}
       </span>
     );
   }
-  return <span className="text-amber-300/80 text-xs italic">{side.label ?? 'A definir'}</span>;
+  return <span className="text-primary/80 text-xs italic">{side.label ?? 'A definir'}</span>;
 }
 
 export function AdminBracket({ tournamentSlug, tournamentId, competitions }: Props) {
@@ -78,17 +78,17 @@ export function AdminBracket({ tournamentSlug, tournamentId, competitions }: Pro
   }
 
   return (
-    <Card className="bg-slate-900 border-slate-800 mb-6">
+    <Card className="bg-card border-border mb-6">
       <CardContent className="p-4 space-y-6">
         <div className="flex items-center gap-2">
-          <Shuffle className="w-5 h-5 text-amber-500" />
-          <h3 className="text-white font-bold">Chaveamento</h3>
+          <Shuffle className="w-5 h-5 text-primary" />
+          <h3 className="text-foreground font-bold">Chaveamento</h3>
         </div>
         {toast && (
-          <div className={`text-sm rounded-md p-2 ${toast.ok ? 'bg-green-500/15 text-green-300' : 'bg-red-500/15 text-red-300'}`}>{toast.msg}</div>
+          <div className={`text-sm rounded-md p-2 ${toast.ok ? 'bg-state-open/15 text-state-open' : 'bg-destructive/15 text-destructive'}`}>{toast.msg}</div>
         )}
 
-        {competitions.length === 0 && <p className="text-slate-400 text-sm">Nenhum confronto cadastrado ainda.</p>}
+        {competitions.length === 0 && <p className="text-muted-foreground text-sm">Nenhum confronto cadastrado ainda.</p>}
 
         {competitions.map((comp) => {
           const oitavas = comp.rounds.find((r) => r.round === 'oitavas');
@@ -97,11 +97,11 @@ export function AdminBracket({ tournamentSlug, tournamentId, competitions }: Pro
           const canDrawQuartas = comp.key === 'copa_do_brasil' && allOitavasDecided && quartasEmpty;
           return (
             <div key={comp.key} className="space-y-4">
-              <h4 className="text-white font-semibold border-b border-slate-800 pb-1">{comp.name}</h4>
+              <h4 className="text-foreground font-semibold border-b border-border pb-1">{comp.name}</h4>
 
               {canDrawQuartas && (
                 <div>
-                  <Button size="sm" onClick={() => setDrawComp(drawComp === comp.key ? null : comp.key)} className="bg-amber-500 text-black hover:bg-amber-400">
+                  <Button size="sm" onClick={() => setDrawComp(drawComp === comp.key ? null : comp.key)} className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
                     <Shuffle className="w-4 h-4 mr-1" /> Montar quartas (sorteio)
                   </Button>
                   {drawComp === comp.key && oitavas && (
@@ -118,32 +118,32 @@ export function AdminBracket({ tournamentSlug, tournamentId, competitions }: Pro
 
               {comp.rounds.map((r) => (
                 <div key={r.round} className="space-y-2">
-                  <p className="text-slate-400 text-xs font-semibold uppercase">{r.label}</p>
+                  <p className="text-muted-foreground text-xs font-semibold uppercase">{r.label}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {r.ties.map((t) => (
-                      <div key={t.id} className="rounded-md border border-slate-800 bg-slate-950/40 p-3 space-y-2">
+                      <div key={t.id} className="rounded-md border border-border bg-surface-sunken p-3 space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <SideLabel side={t.sideA} />
-                          <span className="text-slate-500 text-xs">{t.series_type === 'single' ? '(jogo único)' : 'x'}</span>
+                          <span className="text-[hsl(var(--faint))] text-xs">{t.series_type === 'single' ? '(jogo único)' : 'x'}</span>
                           <SideLabel side={t.sideB} />
                         </div>
-                        {t.winner_team && <div className="text-green-400 text-xs">Classificado: {t.winner_team}</div>}
+                        {t.winner_team && <div className="text-state-open text-xs">Classificado: {t.winner_team}</div>}
 
                         <div className="flex flex-wrap gap-2">
                           {!t.sideA.team && (
-                            <Button size="sm" variant="outline" className="h-7 text-xs text-amber-400 border-amber-500/40"
+                            <Button size="sm" variant="outline" className="h-7 text-xs text-primary border-primary/40"
                               onClick={() => { setResolving({ tieId: t.id, side: 'a' }); setRTeam(''); setRLogo(''); }}>
                               Definir lado A
                             </Button>
                           )}
                           {!t.sideB.team && (
-                            <Button size="sm" variant="outline" className="h-7 text-xs text-amber-400 border-amber-500/40"
+                            <Button size="sm" variant="outline" className="h-7 text-xs text-primary border-primary/40"
                               onClick={() => { setResolving({ tieId: t.id, side: 'b' }); setRTeam(''); setRLogo(''); }}>
                               Definir lado B
                             </Button>
                           )}
                           {t.canSwap && (
-                            <Button size="sm" variant="outline" className="h-7 text-xs text-slate-300"
+                            <Button size="sm" variant="outline" className="h-7 text-xs text-card-foreground"
                               onClick={() => doSwap(t.id)} disabled={isPending}>
                               <ArrowLeftRight className="w-3 h-3 mr-1" /> Inverter mandos
                             </Button>
@@ -151,17 +151,17 @@ export function AdminBracket({ tournamentSlug, tournamentId, competitions }: Pro
                         </div>
 
                         {resolving?.tieId === t.id && (
-                          <div className="rounded border border-slate-700 p-2 space-y-2 bg-slate-950">
-                            <p className="text-slate-300 text-xs">Definir classificado (lado {resolving.side.toUpperCase()})</p>
+                          <div className="rounded border border-border p-2 space-y-2 bg-background">
+                            <p className="text-card-foreground text-xs">Definir classificado (lado {resolving.side.toUpperCase()})</p>
                             <Input value={rTeam} onChange={(e) => setRTeam(e.target.value)} placeholder="Nome do clube"
-                              className="h-8 text-sm bg-slate-950 border-slate-700 text-white" />
+                              className="h-8 text-sm bg-background border-border text-foreground" />
                             <Input value={rLogo} onChange={(e) => setRLogo(e.target.value)} placeholder="URL do escudo"
-                              className="h-8 text-sm bg-slate-950 border-slate-700 text-white" />
+                              className="h-8 text-sm bg-background border-border text-foreground" />
                             <div className="flex gap-2">
-                              <Button size="sm" className="h-7 bg-green-600 hover:bg-green-700" onClick={doResolve} disabled={isPending || !rTeam.trim()}>
+                              <Button size="sm" className="h-7 bg-success text-success-foreground hover:bg-success/90" onClick={doResolve} disabled={isPending || !rTeam.trim()}>
                                 <Check className="w-3 h-3 mr-1" /> Salvar
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-7 text-slate-400" onClick={() => setResolving(null)}>Cancelar</Button>
+                              <Button size="sm" variant="ghost" className="h-7 text-muted-foreground" onClick={() => setResolving(null)}>Cancelar</Button>
                             </div>
                           </div>
                         )}
@@ -173,7 +173,7 @@ export function AdminBracket({ tournamentSlug, tournamentId, competitions }: Pro
             </div>
           );
         })}
-        <p className="text-slate-500 text-xs flex items-center gap-1">
+        <p className="text-[hsl(var(--faint))] text-xs flex items-center gap-1">
           <Trophy className="w-3.5 h-3.5" /> Datas e estádios dos jogos são editados na tabela de jogos abaixo.
         </p>
       </CardContent>
@@ -216,25 +216,25 @@ function QuartasDraw({
   }
 
   return (
-    <div className="mt-2 rounded border border-slate-700 p-3 space-y-2 bg-slate-950">
-      <p className="text-slate-300 text-xs">Escolha o mandante (joga a ida em casa) e o visitante de cada confronto das quartas.</p>
+    <div className="mt-2 rounded border border-border p-3 space-y-2 bg-background">
+      <p className="text-card-foreground text-xs">Escolha o mandante (joga a ida em casa) e o visitante de cada confronto das quartas.</p>
       {rows.map((row, qf) => (
         <div key={qf} className="flex items-center gap-2">
-          <span className="text-slate-400 text-xs w-16">Quartas {qf + 1}</span>
+          <span className="text-muted-foreground text-xs w-16">Quartas {qf + 1}</span>
           <select value={row.home} onChange={(e) => setRows((p) => p.map((r, i) => i === qf ? { ...r, home: e.target.value === '' ? '' : Number(e.target.value) } : r))}
-            className="bg-slate-950 border border-slate-700 text-white rounded px-2 py-1 text-xs flex-1">
+            className="bg-background border border-border text-foreground rounded px-2 py-1 text-xs flex-1">
             <option value="">Mandante…</option>
             {winners.map((w) => <option key={w.slot} value={w.slot}>{w.name}</option>)}
           </select>
-          <span className="text-slate-500 text-xs">x</span>
+          <span className="text-[hsl(var(--faint))] text-xs">x</span>
           <select value={row.away} onChange={(e) => setRows((p) => p.map((r, i) => i === qf ? { ...r, away: e.target.value === '' ? '' : Number(e.target.value) } : r))}
-            className="bg-slate-950 border border-slate-700 text-white rounded px-2 py-1 text-xs flex-1">
+            className="bg-background border border-border text-foreground rounded px-2 py-1 text-xs flex-1">
             <option value="">Visitante…</option>
             {winners.map((w) => <option key={w.slot} value={w.slot}>{w.name}</option>)}
           </select>
         </div>
       ))}
-      <Button size="sm" onClick={submit} disabled={isPending} className="bg-amber-500 text-black hover:bg-amber-400">
+      <Button size="sm" onClick={submit} disabled={isPending} className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
         {isPending ? 'Aplicando…' : 'Aplicar sorteio'}
       </Button>
     </div>

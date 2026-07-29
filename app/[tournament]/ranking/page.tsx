@@ -1,6 +1,7 @@
 import { getRanking, getDailyRanking } from './actions';
 import { RankingContent } from './ranking-content';
 import { createServerSupabaseClient } from '@/lib/supabase';
+import { loadGeneralRanking } from '@/app/ranking-geral/load';
 import { notFound } from 'next/navigation';
 
 interface RankingPageProps {
@@ -14,9 +15,14 @@ export default async function RankingPage({ params }: RankingPageProps) {
   
   // Verificar se o torneio existe
   const supabase = await createServerSupabaseClient();
+  const { profiles: generalProfiles } = await loadGeneralRanking(supabase);
+
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('id, name, slug')
+    // has_simulator decide se a aba "Projeção" existe. O simulador NÃO é
+    // genérico: fala de ranking FIFA, seleções, fase de grupos e disputa de 3º
+    // lugar. Sem esta coluna a aba aparecia em qualquer torneio.
+    .select('id, name, slug, has_simulator')
     .eq('slug', tournamentSlug)
     .single();
 
@@ -38,29 +44,31 @@ export default async function RankingPage({ params }: RankingPageProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-red-500">Erro ao carregar ranking: {error}</div>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 pb-28 md:pb-8">
+          <div className="text-destructive">Erro ao carregar ranking: {error}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-x-hidden">
-      <div className="container mx-auto px-4 py-8 max-w-full">
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-full">
         {/* Cabeçalho */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Ranking</h1>
-          <p className="text-slate-400">Classificação do {tournament.name}</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Ranking</h1>
+          <p className="text-muted-foreground">Classificação do {tournament.name}</p>
         </div>
 
         {/* Conteúdo com Abas */}
         <RankingContent
           profiles={profiles}
+          generalProfiles={generalProfiles}
           currentUserId={currentUserId}
           tournamentName={tournament.name}
           tournamentSlug={tournamentSlug}
+          hasSimulator={!!(tournament as any).has_simulator}
           dailyEntries={dailyEntries}
           hasMatchesToday={hasMatchesToday}
           todayLabel={matchDayLabel}

@@ -54,15 +54,15 @@ function CompetitionForm({ tournamentSlug, comp }: { tournamentSlug: string; com
   }
 
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4 space-y-3">
-      <h4 className="text-white font-semibold text-sm">{comp.name}</h4>
+    <div className="rounded-lg border border-border bg-surface-sunken p-4 space-y-3">
+      <h4 className="text-foreground font-semibold text-sm">{comp.name}</h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-amber-400 text-xs font-semibold">Campeão (40)</label>
+          <label className="text-primary text-xs font-semibold">Campeão (40)</label>
           <select
             value={champion}
             onChange={(e) => setChampion(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 text-white rounded-md px-2 py-1.5 text-sm"
+            className="w-full bg-background border border-border text-foreground rounded-md px-2 py-1.5 text-sm"
           >
             <option value="">—</option>
             {comp.teams.map((t) => (
@@ -71,11 +71,11 @@ function CompetitionForm({ tournamentSlug, comp }: { tournamentSlug: string; com
           </select>
         </div>
         <div className="space-y-1">
-          <label className="text-slate-300 text-xs font-semibold">Vice (25)</label>
+          <label className="text-card-foreground text-xs font-semibold">Vice (25)</label>
           <select
             value={vice}
             onChange={(e) => setVice(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 text-white rounded-md px-2 py-1.5 text-sm"
+            className="w-full bg-background border border-border text-foreground rounded-md px-2 py-1.5 text-sm"
           >
             <option value="">—</option>
             {comp.teams.map((t) => (
@@ -85,10 +85,10 @@ function CompetitionForm({ tournamentSlug, comp }: { tournamentSlug: string; com
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <Button onClick={save} disabled={isPending} size="sm" className="bg-amber-500 text-black hover:bg-amber-400">
+        <Button onClick={save} disabled={isPending} size="sm" className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
           {isPending ? 'Salvando...' : 'Lançar resultado'}
         </Button>
-        {msg && <span className={`text-xs ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</span>}
+        {msg && <span className={`text-xs ${msg.ok ? 'text-state-open' : 'text-destructive'}`}>{msg.text}</span>}
       </div>
     </div>
   );
@@ -98,13 +98,13 @@ export function CompetitionResultsEntry({ tournamentSlug, competitions }: Props)
   if (competitions.length === 0) return null;
 
   return (
-    <Card className="bg-slate-900 border-slate-800 mb-6">
+    <Card className="bg-card border-border mb-6">
       <CardContent className="p-4 space-y-4">
         <div className="flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-amber-500" />
-          <h3 className="text-white font-bold">Campeão e vice por competição</h3>
+          <Trophy className="w-5 h-5 text-primary" />
+          <h3 className="text-foreground font-bold">Campeão e vice por competição</h3>
         </div>
-        <p className="text-slate-400 text-xs">
+        <p className="text-muted-foreground text-xs">
           Ao finalizar a volta da final, o sistema já lança o campeão/vice automaticamente. Use aqui para conferir ou corrigir.
         </p>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

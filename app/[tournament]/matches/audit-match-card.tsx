@@ -62,9 +62,9 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
   });
 
   return (
-    <Card className="bg-slate-900 border-slate-800">
+    <Card className="bg-card border-border">
       <CardHeader className="p-4">
-        <CardTitle className="text-white">
+        <CardTitle className="text-foreground">
           {/* Layout Mobile-First: Times em coluna */}
           <div className="flex flex-col gap-3 mb-2">
             {/* Time Casa */}
@@ -87,12 +87,12 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
                   />
                 )
               )}
-              <span className="text-white font-semibold text-sm sm:text-base truncate flex-1">{match.team_home}</span>
+              <span className="text-foreground font-semibold text-sm sm:text-base truncate flex-1">{match.team_home}</span>
             </div>
             
             {/* Separador VS */}
             <div className="flex items-center justify-center">
-              <span className="text-slate-400 text-xs sm:text-sm">vs</span>
+              <span className="text-muted-foreground text-xs sm:text-sm">vs</span>
             </div>
             
             {/* Time Visitante */}
@@ -115,22 +115,23 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
                   />
                 )
               )}
-              <span className="text-white font-semibold text-sm sm:text-base truncate flex-1">{match.team_away}</span>
+              <span className="text-foreground font-semibold text-sm sm:text-base truncate flex-1">{match.team_away}</span>
             </div>
           </div>
           
           {/* Data */}
-          <div className="text-slate-400 text-xs sm:text-sm text-center mt-2">
+          <div className="text-muted-foreground text-xs sm:text-sm text-center mt-2">
             {formattedDate}
           </div>
           {match.venue && (
-            <div className="text-slate-500 text-xs text-center">🏟️ {match.venue}</div>
+            <div className="text-[hsl(var(--faint))] text-xs text-center">🏟️ {match.venue}</div>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {match.all_predictions.length > 0 && (
           <PredictionSummary
+            title="O que a galera espera"
             teamHome={match.team_home}
             teamAway={match.team_away}
             predictions={match.all_predictions}
@@ -139,7 +140,7 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
         )}
 
         {match.all_predictions.length === 0 ? (
-          <div className="text-slate-400 text-center py-8">
+          <div className="text-muted-foreground text-center py-8">
             Nenhum palpite registrado para esta partida.
           </div>
         ) : (
@@ -147,30 +148,30 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
             {match.all_predictions.map((prediction) => (
               <div
                 key={prediction.id}
-                className="flex items-center justify-between p-3 bg-slate-800 rounded-lg border border-slate-700"
+                className="flex items-center justify-between p-3 bg-muted rounded-lg border border-border"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <Avatar className="w-10 h-10 border-2 border-slate-700 flex-shrink-0">
+                  <Avatar className="w-10 h-10 border-2 border-border flex-shrink-0">
                     <AvatarImage src={prediction.avatar_url || undefined} />
-                    <AvatarFallback className="bg-slate-700 text-white text-sm">
+                    <AvatarFallback className="bg-muted text-foreground text-sm">
                       {getInitials(prediction.username)}
                     </AvatarFallback>
                   </Avatar>
                   <Link
                     href={`/${tournamentSlug}/desempenho/${prediction.user_id}`}
-                    className="text-white font-medium hover:text-amber-500 transition-colors truncate flex-1"
+                    className="text-foreground font-medium hover:text-primary transition-colors truncate flex-1"
                   >
                     {prediction.username}
                   </Link>
                 </div>
                 <div className="flex flex-col items-end ml-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-white font-bold text-lg">{prediction.pred_home}</span>
-                    <span className="text-slate-400">x</span>
-                    <span className="text-white font-bold text-lg">{prediction.pred_away}</span>
+                    <span className="text-foreground font-bold text-lg">{prediction.pred_home}</span>
+                    <span className="text-muted-foreground">x</span>
+                    <span className="text-foreground font-bold text-lg">{prediction.pred_away}</span>
                   </div>
                   {(prediction.pred_extra_result || prediction.pred_pen_home != null || prediction.pred_pen_winner) && (
-                    <div className="text-[10px] text-slate-400 text-right leading-tight mt-0.5">
+                    <div className="text-[10px] text-muted-foreground text-right leading-tight mt-0.5">
                       {extraLabel(prediction.pred_extra_result, match.team_home, match.team_away) && (
                         <div>{extraLabel(prediction.pred_extra_result, match.team_home, match.team_away)}</div>
                       )}

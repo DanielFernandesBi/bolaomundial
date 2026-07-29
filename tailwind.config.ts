@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 const config: Config = {
   darkMode: ["class"],
@@ -6,6 +7,9 @@ const config: Config = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    // lib/ também define classes (lib/scoring-ui.ts). Sem esta linha o Tailwind
+    // não gera bg-score-*, border-hairline etc. e as etiquetas saem sem cor.
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     container: {
@@ -16,6 +20,10 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
+        mono: ["var(--font-mono)", ...defaultTheme.fontFamily.mono],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -58,6 +66,24 @@ const config: Config = {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          sunken: "hsl(var(--surface-sunken))",
+        },
+        hairline: "hsl(var(--hairline))",
+        state: {
+          open: "hsl(var(--state-open))",
+          closing: "hsl(var(--state-closing))",
+          urgent: "hsl(var(--state-urgent))",
+          locked: "hsl(var(--state-locked))",
+          missing: "hsl(var(--state-missing))",
+        },
+        score: {
+          exact: "hsl(var(--score-exact))",
+          partial: "hsl(var(--score-partial))",
+          none: "hsl(var(--score-none))",
+        },
+        money: "hsl(var(--money))",
       },
       borderRadius: {
         lg: "var(--radius)",

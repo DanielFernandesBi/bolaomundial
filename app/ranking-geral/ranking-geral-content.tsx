@@ -1,22 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { Award, DollarSign, Share2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Award, Share2 } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { ShareRankingCard } from '@/components/share-ranking-card';
 import { ShareFullRankingCard } from '@/components/share-full-ranking-card';
 import { shareAsImage } from '@/lib/shareUtils';
+import { Toast } from '@/components/toast';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface GeneralRankingProfile {
   id: string;
@@ -30,12 +23,49 @@ interface GeneralRankingProfile {
 interface RankingGeralContentProps {
   profiles: GeneralRankingProfile[];
   currentUserId?: string;
+  /** true quando renderizado DENTRO do ranking do torneio: esconde o título e
+      o botão de topo, que já existem na tela hospedeira. Opcional e default
+      false — a página própria não muda. */
+  embedded?: boolean;
 }
 
-export function RankingGeralContent({ profiles, currentUserId }: RankingGeralContentProps) {
+export function RankingGeralContent({ profiles, currentUserId, embedded = false }: RankingGeralContentProps) {
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
+
+  // Abas de ordenação. O servidor continua sendo a fonte de quem está no
+  // ranking e de quanto cada um tem; a aba só REORDENA o mesmo array para
+  // exibir — nada é recalculado. É o mesmo padrão que o ranking do torneio já
+  // usa (useMemo sobre `profiles`).
+  const [activeTab, setActiveTab] = useState<'pontos' | 'cravadas' | 'premios'>('pontos');
+  const showPrizes = activeTab === 'premios';
+  const showCravadas = activeTab === 'cravadas';
+
+  const sortedProfiles = useMemo(() => {
+    const sorted = [...profiles];
+    if (activeTab === 'cravadas') {
+      sorted.sort((a, b) =>
+        b.total_exact_matches !== a.total_exact_matches
+          ? b.total_exact_matches - a.total_exact_matches
+          : b.total_points - a.total_points
+      );
+    } else if (activeTab === 'premios') {
+      sorted.sort((a, b) =>
+        Number(b.total_money) !== Number(a.total_money)
+          ? Number(b.total_money) - Number(a.total_money)
+          : b.total_points - a.total_points
+      );
+    } else {
+      sorted.sort((a, b) =>
+        b.total_points !== a.total_points
+          ? b.total_points - a.total_points
+          : b.total_exact_matches - a.total_exact_matches
+      );
+    }
+    return sorted;
+  }, [profiles, activeTab]);
 
 
   function formatMoney(value: number): string {
@@ -67,9 +97,11 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
       // Gerar e compartilhar imagem
       await shareAsImage(cardId, `bolao-ranking-geral-${profile.id}.png`);
       
-      setToast('Imagem gerada! Compartilhe com a galera 🎉');
+      setToastTone('success');
+      setToast('Imagem gerada! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
+      setToastTone('error');
       setToast(error.message || 'Erro ao gerar imagem');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -84,9 +116,11 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
       await shareAsImage('share-full-ranking-card-geral', 'bolao-ranking-geral-completo.png');
-      setToast('Ranking completo gerado! Compartilhe com a galera 🎉');
+      setToastTone('success');
+      setToast('Ranking completo gerado! Compartilhe com a galera');
       setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
+      setToastTone('error');
       setToast(error.message || 'Erro ao gerar imagem');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -97,15 +131,17 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
   return (
     <div>
       {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-md shadow-lg">
-          {toast}
-        </div>
-      )}
+      <Toast message={toast} tone={toastTone} />
 
       {/* Cards ocultos para compartilhamento individual */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
-        {profiles.map((profile, index) => {
+        {/* SOB DEMANDA — ver nota no ranking do torneio. */}
+        {/* sortedProfiles, NÃO profiles: a posição da imagem tem de ser a mesma
+            que o jogador está vendo na tela. Com o array original, quem era 1º
+            em Cravadas compartilhava uma imagem dizendo 7º (a posição dele por
+            pontos). */}
+        {sortedProfiles.map((profile, index) => {
+          if (sharingId !== profile.id) return null;
           const position = index + 1;
           return (
             <div key={`share-ranking-card-${profile.id}`} id={`share-ranking-card-${profile.id}`}>
@@ -123,29 +159,35 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
         })}
       </div>
 
-      {/* Card oculto para compartilhamento do ranking completo */}
+      {/* Card oculto do ranking completo — também sob demanda */}
+      {sharingFullRanking && (
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
         <ShareFullRankingCard
-          profiles={profiles.map((profile, index) => ({
+          profiles={sortedProfiles.map((profile, index) => ({
             position: index + 1,
             username: profile.username,
             avatar_url: profile.avatar_url,
             total_points: profile.total_points,
             exact_matches: profile.total_exact_matches,
+            total_money: Number(profile.total_money) || 0,
           }))}
           isGeneralRanking={true}
+          showCravadas={showCravadas}
+          showPrizes={showPrizes}
           cardId="share-full-ranking-card-geral"
         />
       </div>
+      )}
 
       {/* Cabeçalho com botão de compartilhar */}
+      {!embedded && (
       <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <Award className="w-8 h-8 text-amber-500" />
-            <h1 className="text-4xl font-bold text-white">Ranking Geral</h1>
+            <Award className="w-8 h-8 text-primary" />
+            <h1 className="text-4xl font-bold text-foreground">Ranking Geral</h1>
           </div>
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             Classificação geral de todos os jogadores por total de pontos
           </p>
         </div>
@@ -154,7 +196,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
           variant="outline"
           onClick={handleShareFullRanking}
           disabled={sharingFullRanking}
-          className="text-amber-500 border-amber-500 hover:bg-amber-500/10"
+          className="text-primary border-primary hover:bg-primary/10"
         >
           {sharingFullRanking ? (
             'Gerando...'
@@ -166,183 +208,124 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
           )}
         </Button>
       </div>
+      )}
 
-      {/* Cards Mobile (md:hidden) */}
-      <div className="md:hidden space-y-3">
-        {profiles.length > 0 ? (
-          profiles.map((profile, index) => {
+      {/* Abas de ordenação */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as 'pontos' | 'cravadas' | 'premios')}
+        className="mb-4"
+      >
+        <TabsList className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+          {([['pontos', 'Pontos'], ['cravadas', 'Cravadas'], ['premios', 'Prêmios']] as const).map(([v, label]) => (
+            <TabsTrigger
+              key={v}
+              value={v}
+              className="h-9 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {/* Lista única, responsiva. Antes havia dois blocos: cards md:hidden e
+          tabela hidden md:block, com o mesmo conteúdo mantido em dobro. */}
+      <div className="space-y-2">
+        {sortedProfiles.length > 0 ? (
+          sortedProfiles.map((profile, index) => {
             const position = index + 1;
+            const isMe = !!currentUserId && profile.id === currentUserId;
             const isTop3 = position <= 3;
+            const hasPrize = Number(profile.total_money) > 0;
+
+            // Três pesos: você, top 3, demais.
+            const row = isMe
+              ? 'border-primary/45 bg-primary/10'
+              : isTop3
+              ? 'border-border bg-card'
+              : 'border-hairline bg-surface-sunken';
 
             return (
-              <Card
+              <div
                 key={profile.id}
-                className={`bg-slate-900 border-slate-800 ${
-                  isTop3 ? 'border-amber-500/50 bg-amber-500/5' : ''
-                }`}
+                className={`flex items-center gap-3 rounded-[14px] border px-3 py-2.5 ${row}`}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className={`font-bold text-lg min-w-[40px] ${
-                        isTop3 ? 'text-amber-500' : 'text-slate-400'
-                      }`}>
-                        {position}º
-                      </span>
-                      <Avatar className="w-12 h-12 border-2 border-slate-700">
-                        <AvatarImage src={profile.avatar_url || undefined} />
-                        <AvatarFallback className="bg-slate-800 text-white">
-                          {getInitials(profile.username)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <Link 
-                        href={`/profile/${profile.id}`}
-                        className="text-white font-semibold flex-1 truncate hover:text-amber-500 transition-colors"
-                      >
-                        {profile.username}
-                      </Link>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleShareRanking(profile, position)}
-                      disabled={sharingId === profile.id}
-                      className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
-                    >
-                      {sharingId === profile.id ? (
-                        'Gerando...'
-                      ) : (
-                        <Share2 className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <div className="space-y-2 pt-2 border-t border-slate-800">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400 text-sm">Pontos</span>
-                      <span className="text-amber-500 font-bold text-lg">
-                        {profile.total_points.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400 text-sm">Dinheiro</span>
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4 text-amber-500" />
-                        <span className="text-amber-500 font-semibold">
-                          {formatMoney(profile.total_money)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                <span
+                  className={`w-7 flex-shrink-0 text-center text-[15px] font-bold tabular-nums ${
+                    isMe || isTop3 ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  {position}
+                </span>
+
+                <Avatar className="h-9 w-9 flex-shrink-0 border border-border">
+                  <AvatarImage src={profile.avatar_url || undefined} />
+                  <AvatarFallback className="bg-muted text-xs text-foreground">
+                    {getInitials(profile.username)}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/profile/${profile.id}`}
+                    className="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                  >
+                    {profile.username}
+                    {isMe && <span className="ml-1.5 text-[11px] font-normal text-primary">você</span>}
+                  </Link>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {showPrizes
+                      ? `${profile.total_points.toLocaleString('pt-BR')} pontos · ${profile.total_exact_matches} ${
+                          profile.total_exact_matches === 1 ? 'cravada' : 'cravadas'
+                        }`
+                      : showCravadas
+                      ? `${profile.total_points.toLocaleString('pt-BR')} pontos`
+                      : `${profile.total_exact_matches} ${
+                          profile.total_exact_matches === 1 ? 'cravada' : 'cravadas'
+                        } · ${hasPrize ? `${formatMoney(profile.total_money)} em prêmios` : 'sem prêmio ainda'}`}
+                  </p>
+                </div>
+
+                <span
+                  className={`flex-shrink-0 text-base font-bold tabular-nums ${
+                    showPrizes && !hasPrize ? 'text-muted-foreground' : 'text-foreground'
+                  }`}
+                >
+                  {showPrizes
+                    ? hasPrize
+                      ? formatMoney(profile.total_money)
+                      : 'sem prêmio'
+                    : showCravadas
+                    ? profile.total_exact_matches
+                    : profile.total_points.toLocaleString('pt-BR')}
+                </span>
+
+                {/* Irmão do link, nunca aninhado dentro dele */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleShareRanking(profile, position)}
+                  disabled={sharingId === profile.id}
+                  aria-label={`Compartilhar a posição de ${profile.username}`}
+                  className="h-9 w-9 flex-shrink-0 p-0 text-primary hover:bg-primary/10 hover:text-primary"
+                >
+                  {sharingId === profile.id ? '...' : <Share2 className="h-4 w-4" />}
+                </Button>
+              </div>
             );
           })
         ) : (
-          <Card className="bg-slate-900 border-slate-800">
-            <CardContent className="p-8 text-center text-slate-400">
-              Nenhum jogador encontrado.
-            </CardContent>
-          </Card>
+          <div className="rounded-[14px] border border-hairline bg-surface-sunken p-8 text-center text-muted-foreground">
+            Nenhum jogador encontrado.
+          </div>
         )}
       </div>
 
-      {/* Tabela Desktop (hidden md:block) */}
-      <Card className="bg-slate-900 border-slate-800 hidden md:block">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-800">
-                  <TableHead className="text-slate-300 w-16">#</TableHead>
-                  <TableHead className="text-slate-300">Jogador</TableHead>
-                  <TableHead className="text-slate-300 text-right">Dinheiro Total</TableHead>
-                  <TableHead className="text-slate-300 text-right">Pontos Totais</TableHead>
-                  <TableHead className="text-slate-300 text-right">Cravadas Totais</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {profiles.length > 0 ? (
-                  profiles.map((profile, index) => {
-                    const position = index + 1;
-                    const isTop3 = position <= 3;
-
-                    return (
-                      <TableRow
-                        key={profile.id}
-                        className={`border-slate-800 ${
-                          isTop3
-                            ? 'bg-amber-500/10 hover:bg-amber-500/20'
-                            : 'hover:bg-slate-800/50'
-                        }`}
-                      >
-                        <TableCell className="text-slate-300 font-bold">
-                          {position}º
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-10 h-10 border-2 border-slate-700">
-                              <AvatarImage
-                                src={profile.avatar_url || undefined}
-                              />
-                              <AvatarFallback className="bg-slate-800 text-white">
-                                {getInitials(profile.username)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <Link
-                              href={`/profile/${profile.id}`}
-                              className="text-white font-medium hover:text-amber-500 transition-colors"
-                            >
-                              {profile.username}
-                            </Link>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleShareRanking(profile, position)}
-                              disabled={sharingId === profile.id}
-                              className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 ml-auto"
-                            >
-                              {sharingId === profile.id ? (
-                                'Gerando...'
-                              ) : (
-                                <Share2 className="w-4 h-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <DollarSign className="w-5 h-5 text-amber-500" />
-                            <span className="text-amber-500 font-bold text-lg">
-                              {formatMoney(profile.total_money)}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-slate-300 text-right">
-                          {profile.total_points.toLocaleString('pt-BR')}
-                        </TableCell>
-                        <TableCell className="text-slate-300 text-right">
-                          {profile.total_exact_matches}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-slate-400 py-8">
-                      Nenhum jogador encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Legenda */}
-      <div className="mt-6 text-slate-400 text-sm">
+      <div className="mt-6 text-muted-foreground text-sm">
         <p>
-          💰 <strong>Dinheiro Total:</strong> Soma de todos os prêmios ganhos em todos os torneios.
+          <strong className="text-card-foreground">Dinheiro total:</strong> soma de todos os prêmios ganhos em todos os torneios.
         </p>
       </div>
     </div>

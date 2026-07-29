@@ -22,7 +22,7 @@ export default async function SimuladorPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden transition-colors">
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-5xl">
         <SimuladorContent tournamentSlug={tournamentSlug} tournamentName={tournament.name} />
       </div>
     </div>

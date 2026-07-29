@@ -13,6 +13,7 @@ import { HistoryList } from './history-list';
 import { ScoringLegend } from '@/components/scoring-legend';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
+import { scoreTier } from '@/lib/scoring-ui';
 
 interface DesempenhoPageProps {
   params: Promise<{
@@ -40,67 +41,9 @@ function formatDate(dateString: string): string {
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-// Função para obter badge de pontos (novo sistema)
-function getPointsBadge(points: number) {
-  if (points === 30 || points === 25) {
-    return {
-      bg: 'bg-amber-500',
-      text: 'Cravada!',
-      color: 'text-amber-500',
-      category: 'A. Placar Exato',
-    };
-  } else if (points === 17) {
-    return {
-      bg: 'bg-purple-500',
-      text: 'Vencedor + Gols Vencedor',
-      color: 'text-purple-400',
-      category: 'B. Vencedor + Gols do Vencedor',
-    };
-  } else if (points === 15) {
-    return {
-      bg: 'bg-blue-500',
-      text: 'Vencedor + Saldo / Empate',
-      color: 'text-blue-400',
-      category: 'C. Vencedor + Saldo de Gols / E. Empate Seco',
-    };
-  } else if (points === 12) {
-    return {
-      bg: 'bg-green-500',
-      text: 'Vencedor + Gols Perdedor / Empate',
-      color: 'text-green-400',
-      category: 'D. Vencedor + Gols do Perdedor / E. Empate Seco',
-    };
-  } else if (points === 10 || points === 9) {
-    return {
-      bg: 'bg-cyan-500',
-      text: 'Vencedor Seco',
-      color: 'text-cyan-400',
-      category: 'F. Vencedor Seco',
-    };
-  } else if (points === 3) {
-    return {
-      bg: 'bg-orange-500',
-      text: 'Consolação',
-      color: 'text-orange-400',
-      category: 'G. Consolação (Gols Avulsos)',
-    };
-  } else if (points > 0) {
-    // Totais de mata-mata (tempo normal + prorrogação/pênaltis) podem não cair numa faixa única
-    return {
-      bg: 'bg-emerald-600',
-      text: 'Pontuado',
-      color: 'text-emerald-400',
-      category: 'Inclui bônus de mata-mata',
-    };
-  } else {
-    return {
-      bg: 'bg-slate-600',
-      text: 'Sem pontos',
-      color: 'text-slate-400',
-      category: 'Sem pontos',
-    };
-  }
-}
+// A antiga getPointsBadge() vivia aqui: 60 linhas com a escala de 8 cores,
+// declaradas e nunca chamadas. Removida na Fase 3 — a exibição da pontuação
+// agora sai de lib/scoring-ui.ts (scoreTier / tierBadge / tierRow).
 
 export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
   const { tournament: tournamentSlug } = await params;
@@ -133,9 +76,9 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen bg-slate-950">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-red-500">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 pb-28 md:pb-8">
+          <div className="text-destructive">
             Erro ao carregar desempenho: {error || 'Desempenho não encontrado'}
           </div>
         </div>
@@ -153,14 +96,14 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
   const memberSince = formatDate(profile.created_at);
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-x-hidden">
-      <div className="container mx-auto px-4 py-8 max-w-full">
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-full">
         {/* Cabeçalho do Desempenho */}
-        <Card className="bg-slate-900 border-slate-800 mb-8">
+        <Card className="bg-card border-border mb-8">
           <CardContent className="p-6">
             <div className="flex items-center gap-6 flex-wrap">
               {/* Avatar com Upload */}
-              <div className="bg-amber-500 rounded-full p-1">
+              <div className="bg-primary rounded-full p-1">
                 <AvatarUploadDialog
                   currentAvatarUrl={profile.avatar_url}
                   userId={profile.id}
@@ -170,16 +113,16 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
 
               {/* Informações */}
               <div className="flex-1 min-w-[200px]">
-                <h1 className="text-3xl font-bold text-white mb-2">
+                <h1 className="text-3xl font-bold text-foreground mb-2">
                   {profile.username}
                 </h1>
-                <p className="text-slate-400 text-sm mb-3">
+                <p className="text-muted-foreground text-sm mb-3">
                   Membro desde {memberSince}
                 </p>
                 {profile.ranking_position && (
-                  <div className="inline-flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full">
-                    <Trophy className="w-4 h-4 text-amber-500" />
-                    <span className="text-white text-sm">
+                  <div className="inline-flex items-center gap-2 bg-muted px-3 py-1 rounded-full">
+                    <Trophy className="w-4 h-4 text-primary" />
+                    <span className="text-foreground text-sm">
                       {profile.ranking_position}º Lugar no ranking do {tournament.name}
                     </span>
                   </div>
@@ -189,97 +132,75 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
           </CardContent>
         </Card>
 
-        {/* Grid de Estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          {/* Pontos */}
-          <Card className="bg-slate-900 border-slate-800">
-            <CardContent className="p-6 text-center">
-              <TrendingUp className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-white mb-1">
-                {profile.total_points}
-              </div>
-              <div className="text-slate-400 text-sm">Pontos</div>
-            </CardContent>
-          </Card>
-
-          {/* Cravadas */}
-          <Card className="bg-slate-900 border-slate-800">
-            <CardContent className="p-6 text-center">
-              <Trophy className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-white mb-1">
-                {profile.exact_matches}
-              </div>
-              <div className="text-slate-400 text-sm">Cravadas</div>
-            </CardContent>
-          </Card>
-
-          {/* Acertos */}
-          <Card className="bg-slate-900 border-slate-800">
-            <CardContent className="p-6 text-center">
-              <Target className="w-8 h-8 text-green-500 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-white mb-1">
-                {profile.correct_predictions}
-              </div>
-              <div className="text-slate-400 text-sm">Acertos</div>
-            </CardContent>
-          </Card>
-
-          {/* Total de Palpites */}
-          <Card className="bg-slate-900 border-slate-800">
-            <CardContent className="p-6 text-center">
-              <User className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-white mb-1">
-                {profile.total_predictions}
-              </div>
-              <div className="text-slate-400 text-sm">Palpites</div>
-            </CardContent>
-          </Card>
+        {/* Hero: posição e pontos. Antes eram 7 cards de peso igual, o que
+            não dizia o que olhar primeiro. */}
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="rounded-[16px] border border-primary/30 bg-primary/5 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+              Posição
+            </p>
+            <p className="mt-1 text-[32px] font-bold leading-none tabular-nums text-primary">
+              {profile.ranking_position ?? '—'}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">no {tournament.name}</p>
+          </div>
+          <div className="rounded-[16px] border border-border bg-card p-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+              Pontos
+            </p>
+            <p className="mt-1 text-[32px] font-bold leading-none tabular-nums text-foreground">
+              {profile.total_points}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {profile.total_predictions} {profile.total_predictions === 1 ? 'palpite' : 'palpites'}
+            </p>
+          </div>
         </div>
 
-        {/* Estatísticas Adicionais (Baseadas em Jogos Finalizados) */}
-        {(profile as any).finished_predictions_count > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            {/* Porcentagem de Acerto */}
-            <Card className="bg-slate-900 border-slate-800">
-              <CardContent className="p-6 text-center">
-                <Target className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-white mb-1">
-                  {(profile as any).accuracy_percentage}%
-                </div>
-                <div className="text-slate-400 text-sm">Porcentagem de Acerto</div>
-                <div className="text-slate-500 text-xs mt-1">
-                  {((profile as any).finished_predictions_count || 0)} jogos finalizados
-                </div>
-              </CardContent>
-            </Card>
+        {/* Faixa de métricas, com divisórias de 1px */}
+        <div className="mb-4 grid grid-cols-4 divide-x divide-hairline rounded-[16px] border border-border bg-card">
+          {([
+            ['Cravadas', profile.exact_matches],
+            ['Acertos', profile.correct_predictions],
+            ['Aproveit.', `${(profile as any).accuracy_percentage ?? 0}%`],
+            ['Média', (profile as any).average_points ?? 0],
+          ] as const).map(([label, value]) => (
+            <div key={label} className="px-2 py-3 text-center">
+              <p className="text-lg font-bold tabular-nums text-foreground">{value}</p>
+              <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+                {label}
+              </p>
+            </div>
+          ))}
+        </div>
 
-            {/* Porcentagem de Cravadas */}
-            <Card className="bg-slate-900 border-slate-800">
-              <CardContent className="p-6 text-center">
-                <Trophy className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-white mb-1">
-                  {(profile as any).exact_matches_percentage}%
-                </div>
-                <div className="text-slate-400 text-sm">Porcentagem de Cravadas</div>
-                <div className="text-slate-500 text-xs mt-1">
-                  {((profile as any).finished_predictions_count || 0)} jogos finalizados
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Média de Pontos */}
-            <Card className="bg-slate-900 border-slate-800">
-              <CardContent className="p-6 text-center">
-                <TrendingUp className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-white mb-1">
-                  {(profile as any).average_points}
-                </div>
-                <div className="text-slate-400 text-sm">Média de Pontos</div>
-                <div className="text-slate-500 text-xs mt-1">
-                  Por jogo finalizado
-                </div>
-              </CardContent>
-            </Card>
+        {/* Últimos 8 jogos: forma recente num relance, pela escala de 3 níveis */}
+        {profile.history && profile.history.length > 0 && (
+          <div className="mb-8 rounded-[16px] border border-border bg-card p-4">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+              Últimos jogos
+            </p>
+            <div className="flex gap-1.5">
+              {profile.history.slice(0, 8).reverse().map((h: any) => {
+                const pts = h.points_earned ?? 0;
+                const tier = scoreTier(h.points_regular ?? pts);
+                const tone =
+                  tier === 'exact'
+                    ? 'bg-score-exact text-primary-foreground'
+                    : tier === 'partial'
+                    ? 'bg-score-partial/20 text-score-partial'
+                    : 'bg-score-none/10 text-muted-foreground';
+                return (
+                  <span
+                    key={h.match_id}
+                    title={`${h.team_home} x ${h.team_away}: ${pts} pts`}
+                    className={`flex h-[34px] flex-1 items-center justify-center rounded-[8px] text-xs font-bold tabular-nums ${tone}`}
+                  >
+                    {pts}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -287,10 +208,10 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
         <ScoringLegend variant={scoringVariant} />
 
         {/* Histórico de Palpites */}
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Calendar className="w-5 h-5 text-amber-500" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Calendar className="w-5 h-5 text-primary" />
               Histórico de Palpites - {tournament.name}
             </CardTitle>
           </CardHeader>

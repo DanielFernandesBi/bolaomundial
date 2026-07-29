@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, AlertTriangle, CheckCircle, LockKeyhole } from 'lucide-react';
 
 interface TimeLeft {
   days: number;
@@ -23,13 +22,26 @@ function calcTimeLeft(targetDate: Date): TimeLeft | null {
   };
 }
 
+interface MissingByCompetition {
+  key: string;
+  short: string;
+  count: number;
+}
+
 interface Props {
   // Horário do próximo jogo a fechar os palpites (bloqueio é por partida)
   nextMatchDate: string | null;
   missingPredictionsCount: number;
+  /** Detalhamento do "sem palpite" por competição, no bolão unificado. Vazio
+      (o padrão) mantém exatamente a etiqueta única de antes. */
+  missingByCompetition?: MissingByCompetition[];
 }
 
-export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCount }: Props) {
+export function TournamentDeadlineBanner({
+  nextMatchDate,
+  missingPredictionsCount,
+  missingByCompetition = [],
+}: Props) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -53,21 +65,25 @@ export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCoun
 
   const tournamentStarted = timeLeft === null;
 
-  // ── Cores e urgência do countdown ──────────────────────────────────────────
-  const isUrgent   = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60;        // < 1h
-  const isWarning  = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60 * 24;   // < 24h
+  // ── Aparência por urgência ─────────────────────────────────────────────────
+  const isUrgent  = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60;        // < 1h
+  const isWarning = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60 * 24;   // < 24h
 
-  const countdownBg     = isUrgent  ? 'bg-red-500/10 border-red-500/40'
-                        : isWarning ? 'bg-amber-500/10 border-amber-500/40'
-                        :             'bg-blue-500/10 border-blue-500/30';
+  const tone = tournamentStarted
+    ? 'border-border bg-surface-sunken text-muted-foreground'
+    : isUrgent
+    ? 'border-state-urgent/40 bg-state-urgent/10 text-state-urgent'
+    : isWarning
+    ? 'border-state-closing/30 bg-state-closing/10 text-state-closing'
+    : 'border-border bg-card text-muted-foreground';
 
-  const countdownText   = isUrgent  ? 'text-red-400'
-                        : isWarning ? 'text-amber-400'
-                        :             'text-blue-400';
-
-  const countdownIcon   = isUrgent  ? <Clock className="w-5 h-5 text-red-400 flex-shrink-0" />
-                        : isWarning ? <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                        :             <Clock className="w-5 h-5 text-blue-400 flex-shrink-0" />;
+  const dot = tournamentStarted
+    ? 'bg-state-locked'
+    : isUrgent
+    ? 'bg-state-urgent'
+    : isWarning
+    ? 'bg-state-closing'
+    : 'bg-state-locked';
 
   // ── Texto do countdown ─────────────────────────────────────────────────────
   function buildCountdownText(): string {
@@ -83,58 +99,97 @@ export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCoun
     return parts.join(' ');
   }
 
-  return (
-    <div className="space-y-3 mb-6">
+  // No bolão unificado a etiqueta única ("36 sem palpite") não dizia de QUAL
+  // competição faltava — e é essa a informação que faz o jogador agir. Vira uma
+  // faixa: Total + uma célula por competição. Quatro colunas cabem em 360px com
+  // o rótulo em 9px monoespaçado, mesmo padrão das faixas de métrica do
+  // Desempenho e do Perfil.
+  const detalhado = missingByCompetition.length > 0;
 
-      {/* ── Countdown do próximo jogo a fechar ─────────────────────────────── */}
-      {tournamentStarted ? (
-        <div className="flex items-center gap-3 rounded-lg border bg-slate-800/50 border-slate-600/40 px-4 py-3">
-          <LockKeyhole className="w-5 h-5 text-slate-400 flex-shrink-0" />
-          <p className="text-slate-400 text-sm font-medium">
-            Cada jogo encerra os palpites no seu próprio horário de início.
-          </p>
-        </div>
-      ) : (
-        <div className={`flex items-center gap-3 rounded-lg border px-4 py-3 ${countdownBg}`}>
-          {countdownIcon}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-            <span className={`text-sm font-medium ${countdownText}`}>
-              Próximo jogo fecha os palpites em:
-            </span>
-            <span className={`text-base font-bold tracking-wider ${countdownText}`}>
+  return (
+    <div className={`mb-6 rounded-[12px] border px-3 py-3 text-xs ${tone}`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className={`h-2 w-2 flex-shrink-0 rounded-full ${dot}`} aria-hidden="true" />
+
+        {tournamentStarted ? (
+          <span className="font-medium">Cada jogo encerra os palpites no seu próprio horário</span>
+        ) : (
+          <>
+            <span className="font-medium">Próximo jogo fecha em</span>
+            <span className="font-mono text-sm font-bold tabular-nums tracking-wider">
               {buildCountdownText()}
             </span>
-          </div>
-        </div>
-      )}
+          </>
+        )}
 
-      {/* ── Alerta de palpites em branco (só antes do prazo) ──────────────── */}
-      {!tournamentStarted && missingPredictionsCount > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border bg-orange-500/10 border-orange-500/40 px-4 py-3">
-          <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-orange-400 text-sm font-semibold">
-              {missingPredictionsCount === 1
-                ? 'Você tem 1 jogo sem palpite!'
-                : `Você tem ${missingPredictionsCount} jogos sem palpite!`}
-            </p>
-            <p className="text-orange-300/70 text-xs mt-0.5">
-              Jogos sem palpite valem 0 pontos. Preencha antes do início de cada jogo.
-            </p>
-          </div>
-        </div>
-      )}
+        {/* Etiqueta única: só quando NÃO há detalhamento por competição —
+            torneio de competição única segue igual ao que era. */}
+        {!detalhado && !tournamentStarted && (
+          <span
+            className={`ml-auto flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              missingPredictionsCount > 0
+                ? 'bg-state-missing/15 text-state-missing'
+                : 'bg-state-open/10 text-state-open'
+            }`}
+          >
+            {missingPredictionsCount > 0
+              ? `${missingPredictionsCount} sem palpite`
+              : 'tudo em dia'}
+          </span>
+        )}
+      </div>
 
-      {/* ── Tudo preenchido (só antes do prazo) ───────────────────────────── */}
-      {!tournamentStarted && missingPredictionsCount === 0 && (
-        <div className="flex items-center gap-3 rounded-lg border bg-green-500/10 border-green-500/30 px-4 py-3">
-          <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-          <p className="text-green-400 text-sm font-medium">
-            Todos os palpites preenchidos. Boa sorte!
+      {detalhado && (
+        <div className="mt-3 border-t border-hairline pt-2.5">
+          <p className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
+            Sem palpite
           </p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {[{ key: '__total', short: 'Total', count: missingPredictionsCount }, ...missingByCompetition].map(
+              ({ key, short, count }) => {
+                // Zero fica calmo; o que falta fica em state-missing. É assim
+                // que se vê num relance ONDE está o buraco.
+                const pendente = count > 0;
+                const total = key === '__total';
+                return (
+                  <div
+                    key={key}
+                    className={`rounded-[10px] border px-1 py-1.5 text-center ${
+                      pendente
+                        ? 'border-state-missing/35 bg-state-missing/10'
+                        : 'border-hairline bg-state-open/5'
+                    }`}
+                  >
+                    <p
+                      className={`text-base font-bold leading-none tabular-nums ${
+                        pendente
+                          ? 'text-state-missing'
+                          : total
+                          ? 'text-state-open'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {count}
+                    </p>
+                    {/* SEM truncate: numa tela de 360px cada coluna tem ~71px e
+                        "COPA DO BRASIL" não cabe numa linha. Truncar viraria
+                        "COPA DO BRASI…"; quebrar em duas linhas mantém o nome
+                        inteiro, e o grid iguala a altura das quatro células. */}
+                    <p
+                      className={`mt-1 font-mono text-[8.5px] uppercase leading-[1.2] tracking-[0.06em] ${
+                        total ? 'text-card-foreground' : 'text-[hsl(var(--faint))]'
+                      }`}
+                      title={short}
+                    >
+                      {short}
+                    </p>
+                  </div>
+                );
+              }
+            )}
+          </div>
         </div>
       )}
-
     </div>
   );
 }

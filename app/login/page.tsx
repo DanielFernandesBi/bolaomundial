@@ -1,19 +1,37 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, Lock, ArrowRight, User } from 'lucide-react';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import Link from 'next/link';
 import { loginAction, signupAction } from './actions';
+
+// ============================================================================
+// Login / Criar conta
+// ============================================================================
+// O rearranjo do bloco 6c: o alternador saiu do rodapé (onde era um link de
+// texto e ninguém via) e virou um segmentado no topo do cartão, que é o padrão
+// de app. Os ícones dentro dos campos foram removidos: eles empurravam o texto
+// para a direita e, no celular, competiam com o cursor sem informar nada que o
+// rótulo já não dissesse.
+//
+// Nada da lógica mudou: as mesmas duas actions, os mesmos `name` dos campos e
+// o mesmo tratamento de erro/sucesso.
+// ============================================================================
+
+const campo =
+  'h-12 w-full rounded-[12px] border border-border bg-surface-sunken px-3 text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:outline-none';
+
+const rotulo = 'mb-1.5 block text-xs font-semibold text-card-foreground';
 
 export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Controlado de propósito: no React 19 o <form action> RESETA o formulário
+  // depois que a action roda. Com o campo não-controlado, o e-mail era apagado
+  // a cada tentativa falha e o usuário tinha de redigitar no celular.
+  const [email, setEmail] = useState('');
 
   async function handleSubmit(formData: FormData) {
     setIsLoading(true);
@@ -38,142 +56,157 @@ export default function LoginPage() {
     }
   }
 
+  function trocarAba(paraCadastro: boolean) {
+    if (paraCadastro === isSignup) return;
+    setIsSignup(paraCadastro);
+    setError(null);
+    setSuccess(null);
+  }
+
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-      {/* Header com Logo e Título */}
-      <div className="flex flex-col items-center mb-8">
-        {/* Logo do App */}
-        <div className="mb-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-sm">
+        {/* Marca */}
+        <div className="mb-8 flex flex-col items-center">
           <Image
             src="/icon-512.png"
             alt="Arena de Bolões"
-            width={120}
-            height={120}
-            className="rounded-2xl shadow-2xl"
+            width={96}
+            height={96}
+            className="rounded-[22px]"
             priority
           />
+          <h1 className="mt-4 text-2xl font-bold text-foreground">Arena de Bolões</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isSignup ? 'Crie sua conta para participar' : 'Entre para palpitar'}
+          </p>
         </div>
-        
-        {/* Título */}
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-amber-600 bg-clip-text text-transparent mb-2">
-          Arena de Bolões
-        </h1>
-        
-        {/* Subtítulo */}
-        <p className="text-slate-300 text-sm">
-          {isSignup ? 'Crie sua conta para participar' : 'Faça seu login para participar'}
-        </p>
-      </div>
 
-      {/* Card de Login/Cadastro */}
-      <Card className="w-full max-w-md bg-slate-900 border-slate-800">
-        <CardContent className="p-6">
-          <form action={handleSubmit} className="space-y-4">
+        <div className="rounded-[16px] border border-border bg-card p-5">
+          {/* Segmentado: Entrar · Criar conta */}
+          <div
+            role="tablist"
+            aria-label="Entrar ou criar conta"
+            className="mb-5 grid grid-cols-2 gap-1 rounded-[12px] border border-hairline bg-surface-sunken p-1"
+          >
+            {([
+              ['Entrar', false],
+              ['Criar conta', true],
+            ] as const).map(([texto, paraCadastro]) => {
+              const ativo = isSignup === paraCadastro;
+              return (
+                <button
+                  key={texto}
+                  type="button"
+                  role="tab"
+                  aria-selected={ativo}
+                  onClick={() => trocarAba(paraCadastro)}
+                  className={`h-[38px] rounded-[9px] text-sm font-semibold transition-colors ${
+                    ativo
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {texto}
+                </button>
+              );
+            })}
+          </div>
+
+          <form action={handleSubmit}>
             {/* Campo Username (apenas no cadastro) */}
             {isSignup && (
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-slate-200">
-                  Username
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-amber-500/70 z-10" />
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    placeholder="seuusername"
-                    required
-                    className="pl-10 !bg-slate-800/50 !border-slate-700 !text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500"
-                  />
-                </div>
+              <div className="mb-4">
+                <label htmlFor="username" className={rotulo}>
+                  Nome de usuário
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="seuusername"
+                  required
+                  className={campo}
+                />
               </div>
             )}
 
             {/* Campo Email */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-200">
+            <div className="mb-4">
+              <label htmlFor="email" className={rotulo}>
                 E-mail
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-amber-500/70 z-10" />
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  required
-                  className="pl-10 !bg-slate-800/50 !border-slate-700 !text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500"
-                />
-              </div>
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="seu@email.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={campo}
+              />
             </div>
 
             {/* Campo Senha */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-200">
-                Senha
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-amber-500/70 z-10" />
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  className="pl-10 !bg-slate-800/50 !border-slate-700 !text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500"
-                />
+            <div>
+              <div className="flex items-baseline justify-between gap-3">
+                <label htmlFor="password" className={rotulo}>
+                  Senha
+                </label>
+                {!isSignup && (
+                  <Link
+                    href="/login/esqueci"
+                    className="mb-1.5 text-xs font-semibold text-primary transition-opacity hover:opacity-80"
+                  >
+                    Esqueci minha senha
+                  </Link>
+                )}
               </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete={isSignup ? 'new-password' : 'current-password'}
+                placeholder="••••••••"
+                required
+                className={campo}
+              />
             </div>
 
             {/* Mensagem de Erro */}
             {error && (
-              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
+              <p role="alert" className="mt-3 flex items-start gap-2 text-xs text-destructive">
+                <span
+                  className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current"
+                  aria-hidden="true"
+                />
                 {error}
-              </div>
+              </p>
             )}
 
             {/* Mensagem de Sucesso */}
             {success && (
-              <div className="text-sm text-success bg-success/10 border border-success/20 rounded-md p-3">
+              <p
+                role="status"
+                className="mt-3 rounded-[12px] border border-state-open/40 bg-state-open/10 px-3 py-2 text-xs text-state-open"
+              >
                 {success}
-              </div>
+              </p>
             )}
 
-            {/* Botão Entrar/Cadastrar */}
-            <Button
+            <button
               type="submit"
               disabled={isLoading}
-              className="w-full !bg-amber-500 !text-black hover:!bg-amber-400 h-11 text-base font-semibold shadow-lg shadow-amber-500/20 transition-all"
+              className="mt-5 h-[52px] w-full rounded-[12px] bg-primary text-sm font-bold text-primary-foreground transition-colors hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60"
             >
-              {isLoading ? (
-                'Carregando...'
-              ) : (
-                <>
-                  {isSignup ? 'Cadastrar' : 'Entrar'}
-                  <ArrowRight className="ml-2 w-5 h-5 text-black" />
-                </>
-              )}
-            </Button>
+              {isLoading ? 'Carregando…' : isSignup ? 'Criar conta' : 'Entrar'}
+            </button>
           </form>
-        </CardContent>
-      </Card>
-
-      {/* Rodapé com Link de Cadastro/Login */}
-      <div className="mt-6 text-center">
-        <p className="text-slate-300 text-sm">
-          {isSignup ? 'Já tem uma conta? ' : 'Não tem uma conta? '}
-          <button
-            onClick={() => {
-              setIsSignup(!isSignup);
-              setError(null);
-            }}
-            className="text-amber-500 hover:text-amber-400 hover:underline font-semibold transition-colors"
-          >
-            {isSignup ? 'Faça login' : 'Cadastre-se'}
-          </button>
-        </p>
+        </div>
       </div>
     </div>
   );
 }
-

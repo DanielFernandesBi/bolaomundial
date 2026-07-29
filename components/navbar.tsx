@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useParams } from 'next/navigation';
 import { Calendar, Award, User, LogOut, Settings, Home, Crown, BarChart3, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { logoutAction } from '@/app/actions/auth';
 import { getTournamentNavInfo } from '@/app/actions/tournament';
 
@@ -50,7 +51,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
   };
 
   return (
-    <nav className="bg-slate-900 border-b border-slate-800">
+    <nav className="bg-card border-b border-border">
       <div className="container mx-auto px-2 md:px-4 max-w-full overflow-x-hidden">
         <div className="flex items-center justify-between gap-2 py-2 min-h-16">
           {/* Esquerda: Logo/Título */}
@@ -64,7 +65,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
                 sizes="(max-width: 768px) 32px, 40px"
               />
             </div>
-            <span className="text-amber-500 font-semibold text-sm md:text-lg truncate max-w-[120px] md:max-w-none">
+            <span className="text-primary font-semibold text-sm md:text-lg truncate max-w-[120px] md:max-w-none">
               {tournamentName || 'Arena de Bolões'}
             </span>
           </Link>
@@ -77,8 +78,8 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
                 href={getHref('/matches')}
                 className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-md transition-colors ${
                   isActive('/matches')
-                    ? 'bg-amber-500 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    ? 'bg-primary text-foreground'
+                    : 'text-card-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
                 <Calendar className="w-4 h-4 flex-shrink-0" />
@@ -92,8 +93,8 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
                 href={`/${tournamentSlug}/desempenho`}
                 className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-md transition-colors ${
                   pathname === `/${tournamentSlug}/desempenho`
-                    ? 'bg-amber-500 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    ? 'bg-primary text-foreground'
+                    : 'text-card-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
                 <BarChart3 className="w-4 h-4 flex-shrink-0" />
@@ -107,8 +108,8 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
                 href={getHref('/simulador')}
                 className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-md transition-colors ${
                   isActive('/simulador')
-                    ? 'bg-amber-500 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    ? 'bg-primary text-foreground'
+                    : 'text-card-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
                 <TrendingUp className="w-4 h-4 flex-shrink-0" />
@@ -122,8 +123,8 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
                 href={getHref('/ranking')}
                 className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-md transition-colors ${
                   isActive('/ranking')
-                    ? 'bg-amber-500 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    ? 'bg-primary text-foreground'
+                    : 'text-card-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
                 <Award className="w-4 h-4 flex-shrink-0" />
@@ -133,7 +134,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
 
             {/* Separador visual (após links do torneio) */}
             {tournamentSlug && (
-              <div className="h-6 w-px bg-slate-700 mx-1 md:mx-2 flex-shrink-0" />
+              <div className="h-6 w-px bg-muted mx-1 md:mx-2 flex-shrink-0" />
             )}
 
             {/* 4. Ranking Geral - sempre visível */}
@@ -141,8 +142,8 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
               href="/ranking-geral"
               className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-md transition-colors ${
                 pathname === '/ranking-geral'
-                  ? 'bg-amber-500 text-white'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  ? 'bg-primary text-foreground'
+                  : 'text-card-foreground hover:text-foreground hover:bg-accent'
               }`}
             >
               <Award className="w-4 h-4 flex-shrink-0" />
@@ -154,8 +155,8 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
               href="/hall-of-fame"
               className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-md transition-colors ${
                 pathname === '/hall-of-fame'
-                  ? 'bg-amber-500 text-white'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  ? 'bg-primary text-foreground'
+                  : 'text-card-foreground hover:text-foreground hover:bg-accent'
               }`}
             >
               <Crown className="w-4 h-4 flex-shrink-0" />
@@ -163,7 +164,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
             </Link>
 
             {/* Separador visual */}
-            <div className="h-6 w-px bg-slate-700 mx-1 md:mx-2 flex-shrink-0" />
+            <div className="h-6 w-px bg-muted mx-1 md:mx-2 flex-shrink-0" />
 
             {/* 6. Trocar Campeonato (quando dentro de um torneio) */}
             {tournamentSlug && (
@@ -171,7 +172,7 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-slate-300 hover:text-white hover:bg-slate-800 px-2 md:px-3"
+                  className="text-card-foreground hover:text-foreground hover:bg-accent px-2 md:px-3"
                 >
                   <Home className="w-4 h-4 md:mr-2 flex-shrink-0" />
                   <span className="hidden md:inline">Trocar Campeonato</span>
@@ -184,8 +185,8 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className={`text-slate-300 hover:text-white hover:bg-slate-800 px-2 md:px-3 ${
-                  pathname === '/profile' ? 'bg-slate-800' : ''
+                className={`text-card-foreground hover:text-foreground hover:bg-accent px-2 md:px-3 ${
+                  pathname === '/profile' ? 'bg-muted' : ''
                 }`}
               >
                 <User className="w-4 h-4 md:mr-2 flex-shrink-0" />
@@ -199,8 +200,8 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
                 href={getHref('/admin')}
                 className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-md transition-colors ${
                   isActive('/admin')
-                    ? 'bg-amber-500 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    ? 'bg-primary text-foreground'
+                    : 'text-card-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
                 <Settings className="w-4 h-4 flex-shrink-0" />
@@ -208,13 +209,18 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
               </Link>
             )}
 
+            {/* Tema claro/escuro. Esta barra só existe no desktop (o layout a
+                esconde abaixo de md), então até agora o alternador só chegava
+                pelo Perfil. Nada mais do arquivo mudou. */}
+            <ThemeToggle variant="icon" />
+
             {/* Sair */}
             <form action={logoutAction}>
               <Button
                 type="submit"
                 variant="ghost"
                 size="sm"
-                className="text-slate-300 hover:text-white hover:bg-slate-800 px-2 md:px-3"
+                className="text-card-foreground hover:text-foreground hover:bg-accent px-2 md:px-3"
               >
                 <LogOut className="w-4 h-4 md:mr-2 flex-shrink-0" />
                 <span className="hidden md:inline">Sair</span>
