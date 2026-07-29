@@ -20,7 +20,7 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | Bloco | Estado | Commit |
 | --- | --- | --- |
 | 1 — Toast único no rodapé | ✅ | `a2ac0aa` |
-| 2 — Card de partida (stepper 44px, pílula de estado, rodapé de estado) | ⬜ | — |
+| 2 — Card de partida (stepper 44px, pílula de estado, rodapé de estado) | ✅ | `a3735b8` |
 | 3 — Partidas + banner de prazo + pódio | ⬜ | — |
 | 4 — Ranking + Ranking Geral + aba Projeção | ⬜ | — |
 | 5 — Desempenho + Perfil (+ perfil de terceiro) | ⬜ | — |
@@ -57,8 +57,8 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       Sem provider: cada tela mantém o próprio estado; só a apresentação mudou.
 - [ ] Remover o 🎉 e demais emoji das mensagens de toast (ficou para o bloco
       da tela correspondente).
-- [ ] **Botão Salvar** `bg-green-600 hover:bg-green-700` → `bg-primary` +
-      `text-primary-foreground` (`match-card.tsx`, `podium-card.tsx`).
+- [x] **Botão Salvar** em `match-card.tsx` → `bg-primary` (bloco 2).
+      Falta o mesmo em `podium-card.tsx` (bloco 3).
 - [ ] **Botões de excluir** `bg-red-600/700` → `destructive`.
 - [ ] **Medalhas do Hall** (prata/bronze: `border-slate-400`, `amber-700`) →
       2º e 3º viram linhas discretas; lanterna vira nota tracejada.
@@ -66,8 +66,8 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       selecionada é identificada pelo botão, não pela cor.
 - [ ] **`prediction-summary.tsx`**: o desfecho que aconteceu vai a `bg-primary`
       com "· aconteceu"; os outros a `bg-[hsl(var(--score-none))]`.
-- [ ] **`match-card.tsx`**: `bg-green-500` (linha 418) e `bg-slate-600 /
-      hover:bg-slate-500` (linha 580) — botões do wizard.
+- [x] **`match-card.tsx`**: botões do wizard (bloco 2). Nenhuma classe de cor
+      fixa restante no arquivo.
 - [ ] **`app/page.tsx`**: `bg-slate-600/20` do badge de status.
 - [ ] **`ranking-content.tsx`**: `text-amber-200/60`.
 - [ ] **Classes com `!important`** ainda presentes fora do login (o login já
@@ -79,6 +79,18 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       `app/profile/page.tsx`, `app/profile/[userId]/page.tsx`
       (roxo/ciano/amarelo restantes).
 - [ ] **`admin/admin-matches-table.tsx`**: `indigo-300/500` restantes.
+
+### Vindas do bloco 2 (card de partida)
+
+- [ ] **Botão "Ver os N palpites"** no card encerrado: NÃO foi adicionado
+      porque `matches/page.tsx` já embrulha o card encerrado num `<Link>`, e
+      link dentro de link é HTML inválido. Resolver no bloco 3, ao reestruturar
+      a lista (tirar o Link externo e pôr o botão dentro do card).
+- [ ] **Contagem regressiva fina na pílula** ("Fecha em 3h 12m"): a pílula
+      mostra só Aberto/Apostas fechadas/Encerrada/Data a definir, sem relógio
+      próprio, para não criar setInterval nem divergência de hidratação dentro
+      do card. O banner de prazo (bloco 3) já tem essa maquinaria — avaliar se
+      vale reaproveitar aqui.
 
 ### Vindas da Fase 4 (lacunas abertas de propósito)
 
@@ -138,7 +150,11 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
    final, não só o build.
 3. **`public/sw.js` é regenerado pelo `next-pwa` a cada build.** Está na lista
    de intocáveis: reverter (`git checkout -- public/sw.js`) antes de commitar.
-4. **Aviso de `middleware` deprecado** é anterior ao redesign e fora de escopo
+4. **Arbitrárias com decimal são minificadas.** `tracking-[0.13em]` vira
+   `letter-spacing:.13em` no CSS — procurar por "0.13em" dá falso negativo.
+   O mesmo vale para grep de classes com colchetes: escapar direito ou buscar
+   só o valor.
+5. **Aviso de `middleware` deprecado** é anterior ao redesign e fora de escopo
    (`middleware.ts` é intocável).
 
 ---

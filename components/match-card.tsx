@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Lock, ChevronRight, ChevronLeft, Check, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { getFlagUrl } from '@/lib/utils/flags';
 import { scoreTier, tierBadge, bonusBadge } from '@/lib/scoring-ui';
 import { savePrediction } from '@/app/[tournament]/matches/actions';
@@ -85,6 +84,65 @@ function TeamLogo({ iso, alt }: { iso: string | null; alt: string }) {
     );
   }
   return <Image src={getFlagUrl(iso)} alt={alt} width={40} height={40} className="w-10 h-auto rounded" />;
+}
+
+// Stepper de placar: alvos de 44px no lugar do <input type="number">, que no
+// celular abre teclado e erra o toque. Vazio mostra "?" e NUNCA 0 — zero é um
+// palpite válido. O <input> continua no DOM (sr-only) para teclado e leitores.
+// Não tem estado próprio: recebe o mesmo setter que o campo usava.
+function ScoreStepper({
+  value,
+  onChange,
+  label,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  const n = value === '' ? null : parseInt(value);
+  const set = (next: number) => onChange(String(Math.max(0, next)));
+  const btn =
+    'flex h-11 w-11 items-center justify-center rounded-[9px] bg-muted text-foreground text-xl font-bold transition-colors hover:bg-accent disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="max-w-[96px] truncate text-[11px] text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1.5 rounded-[12px] border border-border bg-surface-sunken p-1.5">
+        <button
+          type="button"
+          aria-label={`Diminuir gols de ${label}`}
+          disabled={disabled || n === null || n <= 0}
+          onClick={() => set((n ?? 0) - 1)}
+          className={btn}
+        >
+          &#8722;
+        </button>
+        <span className="w-9 text-center text-2xl font-bold tabular-nums text-foreground">
+          {n === null ? '?' : n}
+        </span>
+        <button
+          type="button"
+          aria-label={`Aumentar gols de ${label}`}
+          disabled={disabled}
+          onClick={() => set((n ?? -1) + 1)}
+          className={btn}
+        >
+          +
+        </button>
+      </div>
+      <input
+        type="number"
+        min="0"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        aria-label={`Gols de ${label}`}
+        className="sr-only"
+      />
+    </div>
+  );
 }
 
 export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
@@ -272,7 +330,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
 
     if (!hasRegular) {
       tone = 'none';
-      text = isLocked ? 'Você não palpitou neste jogo' : 'Você ainda não palpitou neste jogo';
+      text = isLocked ? 'Sem palpite — valeu 0 pontos' : 'Sem palpite — vale 0 pontos';
     } else if (isKnockout) {
       const missing: string[] = [];
       if (extraEnabled && saved.extra === '') missing.push('prorrogação');
@@ -281,29 +339,59 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
       }
       if (missing.length > 0) {
         tone = 'partial';
-        text = `Palpite incompleto — falta: ${missing.join(' e ')}`;
+        text = `Salvo · falta ${missing.join(' e ')}`;
       } else {
         tone = 'complete';
-        text = 'Palpite completo — tudo certo!';
+        text = 'Palpite completo e salvo';
       }
     } else {
       tone = 'complete';
-      text = 'Palpite registrado — tudo certo!';
+      text = 'Palpite completo e salvo';
     }
 
     const styles = {
-      none: 'bg-destructive/15 border-destructive/40 text-destructive',
-      partial: 'bg-primary/15 border-primary/40 text-amber-200',
-      complete: 'bg-state-open/15 border-state-open/40 text-state-open',
+      none: 'border-dashed border-state-missing/45 bg-state-missing/10 text-state-missing',
+      partial: 'border-dashed border-primary/45 bg-primary/10 text-primary',
+      complete: 'border-dashed border-state-open/40 bg-state-open/10 text-state-open',
     }[tone];
 
     const Icon = tone === 'none' ? AlertCircle : tone === 'partial' ? AlertTriangle : CheckCircle2;
 
     return (
-      <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 mb-3 ${styles}`}>
-        <Icon className="w-4 h-4 flex-shrink-0" />
+      <div className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border px-3 ${styles}`}>
+        <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
         <span className="text-sm font-semibold">{text}</span>
       </div>
+    );
+  }
+
+  // Pílula única de estado. Usa apenas valores já derivados (isFinished,
+  // isLocked, dateTbd) — sem relógio próprio, para não introduzir setInterval
+  // nem divergência de hidratação. A contagem regressiva fina ("Fecha em 3h
+  // 12m") é do banner de prazo, que já tem essa maquinaria.
+  function statePill() {
+    let tone: string;
+    let text: string;
+    if (isFinished) {
+      tone = 'text-state-locked bg-state-locked/10';
+      text = 'Encerrada';
+    } else if (isLocked) {
+      tone = 'text-state-locked bg-state-locked/10';
+      text = 'Apostas fechadas';
+    } else if (dateTbd) {
+      tone = 'text-state-closing bg-state-closing/15';
+      text = 'Data a definir';
+    } else {
+      tone = 'text-state-open bg-state-open/10';
+      text = 'Aberto';
+    }
+    return (
+      <span
+        className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-[9px] py-[4px] text-[11px] font-semibold ${tone}`}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+        {text}
+      </span>
     );
   }
 
@@ -315,24 +403,22 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
       <CardContent className="p-4">
         <Toast message={toastMessage} />
 
-        {/* Cabeçalho de status do palpite */}
-        {statusHeader()}
-
         {/* Topo */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-muted-foreground text-sm">{group}</span>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center justify-between gap-2 mb-4 pb-2.5 border-b border-hairline">
+          <span className="font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))] truncate">
+            {group}
+          </span>
+          {statePill()}
+        </div>
+
+        {/* Etiquetas de pontuação (jogo encerrado) */}
+        {isFinished && (
+          <div className="flex items-center gap-2 flex-wrap justify-end mb-3">
             {regularBadge()}
             {extraBadge()}
             {penBadge()}
-            {isLocked && !isFinished && (
-              <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                <Lock className="w-4 h-4" />
-                <span>Bloqueado</span>
-              </div>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Centro: times + (placar quando finalizado ou jogo de grupos) */}
         <div className="flex items-center justify-between mb-4">
@@ -352,27 +438,19 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
               // No mata-mata o placar é editado dentro do passo 1 (abaixo)
               <span className="text-[hsl(var(--faint))] text-2xl font-bold">vs</span>
             ) : (
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min="0"
+              <div className="flex items-start gap-2">
+                <ScoreStepper
                   value={homeScore}
-                  onChange={(e) => setHomeScore(e.target.value)}
+                  onChange={setHomeScore}
+                  label={match.team_home}
                   disabled={isLocked || isSaving}
-                  className={`w-16 text-center text-foreground text-xl font-bold h-12 ${
-                    isLocked ? 'bg-muted border-border opacity-50' : 'bg-background border-border'
-                  }`}
                 />
-                <span className="text-foreground text-xl">x</span>
-                <Input
-                  type="number"
-                  min="0"
+                <span className="mt-9 text-[hsl(var(--faint))] text-lg">x</span>
+                <ScoreStepper
                   value={awayScore}
-                  onChange={(e) => setAwayScore(e.target.value)}
+                  onChange={setAwayScore}
+                  label={match.team_away}
                   disabled={isLocked || isSaving}
-                  className={`w-16 text-center text-foreground text-xl font-bold h-12 ${
-                    isLocked ? 'bg-muted border-border opacity-50' : 'bg-background border-border'
-                  }`}
                 />
               </div>
             )}
@@ -401,8 +479,8 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                     key={s.key}
                     type="button"
                     onClick={() => setStep(n)}
-                    className={`flex items-center justify-center gap-1.5 py-2.5 px-1 text-xs font-semibold transition-colors ${
-                      active ? 'bg-primary text-primary-foreground' : 'text-card-foreground hover:bg-accent'
+                    className={`flex min-h-[34px] items-center justify-center gap-1.5 py-2.5 px-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
+                      active ? 'border-b-2 border-primary bg-primary/15 text-primary' : 'text-card-foreground hover:bg-accent'
                     }`}
                   >
                     <span
@@ -410,8 +488,8 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                         active
                           ? 'bg-black/20 text-primary-foreground'
                           : done
-                          ? 'bg-green-500 text-foreground'
-                          : 'bg-muted text-foreground'
+                          ? 'bg-state-open/20 text-state-open'
+                          : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {done && !active ? <Check className="w-3 h-3" /> : n}
@@ -427,28 +505,10 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
               {currentStepKey === 'normal' && (
                 <div className="space-y-3">
                   <p className="text-sm text-card-foreground text-center font-medium">Placar no tempo normal (90 min)</p>
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{match.team_home}</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={homeScore}
-                        onChange={(e) => setHomeScore(e.target.value)}
-                        className="w-16 text-center text-foreground text-2xl font-bold h-14 bg-background border-border"
-                      />
-                    </div>
-                    <span className="text-foreground text-xl mt-5">x</span>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{match.team_away}</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={awayScore}
-                        onChange={(e) => setAwayScore(e.target.value)}
-                        className="w-16 text-center text-foreground text-2xl font-bold h-14 bg-background border-border"
-                      />
-                    </div>
+                  <div className="flex items-start justify-center gap-3">
+                    <ScoreStepper value={homeScore} onChange={setHomeScore} label={match.team_home} />
+                    <span className="mt-9 text-[hsl(var(--faint))] text-lg">x</span>
+                    <ScoreStepper value={awayScore} onChange={setAwayScore} label={match.team_away} />
                   </div>
                 </div>
               )}
@@ -466,10 +526,10 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                         key={val}
                         type="button"
                         onClick={() => setExtraResult(val)}
-                        className={`px-3 py-3 rounded-lg text-sm font-medium border-2 transition-colors ${
+                        className={`flex min-h-[46px] items-center rounded-lg border-2 px-4 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                           extraResult === val
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-card text-card-foreground border-border hover:border-slate-500'
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border bg-card text-card-foreground hover:border-primary/50'
                         }`}
                       >
                         {label}
@@ -482,28 +542,10 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
               {currentStepKey === 'pen' && !penWinnerMode && (
                 <div className="space-y-3">
                   <p className="text-sm text-card-foreground text-center font-medium">E se for aos pênaltis, qual o placar?</p>
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{match.team_home}</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={penHome}
-                        onChange={(e) => setPenHome(e.target.value)}
-                        className="w-16 text-center text-foreground text-2xl font-bold h-14 bg-background border-border"
-                      />
-                    </div>
-                    <span className="text-foreground text-xl mt-5">x</span>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{match.team_away}</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={penAway}
-                        onChange={(e) => setPenAway(e.target.value)}
-                        className="w-16 text-center text-foreground text-2xl font-bold h-14 bg-background border-border"
-                      />
-                    </div>
+                  <div className="flex items-start justify-center gap-3">
+                    <ScoreStepper value={penHome} onChange={setPenHome} label={match.team_home} />
+                    <span className="mt-9 text-[hsl(var(--faint))] text-lg">x</span>
+                    <ScoreStepper value={penAway} onChange={setPenAway} label={match.team_away} />
                   </div>
                 </div>
               )}
@@ -520,10 +562,10 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                         key={val}
                         type="button"
                         onClick={() => setPenWinner(val)}
-                        className={`px-3 py-3 rounded-lg text-sm font-medium border-2 transition-colors ${
+                        className={`flex min-h-[46px] items-center rounded-lg border-2 px-4 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                           penWinner === val
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-card text-card-foreground border-border hover:border-slate-500'
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border bg-card text-card-foreground hover:border-primary/50'
                         }`}
                       >
                         {label}
@@ -545,7 +587,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                   type="button"
                   onClick={() => setStep((s) => Math.max(1, s - 1))}
                   disabled={step === 1}
-                  className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-lg text-sm font-semibold bg-muted text-foreground disabled:opacity-30 hover:bg-slate-600"
+                  className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-lg text-sm font-semibold bg-muted text-foreground disabled:opacity-30 hover:bg-accent"
                 >
                   <ChevronLeft className="w-4 h-4" /> Voltar
                 </button>
@@ -571,8 +613,8 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                           !canSave
                             ? 'bg-muted text-muted-foreground cursor-not-allowed'
                             : allFilled
-                            ? 'bg-green-600 hover:bg-green-700 text-foreground shadow-lg shadow-green-900/40'
-                            : 'bg-slate-600 text-foreground hover:bg-slate-500'
+                            ? 'bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]'
+                            : 'bg-primary/70 text-primary-foreground hover:bg-primary'
                         }`}
                       >
                         {isSaving ? 'Salvando...' : !hasUnsavedChanges ? 'Tudo salvo' : 'Salvar Palpite'}
@@ -611,30 +653,47 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
           ) : (
             <div className="text-muted-foreground text-sm text-center">{matchDate ? formatDate(matchDate) : ''}</div>
           )}
-          {match.venue && <div className="text-[hsl(var(--faint))] text-xs text-center">🏟️ {match.venue}</div>}
+          {match.venue && <div className="text-[hsl(var(--faint))] text-xs text-center">{match.venue}</div>}
 
-          {!showStepper && !isLocked && hasUnsavedChanges && (
+          {!showStepper && !isLocked && hasUnsavedChanges ? (
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className={`w-full px-4 py-3 rounded-lg font-bold text-sm transition-colors ${
-                isSaving ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-foreground'
+              className={`min-h-[48px] w-full rounded-lg px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                isSaving
+                  ? 'cursor-not-allowed bg-muted text-muted-foreground'
+                  : 'bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]'
               }`}
             >
-              {isSaving ? 'Salvando...' : 'Salvar Palpite'}
+              {isSaving ? 'Salvando...' : 'Salvar palpite'}
             </button>
+          ) : (
+            statusHeader()
           )}
         </div>
 
         {/* Resultado real de prorrogação/pênaltis (encerrado) */}
         {isFinished && isKnockout && (match.extra_time_result || match.pen_home != null || match.pen_winner) && (
-          <div className="text-muted-foreground text-xs text-center mt-2 space-y-0.5">
-            {match.extra_time_result && <div>Prorrogação: {extraResultLabel(match.extra_time_result)}</div>}
+          <div className="mt-3 space-y-1 rounded-[12px] bg-surface-sunken px-3 py-2.5 text-xs">
+            {match.extra_time_result && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Prorrogação</span>
+                <span className="font-semibold text-foreground">{extraResultLabel(match.extra_time_result)}</span>
+              </div>
+            )}
             {!penWinnerMode
               ? match.pen_home != null && match.pen_away != null && (
-                  <div>Pênaltis: {match.pen_home} x {match.pen_away}</div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Pênaltis</span>
+                    <span className="font-semibold text-foreground tabular-nums">{match.pen_home} x {match.pen_away}</span>
+                  </div>
                 )
-              : match.pen_winner && <div>Pênaltis: {penWinnerLabel(match.pen_winner)}</div>}
+              : match.pen_winner && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Pênaltis</span>
+                    <span className="font-semibold text-foreground">{penWinnerLabel(match.pen_winner)}</span>
+                  </div>
+                )}
           </div>
         )}
 
