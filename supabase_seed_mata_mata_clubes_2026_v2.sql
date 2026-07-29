@@ -18,7 +18,17 @@
 
 -- ---------------------------------------------------------------------------
 -- Fonte ÚNICA de escudos. PREENCHA cada URL (deixe exatamente igual para o mesmo
--- clube nas 3 competições). Enquanto '' , o seed aborta.
+-- clube nas 3 competições). Enquanto '' , o seed aborta (guard).
+--
+-- STATUS DOS ESCUDOS:
+--   • JÁ PREENCHIDOS reutilizando URLs reais que já existem no projeto (Paulistão/
+--     Wikimedia — estáveis, HTTPS): Corinthians, Palmeiras, São Paulo, Santos, Mirassol.
+--   • PENDENTES ('' — preencher com URL verificada antes de rodar): os demais clubes
+--     (Flamengo, Cruzeiro, Fluminense, Vasco, Grêmio, Internacional, Athletico-PR,
+--     Vitória, Atlético-MG, Juventude, Remo, Chapecoense, Fortaleza, Botafogo e os
+--     sul-americanos). NÃO foram preenchidos por decisão de NÃO inventar URL: use uma
+--     fonte estável verificada (ex.: Wikimedia Commons) e cole aqui. O guard impede
+--     rodar com qualquer escudo vazio.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION club_crest(p_name TEXT)
 RETURNS TEXT
@@ -31,14 +41,14 @@ BEGIN
         WHEN 'Estudiantes'              THEN ''
         WHEN 'Universidad Católica'     THEN ''
         WHEN 'Rosario Central'          THEN ''
-        WHEN 'Corinthians'              THEN ''
+        WHEN 'Corinthians'              THEN 'https://upload.wikimedia.org/wikipedia/pt/9/9b/Corinthians_logo.png'
         WHEN 'Cruzeiro'                 THEN ''
         WHEN 'Flamengo'                 THEN ''
         WHEN 'Deportes Tolima'          THEN ''
         WHEN 'Independiente del Valle'  THEN ''
-        WHEN 'Mirassol'                 THEN ''
+        WHEN 'Mirassol'                 THEN 'https://upload.wikimedia.org/wikipedia/commons/5/5b/Mirassol_FC_logo.png'
         WHEN 'LDU Quito'                THEN ''
-        WHEN 'Palmeiras'                THEN ''
+        WHEN 'Palmeiras'                THEN 'https://upload.wikimedia.org/wikipedia/commons/a/a7/Palmeiras_logo.svg'
         WHEN 'Cerro Porteño'            THEN ''
         WHEN 'Platense'                 THEN ''
         WHEN 'Coquimbo Unido'           THEN ''
@@ -52,13 +62,13 @@ BEGIN
         WHEN 'Vitória'                  THEN ''
         WHEN 'Atlético-MG'              THEN ''
         WHEN 'Juventude'                THEN ''
-        WHEN 'Santos'                   THEN ''
+        WHEN 'Santos'                   THEN 'https://upload.wikimedia.org/wikipedia/commons/3/35/Santos_logo.svg'
         WHEN 'Remo'                     THEN ''
         WHEN 'Chapecoense'              THEN ''
         WHEN 'Fortaleza'                THEN ''
         -- Sul-Americana (clubes já definidos de um dos lados)
         WHEN 'Recoleta'                 THEN ''
-        WHEN 'São Paulo'                THEN ''
+        WHEN 'São Paulo'                THEN 'https://upload.wikimedia.org/wikipedia/commons/7/7a/Sao_Paulo_FC_logo.svg'
         WHEN 'River Plate'              THEN ''
         WHEN 'Olimpia'                  THEN ''
         WHEN 'Macará'                   THEN ''
@@ -200,7 +210,8 @@ BEGIN
     END IF;
 
     -- Final -> semis -> quartas (quartas ligadas às semis; oitavas NÃO ligam)
-    PERFORM seed_v2_tie(tid, comp, 'final', 0, 'single', NULL,NULL,NULL, NULL,NULL,NULL, NULL,NULL,NULL, 'winner', true, false);
+    -- Copa do Brasil 2026 (CBF): sem prorrogação; empate vai direto aos pênaltis. has_extra_time = FALSE.
+    PERFORM seed_v2_tie(tid, comp, 'final', 0, 'single', NULL,NULL,NULL, NULL,NULL,NULL, NULL,NULL,NULL, 'winner', false, false);
     PERFORM seed_v2_tie(tid, comp, 'semi', 0, 'two_leg', NULL,NULL,NULL, NULL,NULL,NULL, 'final', 0, 'a');
     PERFORM seed_v2_tie(tid, comp, 'semi', 1, 'two_leg', NULL,NULL,NULL, NULL,NULL,NULL, 'final', 0, 'b');
     PERFORM seed_v2_tie(tid, comp, 'quartas', 0, 'two_leg', NULL,NULL,NULL, NULL,NULL,NULL, 'semi', 0, 'a');
@@ -265,6 +276,22 @@ BEGIN
     -- Sem jogos ainda: os dois lados precisam existir. Use resolveTieParticipant quando
     -- os playoffs terminarem (confirmar cada classificado antes de virar clube real).
     RAISE NOTICE 'Sul-Americana semeada (oitavas com participantes pendentes; sem jogos até resolver).';
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Limpeza: remover os helpers do seed (não há dependência posterior — advance_tie/
+-- ensure_tie_matches/etc. NÃO usam estes). Só roda ao final de uma execução completa.
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN
+        SELECT p.oid::regprocedure AS sig
+        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname IN ('seed_v2_tie', 'seed_v2_legs', 'club_crest')
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || r.sig;
+    END LOOP;
 END $$;
 
 -- ---------------------------------------------------------------------------
