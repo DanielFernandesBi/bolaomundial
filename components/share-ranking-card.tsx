@@ -61,7 +61,7 @@ export function ShareRankingCard({
       {/* Logo e nome do ranking no topo */}
       <div className="absolute top-5 left-5 right-5 flex flex-col items-center gap-2 z-10">
         <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-          <span className="text-white font-bold text-lg">Bolão Mundial</span>
+          <span className="text-white font-bold text-lg">Arena de Bolões</span>
         </div>
         {rankingName && (
           <div className="bg-white/15 backdrop-blur-sm px-4 py-1.5 rounded-full">

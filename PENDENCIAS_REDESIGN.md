@@ -33,7 +33,7 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 6a — Hall, Login, detalhe, simulador: fim das cores fixas | ✅ | `c0bfa43` |
 | 6b — Folha de troca de campeonato | ✅ | `ffaf5bb` |
 | 6c — Layout do Login e do Perfil | ⬜ | — |
-| 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
+| 7 — Cards de compartilhamento + share sob demanda | ✅ | `898b5f8` |
 
 ---
 
@@ -173,12 +173,16 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 - [x] **Barra fixa "Você"** no ranking (bloco 4c).
 - [x] **`currentUserId` usado no Ranking Geral** (bloco 4a) para destacar a
       sua linha.
-- [ ] **Cards `share-*` sob demanda** — hoje os 28 são montados em toda visita.
-      Fazer **por último** e validar a geração dos 4 PNGs depois.
+- [x] **Cards `share-*` sob demanda** (bloco 7): só o card que está sendo
+      exportado é montado. Seguro porque os handlers já definiam o id e
+      esperavam 100ms antes de gerar a imagem. FALTA VALIDAR os 4 PNGs no
+      preview — é a única verificação que depende de uso real.
 - [ ] **Blindar bandeira sem ISO** — resolver **no componente** (tile com a
       sigla). `lib/utils/flags.ts` permanece intocado.
-- [ ] **Marca nos cards de compartilhamento**: "Bolão Mundial" → "Arena de
-      Bolões", mantendo o domínio atual.
+- [x] **Marca nos cards** (bloco 7): "Bolão Mundial" → "Arena de Bolões".
+      Domínio mantido, conforme decisão. MAS: os cards assinam
+      `bolao-mundial.com`, e o endereço real é `bolao-mundial.vercel.app` —
+      quem recebe a imagem e digitar o domínio não acha o app. Decisão do Daniel.
 - [x] Liberar o zoom (viewport) — feito na Fase 5.
 
 ### Acessibilidade (do handoff)

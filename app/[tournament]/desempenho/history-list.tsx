@@ -101,7 +101,9 @@ export function HistoryList({ history, userAvatarUrl, username, isOwn = true }: 
 
       {/* Cards ocultos para compartilhamento */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
+        {/* SOB DEMANDA — ver nota no ranking do torneio. */}
         {history.map((match) => {
+          if (sharingId !== match.match_id) return null;
           const cardId = `share-card-${match.match_id}`;
           return (
             <ShareMatchCard

@@ -151,7 +151,12 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
 
       {/* Cards ocultos para compartilhamento individual */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
+        {/* SOB DEMANDA: antes os N participantes viravam N cards invisíveis em
+            TODA visita. Agora só o que está sendo exportado é montado — o
+            handler define sharingId e espera 100ms antes de gerar a imagem,
+            tempo suficiente para o React renderizar. */}
         {sortedProfiles.map((profile, index) => {
+          if (sharingId !== profile.id) return null;
           const position = index + 1;
           return (
             <div key={`share-ranking-card-${profile.id}`} id={`share-ranking-card-${profile.id}`}>
@@ -168,7 +173,8 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
         })}
       </div>
 
-      {/* Card oculto para compartilhamento do ranking completo */}
+      {/* Card oculto do ranking completo — também sob demanda */}
+      {sharingFullRanking && (
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
         <ShareFullRankingCard
           profiles={sortedProfiles.map((profile, index) => ({
@@ -183,6 +189,7 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
           cardId="share-full-ranking-card"
         />
       </div>
+      )}
       
       {/* Seletor de escopo. Renderiza na própria tela (decisão do Daniel); a
           rota /ranking-geral continua existindo e respondendo. */}

@@ -130,7 +130,9 @@ export function RankingGeralContent({ profiles, currentUserId, embedded = false 
 
       {/* Cards ocultos para compartilhamento individual */}
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
+        {/* SOB DEMANDA — ver nota no ranking do torneio. */}
         {profiles.map((profile, index) => {
+          if (sharingId !== profile.id) return null;
           const position = index + 1;
           return (
             <div key={`share-ranking-card-${profile.id}`} id={`share-ranking-card-${profile.id}`}>
@@ -148,7 +150,8 @@ export function RankingGeralContent({ profiles, currentUserId, embedded = false 
         })}
       </div>
 
-      {/* Card oculto para compartilhamento do ranking completo */}
+      {/* Card oculto do ranking completo — também sob demanda */}
+      {sharingFullRanking && (
       <div style={{ position: 'fixed', left: '-9999px', top: '0', pointerEvents: 'none' }}>
         <ShareFullRankingCard
           profiles={profiles.map((profile, index) => ({
@@ -162,6 +165,7 @@ export function RankingGeralContent({ profiles, currentUserId, embedded = false 
           cardId="share-full-ranking-card-geral"
         />
       </div>
+      )}
 
       {/* Cabeçalho com botão de compartilhar */}
       {!embedded && (

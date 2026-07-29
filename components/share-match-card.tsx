@@ -75,7 +75,7 @@ export function ShareMatchCard({
       {/* Logo no topo */}
       <div className="absolute top-6 left-6 right-6 flex items-center justify-center">
         <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-          <span className="text-white font-bold text-lg">Bolão Mundial</span>
+          <span className="text-white font-bold text-lg">Arena de Bolões</span>
         </div>
       </div>
 
