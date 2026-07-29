@@ -8,6 +8,7 @@ import { LogOut } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
 import { getTournamentNavInfo } from '@/app/actions/tournament';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { TournamentSheet } from '@/components/tournament-sheet';
 
 // ============================================================================
 // Cabeçalho mobile
@@ -36,17 +37,15 @@ export function MobileHeader() {
   return (
     <header className="md:hidden sticky top-0 z-40 border-b border-hairline bg-background/90 backdrop-blur">
       <div className="flex items-center justify-between gap-2 px-4 py-2.5">
-        <Link
-          href={tournamentSlug ? `/${tournamentSlug}/matches` : '/'}
-          className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
-        >
-          <div className="relative w-7 h-7 flex-shrink-0">
-            <Image src="/icon-192.png" alt="" fill className="rounded-lg object-contain" sizes="28px" />
-          </div>
-          <span className="text-primary font-semibold text-sm truncate">
-            {tournamentName || 'Arena de Bolões'}
-          </span>
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Link href={tournamentSlug ? `/${tournamentSlug}/matches` : '/'} className="flex-shrink-0">
+            <div className="relative h-7 w-7">
+              <Image src="/icon-192.png" alt="Arena de Bolões" fill className="rounded-lg object-contain" sizes="28px" />
+            </div>
+          </Link>
+          {/* O nome do torneio abre a folha de troca de campeonato. */}
+          <TournamentSheet currentSlug={tournamentSlug} currentName={tournamentName || 'Arena de Bolões'} />
+        </div>
 
         <div className="flex items-center gap-0.5 flex-shrink-0">
           <ThemeToggle />

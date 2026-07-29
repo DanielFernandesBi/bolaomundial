@@ -30,7 +30,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 5a — Perfil: escala em 3 níveis + correção de cópia | ✅ | `80534fa` |
 | 5b — Desempenho: hero, métricas, últimos jogos, legenda recolhível | ✅ | `7559221` |
 | 6a — Hall, Login, detalhe, simulador: fim das cores fixas | ✅ | `c0bfa43` |
-| 6b — Folha de troca de campeonato + layout do Perfil e do Login | ⬜ | — |
+| 6b — Folha de troca de campeonato | ✅ | `ffaf5bb` |
+| 6c — Layout do Login e do Perfil | ⬜ | — |
 | 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
 
 ---
@@ -88,8 +89,9 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 ### Restante do bloco 6 → 6b
 
-- [ ] **Folha (sheet) de troca de campeonato**, acionada pelo nome do torneio no
-      `mobile-header.tsx`. É o último item estrutural de navegação.
+- [x] **Folha de troca de campeonato** feita no 6b: `components/tournament-sheet.tsx`,
+      aberta pelo nome do torneio no cabeçalho. Consulta a lista com o cliente de
+      browser e SÓ ao abrir — nenhuma action criada, `lib/` não tocado.
 - [ ] **Login (layout)**: segmentado "Entrar · Criar conta", rótulos visíveis
       acima dos campos, erro inline com `role="alert"`. As cores já foram
       tokenizadas no 6a; falta o rearranjo.
@@ -151,8 +153,7 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
 
 - [ ] **Aba "Projeção"** no Ranking, recebendo o simulador (hoje o Simulador
       saiu da nav e só é alcançável por URL).
-- [ ] **Folha (sheet) de troca de campeonato**, acionada pelo nome do torneio no
-      `mobile-header.tsx` (hoje o nome leva à home).
+- [x] **Folha de troca de campeonato** (bloco 6b).
 
 ### Vindas da Fase 5
 
@@ -205,17 +206,22 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
    final, não só o build.
 3. **`public/sw.js` é regenerado pelo `next-pwa` a cada build.** Está na lista
    de intocáveis: reverter (`git checkout -- public/sw.js`) antes de commitar.
-4. **`ignoreBuildErrors: true` — o `next build` NÃO valida tipos.** Um import
+4. **`<form action={logoutAction}>` tem erro de tipo por desenho.** A action
+   devolve `{error}` em caso de falha, e o tipo de form action espera `void`.
+   `navbar.tsx:212` e `mobile-header.tsx:52` acusam o MESMO erro — é o padrão
+   da casa e funciona (o Next descarta o retorno). Não "corrigir" sem mexer em
+   `actions.ts`, que é intocável.
+5. **`ignoreBuildErrors: true` — o `next build` NÃO valida tipos.** Um import
    faltando (`TrendingUp`) passou pelo build e só apareceu no `npx tsc
    --noEmit`. O projeto tem 252 erros de tipo pré-existentes (tipagem do
    Supabase nas actions), então o filtro útil é procurar as classes
    TS2304/TS2552/TS2686 — "nome não encontrado" —, que denunciam componente
    usado sem import. Rodar isso a cada bloco.
-5. **Arbitrárias com decimal são minificadas.** `tracking-[0.13em]` vira
+6. **Arbitrárias com decimal são minificadas.** `tracking-[0.13em]` vira
    `letter-spacing:.13em` no CSS — procurar por "0.13em" dá falso negativo.
    O mesmo vale para grep de classes com colchetes: escapar direito ou buscar
    só o valor.
-6. **Aviso de `middleware` deprecado** é anterior ao redesign e fora de escopo
+7. **Aviso de `middleware` deprecado** é anterior ao redesign e fora de escopo
    (`middleware.ts` é intocável).
 
 ---
