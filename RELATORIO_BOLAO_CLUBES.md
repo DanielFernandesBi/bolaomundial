@@ -185,6 +185,11 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 |---|---|
 | Regressão introduzida na feature: coexistiam dois mecanismos gravando `tournament_rankings.podium_points`. O **legado** (`process_tournament_podium`, AFTER UPDATE em `tournaments`) percorria `podium_predictions` **sem filtrar `competition`** e usava `tournaments.champion_team/...`. Se rodasse no torneio de clubes (por divergência do `WHEN` em produção, ou por mexer nas colunas de pódio), recalculava com `champion_team = NULL` → `calc_podium_points = 0` → **zerava** o pódio somado das 3 competições (ex.: 115 → 0). | **Isolamento dos dois mecanismos**: `process_tournament_podium` passa a processar só picks **legados** (`competition IS NULL`) — no torneio de clubes o laço fica vazio e não toca em `podium_points`; a trigger é reafirmada com o `WHEN` correto (só dispara quando as colunas de pódio do torneio mudam), corrigindo divergência de prod; e, por simetria, `recompute_competition_podium` soma só picks **por competição** (`competition IS NOT NULL`). |
 
+### ⚠️ Integridade — `NULL` não é único no pódio legado (`20260728000011_podium_legacy_unique_index.sql`)
+| Como estava | O que mudou |
+|---|---|
+| A `000003` trocou `UNIQUE (user_id, tournament_id)` por `UNIQUE (user_id, tournament_id, competition)`. Como o pódio legado (Mundial) usa `competition = NULL` e `NULL` não é igual a `NULL` num UNIQUE comum, o banco passou a **aceitar múltiplos palpites de pódio do mesmo usuário no mesmo torneio** (o Mundial não tem duplicados, mas a garantia sumiu). | Adicionado **índice único parcial** `podium_predictions_legacy_uidx ON (user_id, tournament_id) WHERE competition IS NULL` — restaura "um pódio legado por usuário/torneio". O UNIQUE composto continua (necessário para o `onConflict` do upsert dos clubes, onde `competition` nunca é NULL). |
+
 ---
 
 ## 12. Índice de arquivos
@@ -200,6 +205,7 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 - `supabase/migrations/20260728000008_rls_hide_predictions_before_kickoff.sql`
 - `supabase/migrations/20260728000009_podium_deadline_trigger.sql`
 - `supabase/migrations/20260728000010_fix_podium_mechanisms_isolation.sql`
+- `supabase/migrations/20260728000011_podium_legacy_unique_index.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
