@@ -40,6 +40,9 @@ interface MatchCardProps {
     status: string;
     is_knockout?: boolean;
     has_extra_time?: boolean;
+    extra_prediction_enabled?: boolean;
+    penalty_prediction_mode?: 'score' | 'winner';
+    venue?: string | null;
     extra_time_result?: 'home' | 'draw' | 'away' | null;
     pen_home?: number | null;
     pen_away?: number | null;
@@ -87,7 +90,11 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   const tournamentSlug = pathname?.split('/')[1] || '';
 
   const isKnockout = !!match.is_knockout;
-  const hasExtraTime = match.has_extra_time !== false; // default true (Mundial); clubes = false
+  const hasExtraTime = match.has_extra_time !== false; // usado só para exibir prorrogação real
+  // Modalidade de palpite (DESACOPLADA de has_extra_time):
+  const extraEnabled = match.extra_prediction_enabled !== false; // Mundial=true; clubes=false
+  const penMode = match.penalty_prediction_mode ?? (hasExtraTime ? 'score' : 'winner');
+  const penWinnerMode = penMode === 'winner';
   const isFinished = match.status === 'FINISHED';
 
   const initialHome = match.user_prediction?.pred_home?.toString() ?? '';
@@ -171,7 +178,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
 
   // Passos do wizard: sem prorrogação quando has_extra_time = false (clubes)
   type StepKey = 'normal' | 'extra' | 'pen';
-  const stepDefs: { key: StepKey; label: string }[] = hasExtraTime
+  const stepDefs: { key: StepKey; label: string }[] = extraEnabled
     ? [
         { key: 'normal', label: 'Tempo normal' },
         { key: 'extra', label: 'Prorrogação' },
@@ -186,7 +193,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   const isStepDone = (key: StepKey) => {
     if (key === 'normal') return homeScore !== '' && awayScore !== '';
     if (key === 'extra') return extraResult !== '';
-    return hasExtraTime ? penHome !== '' && penAway !== '' : penWinner !== '';
+    return penWinnerMode ? penWinner !== '' : penHome !== '' && penAway !== '';
   };
 
   const handleSave = async () => {
@@ -202,10 +209,10 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
     setIsSaving(true);
     const extra = isKnockout
       ? {
-          predExtraResult: (hasExtraTime ? extraResult || null : null) as 'home' | 'draw' | 'away' | null,
-          predPenHome: hasExtraTime && penHome !== '' ? parseInt(penHome) : null,
-          predPenAway: hasExtraTime && penAway !== '' ? parseInt(penAway) : null,
-          predPenWinner: (!hasExtraTime ? penWinner || null : null) as 'home' | 'away' | null,
+          predExtraResult: (extraEnabled ? extraResult || null : null) as 'home' | 'draw' | 'away' | null,
+          predPenHome: !penWinnerMode && penHome !== '' ? parseInt(penHome) : null,
+          predPenAway: !penWinnerMode && penAway !== '' ? parseInt(penAway) : null,
+          predPenWinner: (penWinnerMode ? penWinner || null : null) as 'home' | 'away' | null,
         }
       : undefined;
 
@@ -269,11 +276,9 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
       text = isLocked ? 'Você não palpitou neste jogo' : 'Você ainda não palpitou neste jogo';
     } else if (isKnockout) {
       const missing: string[] = [];
-      if (hasExtraTime) {
-        if (saved.extra === '') missing.push('prorrogação');
-        if (saved.penHome === '' || saved.penAway === '') missing.push('pênaltis');
-      } else {
-        if (saved.penWinner === '') missing.push('pênaltis');
+      if (extraEnabled && saved.extra === '') missing.push('prorrogação');
+      if (penWinnerMode ? saved.penWinner === '' : saved.penHome === '' || saved.penAway === '') {
+        missing.push('pênaltis');
       }
       if (missing.length > 0) {
         tone = 'partial';
@@ -479,7 +484,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                 </div>
               )}
 
-              {currentStepKey === 'pen' && hasExtraTime && (
+              {currentStepKey === 'pen' && !penWinnerMode && (
                 <div className="space-y-3">
                   <p className="text-sm text-slate-300 text-center font-medium">E se for aos pênaltis, qual o placar?</p>
                   <div className="flex items-center justify-center gap-3">
@@ -508,7 +513,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
                 </div>
               )}
 
-              {currentStepKey === 'pen' && !hasExtraTime && (
+              {currentStepKey === 'pen' && penWinnerMode && (
                 <div className="space-y-3">
                   <p className="text-sm text-slate-300 text-center font-medium">E se o agregado empatar e for aos pênaltis, quem vence?</p>
                   <div className="grid grid-cols-1 gap-2">
@@ -534,7 +539,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
               )}
 
               <p className="text-[11px] text-slate-500 text-center mt-3">
-                {hasExtraTime
+                {extraEnabled
                   ? 'Prorrogação e pênaltis são palpites eventuais: só pontuam se acontecerem.'
                   : 'Os pênaltis são palpite eventual: só pontuam se o confronto for decidido neles.'}
               </p>
@@ -592,7 +597,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
             {match.user_prediction.pred_extra_result && (
               <div className="text-center text-xs">Prorrogação: {extraResultLabel(match.user_prediction.pred_extra_result)}</div>
             )}
-            {hasExtraTime
+            {!penWinnerMode
               ? match.user_prediction.pred_pen_home != null && (
                   <div className="text-center text-xs">Pênaltis: {match.user_prediction.pred_pen_home} x {match.user_prediction.pred_pen_away}</div>
                 )
@@ -611,6 +616,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
           ) : (
             <div className="text-slate-400 text-sm text-center">{matchDate ? formatDate(matchDate) : ''}</div>
           )}
+          {match.venue && <div className="text-slate-500 text-xs text-center">🏟️ {match.venue}</div>}
 
           {!showStepper && !isLocked && hasUnsavedChanges && (
             <button
@@ -629,7 +635,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
         {isFinished && isKnockout && (match.extra_time_result || match.pen_home != null || match.pen_winner) && (
           <div className="text-slate-400 text-xs text-center mt-2 space-y-0.5">
             {match.extra_time_result && <div>Prorrogação: {extraResultLabel(match.extra_time_result)}</div>}
-            {hasExtraTime
+            {!penWinnerMode
               ? match.pen_home != null && match.pen_away != null && (
                   <div>Pênaltis: {match.pen_home} x {match.pen_away}</div>
                 )
@@ -644,12 +650,12 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
             {isKnockout && match.user_prediction.pred_extra_result && (
               <div className="text-xs">Prorrogação: {extraResultLabel(match.user_prediction.pred_extra_result)}</div>
             )}
-            {isKnockout && hasExtraTime && match.user_prediction.pred_pen_home != null && (
+            {isKnockout && !penWinnerMode && match.user_prediction.pred_pen_home != null && (
               <div className="text-xs">
                 Pênaltis: {match.user_prediction.pred_pen_home} x {match.user_prediction.pred_pen_away}
               </div>
             )}
-            {isKnockout && !hasExtraTime && match.user_prediction.pred_pen_winner && (
+            {isKnockout && penWinnerMode && match.user_prediction.pred_pen_winner && (
               <div className="text-xs">Pênaltis: {penWinnerLabel(match.user_prediction.pred_pen_winner)}</div>
             )}
           </div>

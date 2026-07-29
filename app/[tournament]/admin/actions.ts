@@ -156,7 +156,10 @@ export async function createMatch(
   isKnockout?: boolean,
   competition?: string | null,
   leg?: string | null,
-  hasExtraTime?: boolean
+  hasExtraTime?: boolean,
+  venue?: string | null,
+  penaltyMode?: 'score' | 'winner' | null,
+  extraEnabled?: boolean
 ) {
   // Verificar acesso de admin primeiro
   const accessCheck = await checkAdminAccess();
@@ -228,8 +231,11 @@ export async function createMatch(
       tournament_id: tournament.id,
       is_knockout: knockoutValue,
       ...(hasExtraTime !== undefined && { has_extra_time: hasExtraTime }),
+      ...(penaltyMode != null && { penalty_prediction_mode: penaltyMode }),
+      ...(extraEnabled !== undefined && { extra_prediction_enabled: extraEnabled }),
       ...(competitionValue !== null && { competition: competitionValue }),
       ...(legValue !== null && { leg: legValue }),
+      ...(venue != null && venue.trim() !== '' && { venue: venue.trim() }),
       ...(phaseValue !== null && { phase: phaseValue }),
     });
 
@@ -255,7 +261,10 @@ export async function updateMatch(
   isKnockout?: boolean,
   competition?: string | null,
   leg?: string | null,
-  hasExtraTime?: boolean
+  hasExtraTime?: boolean,
+  venue?: string | null,
+  penaltyMode?: 'score' | 'winner' | null,
+  extraEnabled?: boolean
 ) {
   // Verificar acesso de admin primeiro
   const accessCheck = await checkAdminAccess();
@@ -347,6 +356,15 @@ export async function updateMatch(
   }
   if (hasExtraTime !== undefined) {
     updatePayload.has_extra_time = hasExtraTime;
+  }
+  if (penaltyMode !== undefined) {
+    updatePayload.penalty_prediction_mode = penaltyMode ?? 'score';
+  }
+  if (extraEnabled !== undefined) {
+    updatePayload.extra_prediction_enabled = extraEnabled;
+  }
+  if (venue !== undefined) {
+    updatePayload.venue = venue?.trim() || null;
   }
 
   const { error } = await supabase
@@ -552,6 +570,69 @@ export async function setTournamentCompetitionResult(
   revalidatePath(`/${tournamentSlug}/ranking`);
   revalidatePath('/ranking-geral');
   return { success: true };
+}
+
+// ============================================
+// CHAVEAMENTO: resolver participante pendente e aplicar sorteio de fase
+// ============================================
+export async function resolveTieParticipant(
+  tournamentSlug: string,
+  tieId: number,
+  side: 'a' | 'b',
+  team: string,
+  logoUrl: string
+) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc('resolve_tie_participant', {
+    p_tie_id: tieId,
+    p_side: side,
+    p_team: team,
+    p_iso: logoUrl,
+  });
+  if (error) {
+    return { error: error.message || 'Erro ao resolver participante' };
+  }
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+  return { success: true, result: data };
+}
+
+interface DrawMapping {
+  source_slot: number;
+  target_slot: number;
+  target_side: 'a' | 'b';
+}
+
+export async function applyRoundDraw(
+  tournamentSlug: string,
+  tournamentId: number,
+  competition: string,
+  sourceRound: string,
+  targetRound: string,
+  mappings: DrawMapping[]
+) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { error: accessCheck.error || 'Acesso negado' };
+  }
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc('apply_round_draw', {
+    p_tournament_id: tournamentId,
+    p_competition: competition,
+    p_source_round: sourceRound,
+    p_target_round: targetRound,
+    p_mappings: mappings,
+  });
+  if (error) {
+    return { error: error.message || 'Erro ao aplicar o sorteio' };
+  }
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/matches`);
+  return { success: true, result: data };
 }
 
 export async function updateTournament(

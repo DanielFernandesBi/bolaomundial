@@ -40,6 +40,7 @@ interface Match {
   phase?: string | null;
   is_knockout?: boolean;
   has_extra_time?: boolean;
+  penalty_prediction_mode?: 'score' | 'winner';
   competition?: string | null;
   leg?: string | null;
   extra_time_result?: 'home' | 'draw' | 'away' | null;
@@ -164,6 +165,8 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
 
   function renderKnockout(match: Match) {
     const showExtraTime = match.has_extra_time !== false;
+    const penMode = match.penalty_prediction_mode ?? (showExtraTime ? 'score' : 'winner');
+    const penWinnerMode = penMode === 'winner';
     return (
       <div className="mt-2 rounded-md border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
         <p className="text-indigo-300 text-xs font-semibold">Mata-mata (deixe vazio se não houve)</p>
@@ -182,7 +185,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
             </select>
           </div>
         )}
-        {showExtraTime ? (
+        {!penWinnerMode ? (
           <div className="flex items-center gap-2">
             <label className="text-slate-400 text-xs w-20">Pênaltis</label>
             <Input
