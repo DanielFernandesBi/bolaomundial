@@ -175,6 +175,11 @@ Generaliza o achado do item 2c/3 (funções de teste abertas). Como no Postgres 
 
 Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparência" e "Encerradas" consultam jogos já iniciados/finalizados; "Desempenho" usa jogos finalizados. A trava de **alterar** o palpite após o início já existia (trigger `check_prediction_window`); agora o **esconder** até o início também é garantido no banco.
 
+### 🔴 P0 — Pódio alterável após a trava (`20260728000009_podium_deadline_trigger.sql`)
+| Como estava | O que mudou |
+|---|---|
+| A trava de prazo do palpite de pódio estava só no server action `savePodiumPrediction`. A RLS de `podium_predictions` só garantia `auth.uid() = user_id`, **sem trigger de prazo** — então via Data API o usuário podia inserir/alterar o palpite de pódio **depois do início** (até depois de saber o resultado real) e ser premiado quando o admin lançasse o campeão/vice. | Trigger **`check_podium_window`** (BEFORE INSERT/UPDATE) bloqueia gravar/alterar o palpite de pódio depois do 1º jogo da competição (mesma regra do server action; espelha o `check_prediction_window`). A outra ponta — `recompute_competition_podium` exposto — **já havia sido fechada** na `000007` (REVOKE EXECUTE dos clientes). |
+
 ---
 
 ## 12. Índice de arquivos
@@ -188,6 +193,7 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 - `supabase/migrations/20260728000006_secure_predictions_and_functions.sql`
 - `supabase/migrations/20260728000007_harden_function_execute.sql`
 - `supabase/migrations/20260728000008_rls_hide_predictions_before_kickoff.sql`
+- `supabase/migrations/20260728000009_podium_deadline_trigger.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
