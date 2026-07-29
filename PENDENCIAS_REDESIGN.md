@@ -57,8 +57,13 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
   quem joga antes aparece primeiro — em vez da ordem fixa de `COMPETITIONS`.
   Em torneio de competição única nada disso é renderizado.
 - **Escudos das competições**: não existem no banco (`logo_url` é do torneio, e
-  as três vivem dentro de um). Os botões usam ícone do lucide; se um dia entrarem
-  os escudos, o mapa `ICONES` em `components/competition-filter.tsx` é o lugar.
+  as três vivem dentro de um), então as URLs ficam no mapa `ESCUDOS` em
+  `components/competition-filter.tsx`. O Daniel mandou as três.
+  ⚠️ **Duas são miniaturas do cache do Google Imagens** (`encrypted-tbn0.gstatic.com`)
+  — esse tipo de link EXPIRA, não é endereço permanente de arquivo. O botão cai
+  sozinho para o ícone do lucide quando a imagem falha (`onError`), então a tela
+  nunca mostra imagem quebrada, mas o certo é hospedar os três PNGs em `public/`.
+  Não deu para baixá-los aqui: o proxy do ambiente bloqueia os dois hosts (403).
 - **Admin no mobile**: entra, como engrenagem na barra inferior (feito na Fase 4).
 - **`app/page.tsx`: N queries → 1 agregada**: ❌ **não fazer.** Ganho irrelevante
   (6 torneios) e mexe na query que decide o status do torneio na home.

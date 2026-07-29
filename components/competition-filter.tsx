@@ -50,9 +50,23 @@ export function CompetitionSection({
   return <>{children}</>;
 }
 
-// Ícone por competição. Não existe escudo das competições no banco (logo_url é
-// do torneio, e as três vivem dentro de um só), então o ícone é a marca visual
-// possível hoje. Se um dia entrarem os escudos, é aqui que eles substituem.
+// Escudo de cada competição. Não existe logo de competição no banco (`logo_url`
+// é do torneio, e as três vivem dentro de um só), então as URLs ficam aqui.
+//
+// ATENÇÃO: duas delas são miniaturas do cache do Google Imagens
+// (encrypted-tbn0.gstatic.com). Esse tipo de link EXPIRA — não é endereço
+// permanente de arquivo. Quando quebrar, o botão volta sozinho para o ícone
+// (ver `falhou` abaixo), então a tela nunca fica com imagem quebrada; mas o
+// certo é hospedar os três PNGs em `public/` e apontar para cá.
+const ESCUDOS: Record<string, string | undefined> = {
+  libertadores:
+    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRaDa_b38ehAoDOkbT1LwKd7_CetLMZ9956bRg0MG1qvk5jZflDGBJcf_U&s=10',
+  sudamericana:
+    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWeKWaqQr75JreJhQ8OnJegND7boAeLS6Yby27RUf9RrY3FJIxZx4g_Gg&s=10',
+  copa_do_brasil: 'https://logospng.org/wp-content/uploads/copa-do-brasil.png',
+};
+
+// Reserva para quando não há escudo — ou quando ele falha ao carregar.
 const ICONES: Record<string, LucideIcon> = {
   libertadores: Trophy,
   sudamericana: Medal,
@@ -73,12 +87,20 @@ export function CompetitionFilterBar({
   className?: string;
 }) {
   const { selecionada, selecionar } = useContext(FiltroCtx);
+  // Escudos que não carregaram: caem para o ícone em vez de deixar a imagem
+  // quebrada no lugar. Nenhum hook antes do return de baixo — a lista de
+  // competições não muda entre renders da mesma tela.
+  const [falhou, setFalhou] = useState<Record<string, boolean>>({});
   if (comps.length < 2) return null;
 
   const total = comps.reduce((s, c) => s + c.count, 0);
-  const itens: (CompetitionChip & { Icone: LucideIcon })[] = [
+  const itens: (CompetitionChip & { Icone: LucideIcon; escudo?: string })[] = [
     { key: TODAS, short: 'Todas', count: total, Icone: LayoutGrid },
-    ...comps.map((c) => ({ ...c, Icone: ICONES[c.key] ?? Trophy })),
+    ...comps.map((c) => ({
+      ...c,
+      Icone: ICONES[c.key] ?? Trophy,
+      escudo: falhou[c.key] ? undefined : ESCUDOS[c.key],
+    })),
   ];
 
   const escolhida = itens.find((i) => i.key === selecionada);
@@ -89,7 +111,7 @@ export function CompetitionFilterBar({
       {/* 2×2 no celular em vez de rolagem horizontal: com quatro opções, todas
           cabem na tela e nenhuma fica escondida fora da borda. */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Filtrar por competição">
-        {itens.map(({ key, short, count, Icone }) => {
+        {itens.map(({ key, short, count, Icone, escudo }) => {
           const ativa = selecionada === key;
           return (
             <button
@@ -103,10 +125,24 @@ export function CompetitionFilterBar({
                   : 'border-hairline bg-surface-sunken text-muted-foreground hover:border-primary/30 hover:text-foreground'
               }`}
             >
-              <Icone
-                className={`h-4 w-4 flex-shrink-0 ${ativa ? 'text-primary' : ''}`}
-                aria-hidden="true"
-              />
+              {escudo ? (
+                // <img> e não next/image: são URLs de terceiros, e é assim que o
+                // app já exibe os escudos dos clubes. Sem opacidade quando
+                // inativo — escudo lavado fica pior que escudo pequeno.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={escudo}
+                  alt=""
+                  className="h-[22px] w-[22px] flex-shrink-0 object-contain"
+                  referrerPolicy="no-referrer"
+                  onError={() => setFalhou((f) => ({ ...f, [key]: true }))}
+                />
+              ) : (
+                <Icone
+                  className={`h-4 w-4 flex-shrink-0 ${ativa ? 'text-primary' : ''}`}
+                  aria-hidden="true"
+                />
+              )}
               <span className="min-w-0 flex-1 truncate text-left text-[12.5px] font-semibold">{short}</span>
               <span
                 className={`flex-shrink-0 font-mono text-[10px] tabular-nums ${
