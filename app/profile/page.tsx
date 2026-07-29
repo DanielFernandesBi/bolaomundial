@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGeneralProfile } from './actions';
 import { AvatarUploadDialog } from '@/components/avatar-upload-dialog';
+import { ThemeToggle } from '@/components/theme-toggle';
 import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
@@ -98,6 +99,12 @@ export default async function GeneralProfilePage() {
                     </span>
                   </div>
                 )}
+              </div>
+
+              {/* Tema claro/escuro — é por aqui que o desktop alcança o botão,
+                  já que a navbar não é editada nesta refatoração. */}
+              <div className="w-full sm:w-auto sm:min-w-[200px]">
+                <ThemeToggle variant="row" />
               </div>
             </div>
           </CardContent>
