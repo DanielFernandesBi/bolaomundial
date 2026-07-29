@@ -226,6 +226,11 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 
 Segurança: `advance_bracket_for_match` tem checagem interna de admin e é a única com `EXECUTE` para `authenticated`; `advance_tie` fica sem `EXECUTE` de cliente (só é chamada internamente).
 
+### ⚠️ Sem suíte de testes → adicionada (pgTAP) (item 24)
+| Como estava | O que mudou |
+|---|---|
+| `package.json` só tinha `dev/build/start/lint`; nenhum teste para regras de dinheiro/ranking/chaveamento. | Adicionada suíte **pgTAP** em `supabase/tests/` + script `npm test` (`supabase test db`). **`01_scoring_functions`** cobre toda a matemática pura: pontuação (30/17/15/12/empate 15/10/3/0), pênaltis clubes (0/7), pênaltis legado (0/5/10), prorrogação (0/5), pódio por competição (40/25/10) e pódio legado (40/20/25/10). **`02_bracket_aggregate`** cobre `tie_aggregate_tied` (empate, não‑empate, mandantes invertidos, não finalizado). O `README.md` documenta como rodar e traz o **esqueleto** da próxima camada (motor/trigger, prêmio e RLS/segurança — que exigem fixtures de `auth`/roles). |
+
 ---
 
 ## 12. Índice de arquivos
@@ -246,6 +251,9 @@ Segurança: `advance_bracket_for_match` tem checagem interna de admin e é a ún
 - `supabase/migrations/20260728000013_scoring_pen_gate_and_reopen_reversal.sql`
 - `supabase/migrations/20260728000014_prize_shared_positions.sql`
 - `supabase/migrations/20260728000015_bracket_atomic_rpc.sql`
+- `supabase/tests/01_scoring_functions.test.sql`
+- `supabase/tests/02_bracket_aggregate.test.sql`
+- `supabase/tests/README.md`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`

@@ -3,7 +3,9 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "supabase test db",
+    "test:db": "supabase test db"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
