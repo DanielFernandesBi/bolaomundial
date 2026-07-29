@@ -165,6 +165,9 @@ Colunas que o usuário legitimamente edita (confirmado no código): `avatar_url`
 
 Confirmado que o **único** `rpc` chamado pelo app é `distribute_tournament_prizes` (que tem checagem interna de admin) — por isso os REVOKE de EXECUTE acima não afetam o app.
 
+### 🔒 Hardening — EXECUTE de funções por padrão (`20260728000007_harden_function_execute.sql`)
+Generaliza o achado do item 2c/3 (funções de teste abertas). Como no Postgres toda função nasce com `EXECUTE` para `PUBLIC`, esta migração **revoga EXECUTE de PUBLIC/anon/authenticated em todas as funções do schema `public`** (exceto as de extensões), **reconcede** apenas `distribute_tournament_prizes` ao `authenticated` (a única chamada via `rpc`, com checagem interna de admin) e ajusta o **default** para funções futuras não concederem EXECUTE a `PUBLIC`. Triggers continuam funcionando (não exigem EXECUTE) e chamadas internas em funções `SECURITY DEFINER` rodam como o dono.
+
 ---
 
 ## 12. Índice de arquivos
@@ -176,6 +179,7 @@ Confirmado que o **único** `rpc` chamado pelo app é `distribute_tournament_pri
 - `supabase/migrations/20260728000004_tournament_has_simulator.sql`
 - `supabase/migrations/20260728000005_secure_profiles_privileged_columns.sql`
 - `supabase/migrations/20260728000006_secure_predictions_and_functions.sql`
+- `supabase/migrations/20260728000007_harden_function_execute.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
