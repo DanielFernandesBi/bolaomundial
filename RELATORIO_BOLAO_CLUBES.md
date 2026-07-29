@@ -201,6 +201,12 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 |---|---|
 | Nos clubes, o palpite de pênaltis era **placar** (`pred_pen_home/away`) e pontuava como o Mundial (5 vencedor / 10 exato). | Decisão dos usuários: no bolão de clubes o palpite é **apenas o vencedor** dos pênaltis (sem placar), valendo **7** se acertar e **0** se errar. Novas colunas `predictions.pred_pen_winner` e `matches.pen_winner`; função `calc_pen_winner_points`; `process_match_finished` escolhe o modelo por `has_extra_time` (Mundial=placar 5/10; clubes=vencedor 7/0). Wizard, admin, transparência, detalhe de partida e `advanceBracket` passam a usar o vencedor nos clubes. O Mundial legado continua por placar, intocado. |
 
+### 🔴 Coerência do motor de pontuação (`20260728000013_scoring_pen_gate_and_reopen_reversal.sql`)
+| # | Como estava | O que mudou |
+|---|---|---|
+| 13 | O motor pontuava pênaltis sempre que houvesse resultado de pênalti, **sem verificar** se eles deveriam existir. Nos clubes, um 5×2 no agregado com o vencedor preenchido por engano concederia `points_pen`. A regra "só no empate de agregado" vivia só no `bracket.ts`. | Regra **centralizada** no banco: nova função `tie_aggregate_tied(tie_id)`; em `process_match_finished`, nos clubes (`has_extra_time=false`, `leg='volta'`, com confronto), os pontos de pênalti só valem se o **agregado empatar** — senão `points_pen = 0`. |
+| 14 | Reabrir `FINISHED → SCHEDULED` **não revertia** os pontos (a trigger só somava ao finalizar). O jogo saía de "Encerradas" mas os pontos ficavam no ranking até (e se) fosse finalizado de novo. | `process_match_finished` ganhou um ramo de **reversão atômica**: ao sair de `FINISHED`, zera os pontos das predictions daquele jogo e desconta do `tournament_rankings` (e das cravadas), mantendo o ranking coerente no intervalo. |
+
 ---
 
 ## 12. Índice de arquivos
@@ -218,6 +224,7 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 - `supabase/migrations/20260728000010_fix_podium_mechanisms_isolation.sql`
 - `supabase/migrations/20260728000011_podium_legacy_unique_index.sql`
 - `supabase/migrations/20260728000012_pen_winner_only_clubs.sql`
+- `supabase/migrations/20260728000013_scoring_pen_gate_and_reopen_reversal.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
