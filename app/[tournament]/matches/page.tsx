@@ -96,12 +96,16 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
 
   const finishedMatches = matches.filter((match: any) => match.status === 'FINISHED');
 
-  const missingPredictionsCount = matches.filter(
-    (match: any) =>
-      match.status !== 'FINISHED' &&
-      (!match.match_date || new Date(match.match_date) > now) &&
-      !match.user_prediction
-  ).length;
+  // Predicado ÚNICO do "falta palpitar". Extraído de propósito: o total e o
+  // detalhamento por competição têm de sair do mesmo critério, senão um dia as
+  // duas contas divergem e a etiqueta passa a mentir.
+  const semPalpite = (match: any) =>
+    match.status !== 'FINISHED' &&
+    (!match.match_date || new Date(match.match_date) > now) &&
+    !match.user_prediction;
+
+  const missingMatches = matches.filter(semPalpite);
+  const missingPredictionsCount = missingMatches.length;
 
   // Próximo jogo a fechar os palpites (ignora os "a definir"). upcomingMatches vem ordenado por data.
   const nextMatchDate =
@@ -116,6 +120,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
       short: c.short,
       count: lista.filter((m: any) => m.competition === c.key).length,
     }));
+
+  // "36 sem palpite" não dizia DE QUAL competição. Reaproveita o mesmo chipsDe,
+  // agora sobre os jogos que faltam palpitar. Vazio em torneio de competição
+  // única — ali a etiqueta única já basta e nada muda.
+  const missingByCompetition = temCompeticoes ? chipsDe(missingMatches) : [];
 
   // Transparência por partida (apostas encerradas, jogo ainda não finalizado)
   const { matches: inProgressMatches, error: auditError } = await getMatchesInProgressWithAllPredictions(tournamentSlug);
@@ -177,6 +186,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
         <TournamentDeadlineBanner
           nextMatchDate={nextMatchDate}
           missingPredictionsCount={missingPredictionsCount}
+          missingByCompetition={missingByCompetition}
         />
 
         <CompetitionFilterProvider>

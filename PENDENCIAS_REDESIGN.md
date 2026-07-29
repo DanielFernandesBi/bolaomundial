@@ -38,7 +38,8 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | 9 — Admin tokenizado, destaque no pódio, marca na folha nativa | ✅ | `afc6306` |
 | 10 — Contagem regressiva, tema no desktop, QA do claro | ✅ | `2a77db1` |
 | 11 — Filtro por competição nas Partidas | ✅ | `eaa6b9b`, `ec33dc8` |
-| 12 — Correções da auditoria externa (6 achados) | ✅ | este commit |
+| 12 — Correções da auditoria externa (6 achados) | ✅ | `fd857e7` |
+| 13 — "Sem palpite" detalhado por competição | ✅ | este commit |
 
 ---
 
@@ -57,6 +58,14 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
   abas) e, na aba "Próximas", os grupos passam a vir na ordem do calendário —
   quem joga antes aparece primeiro — em vez da ordem fixa de `COMPETITIONS`.
   Em torneio de competição única nada disso é renderizado.
+- **"Sem palpite" por competição** (bloco 13): a etiqueta única dizia "36 sem
+  palpite" sem dizer DE QUAL competição — que é justamente a informação que faz o
+  jogador agir. No bolão unificado virou uma faixa de 4 células (Total + as três),
+  com o pendente em `state-missing` e o zerado calmo. O predicado do "falta
+  palpitar" foi EXTRAÍDO para uma função só (`semPalpite`), usada pelo total e
+  pelo detalhamento: duas contas escritas em separado divergiriam um dia e a
+  etiqueta passaria a mentir. Em torneio de competição única a prop chega vazia e
+  a etiqueta única de antes é mantida, sem nenhuma mudança.
 - **Escudos das competições**: não existem no banco (`logo_url` é do torneio, e
   as três vivem dentro de um), então as URLs ficam no mapa `ESCUDOS` em
   `components/competition-filter.tsx`. O Daniel mandou as três.
