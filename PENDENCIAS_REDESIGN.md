@@ -7,13 +7,25 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 
 | Fase | Estado | Commit |
 | --- | --- | --- |
-| 0 — Fontes DM Sans / DM Mono | ⏸️ **em aberto — decisão do Daniel** | — |
+| 0 — Fontes DM Sans / DM Mono | ✅ | `19ae8e3` |
 | 1 — Tokens de tema | ✅ | `b233b81` |
 | 2 — Varredura de classes | ✅ | `b7ecdaf` |
 | 3 — Pontuação em 3 níveis | ✅ | `3f336c6` |
 | 4 — Navegação inferior + admin no mobile | ✅ | `51791fb` |
 | 5 — Tema claro/escuro | ✅ | este commit |
-| 6 — Layout por tela | ⬜ a fazer | — |
+| 6 — Layout por tela | 🔄 **em andamento, por blocos** | ver abaixo |
+
+### Fase 6 — blocos
+
+| Bloco | Estado | Commit |
+| --- | --- | --- |
+| 1 — Toast único no rodapé | ✅ | `a2ac0aa` |
+| 2 — Card de partida (stepper 44px, pílula de estado, rodapé de estado) | ⬜ | — |
+| 3 — Partidas + banner de prazo + pódio | ⬜ | — |
+| 4 — Ranking + Ranking Geral + aba Projeção | ⬜ | — |
+| 5 — Desempenho + Perfil (+ perfil de terceiro) | ⬜ | — |
+| 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
+| 7 — Cards de compartilhamento + share sob demanda | ⬜ | — |
 
 ---
 
@@ -41,12 +53,10 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 
 Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntica.
 
-- [ ] **Toasts locais** `fixed top-4 right-4 bg-green-500` → toast global com
-      `role="status" aria-live="polite"`, no rodapé acima da nav, 2,4s.
-      Arquivos: `desempenho/history-list.tsx`, `ranking/ranking-content.tsx`,
-      `ranking-geral/ranking-geral-content.tsx`, `admin/podium-entry.tsx`,
-      `admin/prize-entry.tsx`, `admin/admin-matches-table.tsx`.
-      Também remover o 🎉 das mensagens.
+- [x] **Toasts locais** → `components/toast.tsx` (bloco 1, `a2ac0aa`).
+      Sem provider: cada tela mantém o próprio estado; só a apresentação mudou.
+- [ ] Remover o 🎉 e demais emoji das mensagens de toast (ficou para o bloco
+      da tela correspondente).
 - [ ] **Botão Salvar** `bg-green-600 hover:bg-green-700` → `bg-primary` +
       `text-primary-foreground` (`match-card.tsx`, `podium-card.tsx`).
 - [ ] **Botões de excluir** `bg-red-600/700` → `destructive`.
