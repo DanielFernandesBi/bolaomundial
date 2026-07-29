@@ -103,22 +103,31 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
   const hasAnyPick = slotKeys.some((k) => picks[k]);
 
   return (
-    <Card className="bg-card border-border relative">
+    <Card className="relative border-primary/30 bg-primary/5">
       <CardContent className="p-4">
         <Toast message={toast} />
 
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy className="w-5 h-5 text-primary flex-shrink-0" />
-          <h3 className="text-foreground font-bold text-sm">{mode === 'legacy' ? 'Palpite de Pódio' : `Pódio — ${competitionName}`}</h3>
+        <div className="mb-4 flex items-center gap-2">
+          <Trophy className="w-5 h-5 flex-shrink-0 text-primary" />
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-bold text-foreground">
+              {mode === 'legacy' ? 'Pódio' : `Pódio · ${competitionName}`}
+            </h3>
+            {!locked && !pending && (
+              <p className="font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+                fecha no 1º jogo
+              </p>
+            )}
+          </div>
           {locked && !pending && (
-            <span className="flex items-center gap-1 text-muted-foreground text-xs ml-auto">
-              <Lock className="w-3 h-3" /> Encerrado
+            <span className="ml-auto flex flex-shrink-0 items-center gap-1 rounded-full bg-state-locked/10 px-2.5 py-1 text-[11px] font-semibold text-state-locked">
+              <Lock className="h-3 w-3" /> Encerrado
             </span>
           )}
         </div>
 
         {pending && (
-          <p className="text-muted-foreground text-sm text-center py-4">
+          <p className="rounded-[12px] bg-surface-sunken px-3 py-4 text-center text-sm text-muted-foreground">
             Aguardando definição dos playoffs para liberar o palpite de pódio.
           </p>
         )}
@@ -135,8 +144,8 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
                 key={slot.key}
                 type="button"
                 onClick={() => !locked && setActiveSlot(slot.key)}
-                className={`flex flex-col items-center gap-1 rounded-lg border p-3 transition-colors ${
-                  isActive ? 'border-primary bg-primary/10' : 'border-border bg-surface-sunken'
+                className={`flex h-[92px] flex-col items-center justify-center gap-1 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  isActive ? 'border-primary bg-primary/15' : 'border-border bg-surface-sunken'
                 } ${locked ? 'cursor-default' : 'cursor-pointer'}`}
               >
                 <span className={`text-xs font-semibold ${slot.color}`}>{slot.label}</span>
@@ -156,21 +165,24 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
             <p className="text-xs text-muted-foreground mb-2">
               Escolhendo: <span className="text-primary font-semibold">{slotDefs.find((s) => s.key === activeSlot)?.label}</span>
             </p>
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto mb-4">
+            <div className="mb-4 grid max-h-56 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6">
               {teams.map((team) => {
                 const isPicked = pickedNames.has(team.name);
+                const pickedFor = slotDefs.find((sd) => picks[sd.key]?.name === team.name);
                 return (
                   <button
                     key={team.name}
                     type="button"
                     onClick={() => selectTeam(team)}
                     title={team.name}
-                    className={`flex flex-col items-center gap-1 rounded-md border p-2 transition-colors ${
-                      isPicked ? 'border-primary bg-primary/10' : 'border-border bg-surface-sunken hover:border-border'
+                    className={`flex h-[58px] flex-col items-center justify-center gap-0.5 rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      isPicked ? 'border-primary bg-primary/15' : 'border-border bg-surface-sunken hover:border-primary/40'
                     }`}
                   >
                     <TeamFlag iso={team.iso} alt={team.name} size={28} />
-                    <span className="text-[10px] text-card-foreground truncate w-full text-center">{team.name}</span>
+                    <span className="w-full truncate px-1 text-center text-[9px] text-card-foreground">
+                      {pickedFor ? pickedFor.label.toLowerCase() : team.name}
+                    </span>
                   </button>
                 );
               })}
@@ -180,8 +192,10 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className={`w-full px-4 py-2 rounded-md font-semibold text-sm transition-colors ${
-                  isSaving ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-foreground'
+                className={`min-h-[48px] w-full rounded-lg px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  isSaving
+                    ? 'cursor-not-allowed bg-muted text-muted-foreground'
+                    : 'bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]'
                 }`}
               >
                 {isSaving ? 'Salvando...' : 'Salvar Pódio'}
@@ -191,7 +205,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
         )}
 
         {locked && !hasAnyPick && (
-          <p className="text-[hsl(var(--faint))] text-sm text-center">
+          <p className="rounded-[12px] bg-surface-sunken px-3 py-3 text-center text-sm text-muted-foreground">
             {mode === 'legacy' ? 'Você não palpitou o pódio deste torneio.' : 'Você não palpitou o pódio desta competição.'}
           </p>
         )}

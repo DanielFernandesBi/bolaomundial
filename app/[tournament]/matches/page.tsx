@@ -125,9 +125,14 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                 </div>
               </div>
               <div className="flex items-center gap-4 text-sm text-card-foreground">
-                <span>🏆 {fmt(Number(tournament.prize_first) || 0)}</span>
-                <span>🥈 {fmt(Number(tournament.prize_second) || 0)}</span>
-                <span>🥉 {fmt(Number(tournament.prize_third) || 0)}</span>
+                {([['1º', tournament.prize_first], ['2º', tournament.prize_second], ['3º', tournament.prize_third]] as const).map(
+                  ([pos, val]) => (
+                    <span key={pos} className="flex flex-col items-end">
+                      <span className="font-mono text-[11px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">{pos}</span>
+                      <span className="text-[11px] font-semibold text-card-foreground">{fmt(Number(val) || 0)}</span>
+                    </span>
+                  )
+                )}
               </div>
             </div>
           );
@@ -139,24 +144,24 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
         />
 
         <Tabs defaultValue="upcoming" className="w-full">
-          <TabsList className="bg-card w-full flex-wrap h-auto">
-            <TabsTrigger value="upcoming" className="flex items-center gap-1.5 text-xs sm:text-sm flex-1 min-w-0">
+          <TabsList className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+            <TabsTrigger value="upcoming" className="flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:text-sm">
               <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
               <span className="truncate">Próximas</span>
               <span className="hidden sm:inline">({upcomingMatches.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="audit" className="flex items-center gap-1.5 text-xs sm:text-sm flex-1 min-w-0">
+            <TabsTrigger value="audit" className="flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:text-sm">
               <Eye className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
               <span className="truncate">Transparência</span>
               <span className="hidden sm:inline">({inProgressMatches.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="finished" className="flex items-center gap-1.5 text-xs sm:text-sm flex-1 min-w-0">
+            <TabsTrigger value="finished" className="flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:text-sm">
               <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
               <span className="truncate">Encerradas</span>
               <span className="hidden sm:inline">({finishedMatches.length})</span>
             </TabsTrigger>
             {showPodium && (
-              <TabsTrigger value="podium-audit" className="flex items-center gap-1.5 text-xs sm:text-sm flex-1 min-w-0">
+              <TabsTrigger value="podium-audit" className="flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:text-sm">
                 <Trophy className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                 <span className="truncate">Pódio</span>
               </TabsTrigger>
@@ -201,7 +206,12 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
             ) : (
               groupByCompetition(upcomingMatches).map((g) => (
                 <section key={g.key ?? 'all'} className="mb-8">
-                  {g.key && <h2 className="text-xl font-bold text-foreground mb-4">{g.name}</h2>}
+                  {g.key && (
+                    <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-hairline pb-2">
+                      <h2 className="font-mono text-[10.5px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">{g.name}</h2>
+                      <span className="text-[11px] text-muted-foreground">{g.items.length} {g.items.length === 1 ? 'jogo' : 'jogos'}</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {g.items.map((match: any) => (
                       <MatchCard key={match.id} match={match} group={match.phase ?? 'Fase de Grupos'} />
@@ -240,7 +250,12 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                 </div>
                 {groupByCompetition(inProgressMatches).map((g) => (
                   <section key={g.key ?? 'all'} className="space-y-4">
-                    {g.key && <h2 className="text-xl font-bold text-foreground">{g.name}</h2>}
+                    {g.key && (
+                      <div className="flex items-baseline justify-between gap-3 border-b border-hairline pb-2">
+                        <h2 className="font-mono text-[10.5px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">{g.name}</h2>
+                        <span className="text-[11px] text-muted-foreground">{g.items.length} {g.items.length === 1 ? 'jogo' : 'jogos'}</span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {g.items.map((match: any) => (
                         <AuditMatchCard key={match.id} match={match} tournamentSlug={tournamentSlug} />
@@ -259,15 +274,26 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
             ) : (
               groupByCompetition(finishedMatches).map((g) => (
                 <section key={g.key ?? 'all'} className="mb-8">
-                  {g.key && <h2 className="text-xl font-bold text-foreground mb-4">{g.name}</h2>}
+                  {g.key && (
+                    <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-hairline pb-2">
+                      <h2 className="font-mono text-[10.5px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">{g.name}</h2>
+                      <span className="text-[11px] text-muted-foreground">{g.items.length} {g.items.length === 1 ? 'jogo' : 'jogos'}</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {g.items.map((match: any) => (
                       <Link
                         key={match.id}
                         href={`/${tournamentSlug}/matches/${match.id}`}
-                        className="block transition-transform hover:scale-[1.01]"
+                        className="group block rounded-lg transition-transform hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <MatchCard match={match} group={match.phase ?? 'Fase de Grupos'} />
+                        {/* Afordância explícita de "abrir os palpites". É um <span>,
+                            não um <button>/<a>: o card inteiro já é o link, e link
+                            dentro de link seria HTML inválido. */}
+                        <span className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-lg border border-border bg-surface-sunken text-sm font-semibold text-card-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary">
+                          Ver os palpites
+                        </span>
                       </Link>
                     ))}
                   </div>

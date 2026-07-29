@@ -21,7 +21,7 @@ Este arquivo é o registro vivo do redesign. Atualizar a cada fase.
 | --- | --- | --- |
 | 1 — Toast único no rodapé | ✅ | `a2ac0aa` |
 | 2 — Card de partida (stepper 44px, pílula de estado, rodapé de estado) | ✅ | `a3735b8` |
-| 3 — Partidas + banner de prazo + pódio | ⬜ | — |
+| 3 — Partidas + banner de prazo + pódio | ✅ | `64e25ce` |
 | 4 — Ranking + Ranking Geral + aba Projeção | ⬜ | — |
 | 5 — Desempenho + Perfil (+ perfil de terceiro) | ⬜ | — |
 | 6 — Home/folha + Login + Hall + detalhe da partida | ⬜ | — |
@@ -57,8 +57,8 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       Sem provider: cada tela mantém o próprio estado; só a apresentação mudou.
 - [ ] Remover o 🎉 e demais emoji das mensagens de toast (ficou para o bloco
       da tela correspondente).
-- [x] **Botão Salvar** em `match-card.tsx` → `bg-primary` (bloco 2).
-      Falta o mesmo em `podium-card.tsx` (bloco 3).
+- [x] **Botão Salvar** em `match-card.tsx` (bloco 2) e `podium-card.tsx`
+      (bloco 3) → `bg-primary`.
 - [ ] **Botões de excluir** `bg-red-600/700` → `destructive`.
 - [ ] **Medalhas do Hall** (prata/bronze: `border-slate-400`, `amber-700`) →
       2º e 3º viram linhas discretas; lanterna vira nota tracejada.
@@ -80,12 +80,19 @@ Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntic
       (roxo/ciano/amarelo restantes).
 - [ ] **`admin/admin-matches-table.tsx`**: `indigo-300/500` restantes.
 
+### Vindas do bloco 3 (partidas / pódio)
+
+- [ ] **Destaque âmbar na linha do usuário** em `podium-transparency.tsx`: o
+      componente não recebe `currentUserId` e a `interface Props` não pode
+      mudar nesta refatoração. Precisa entrar junto com o bloco 4, quando o
+      ranking também passar a usar `currentUserId`.
+
 ### Vindas do bloco 2 (card de partida)
 
-- [ ] **Botão "Ver os N palpites"** no card encerrado: NÃO foi adicionado
-      porque `matches/page.tsx` já embrulha o card encerrado num `<Link>`, e
-      link dentro de link é HTML inválido. Resolver no bloco 3, ao reestruturar
-      a lista (tirar o Link externo e pôr o botão dentro do card).
+- [x] **"Ver os palpites"** resolvido no bloco 3: virou um `<span>` estilizado
+      DENTRO do `<Link>` que já embrulha o card. Sem link aninhado, sem mudar a
+      Props do MatchCard. Ficou sem o número N — a contagem de palpites não
+      chega nessa tela e buscá-la exigiria mexer numa action.
 - [ ] **Contagem regressiva fina na pílula** ("Fecha em 3h 12m"): a pílula
       mostra só Aberto/Apostas fechadas/Encerrada/Data a definir, sem relógio
       próprio, para não criar setInterval nem divergência de hidratação dentro

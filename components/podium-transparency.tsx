@@ -1,7 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Trophy } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getFlagUrl } from '@/lib/utils/flags';
 
@@ -34,24 +33,40 @@ function getInitials(name: string): string {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function Slot({ label, team, iso, color }: { label: string; team: string | null; iso: string | null; color: string }) {
+function TeamChip({
+  team,
+  iso,
+  variant,
+}: {
+  team: string | null;
+  iso: string | null;
+  variant: 'champion' | 'other';
+}) {
+  const tone =
+    variant === 'champion'
+      ? 'bg-primary/15 text-primary border-primary/30'
+      : 'bg-surface-sunken text-card-foreground border-border';
   return (
-    <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-      <span className={`text-[10px] font-semibold ${color}`}>{label}</span>
-      <div className="h-8 flex items-center justify-center">
-        {iso ? (
-          iso.trim().toLowerCase().startsWith('http') ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={iso.trim()} alt={team || ''} className="w-7 h-7 rounded object-contain bg-muted" loading="lazy" />
-          ) : (
-            <Image src={getFlagUrl(iso)} alt={team || ''} width={28} height={28} className="rounded" style={{ height: 'auto' }} />
-          )
+    <span
+      className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold ${tone}`}
+    >
+      {iso ? (
+        iso.trim().toLowerCase().startsWith('http') ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={iso.trim()} alt="" className="h-3 w-[18px] flex-shrink-0 rounded-[2px] object-contain" loading="lazy" />
         ) : (
-          <span className="text-[hsl(var(--faint))] text-xs">—</span>
-        )}
-      </div>
-      <span className="text-[10px] text-card-foreground truncate w-full text-center">{team ?? '—'}</span>
-    </div>
+          <Image
+            src={getFlagUrl(iso)}
+            alt=""
+            width={18}
+            height={12}
+            className="flex-shrink-0 rounded-[2px]"
+            style={{ height: 'auto' }}
+          />
+        )
+      ) : null}
+      <span className="truncate">{team ?? '—'}</span>
+    </span>
   );
 }
 
@@ -78,35 +93,36 @@ export function PodiumTransparency({ tournamentSlug, competitions }: Props) {
       ) : (
         startedComps.map((comp) => (
           <div key={comp.key} className="space-y-3">
-            <h4 className="text-foreground font-bold text-lg border-b border-border pb-2">{comp.name}</h4>
+            <h4 className="border-b border-hairline pb-2 font-mono text-[10.5px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+              {comp.name}
+            </h4>
             {comp.predictions.length === 0 ? (
               <div className="text-[hsl(var(--faint))] text-sm py-4">Nenhum palpite de pódio nesta competição.</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 {comp.predictions.map((p) => (
-                  <Card key={`${comp.key}-${p.user_id}`} className="bg-card border-border">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="w-9 h-9 border-2 border-border">
-                          <AvatarImage src={p.avatar_url || undefined} />
-                          <AvatarFallback className="bg-muted text-foreground text-xs">{getInitials(p.username)}</AvatarFallback>
-                        </Avatar>
-                        <Link
-                          href={`/${tournamentSlug}/desempenho/${p.user_id}`}
-                          className="text-foreground font-medium hover:text-primary transition-colors truncate"
-                        >
-                          {p.username}
-                        </Link>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <Slot label="Campeão" team={p.championTeam} iso={p.championIso} color="text-primary" />
-                        <Slot label="Vice" team={p.viceTeam} iso={p.viceIso} color="text-card-foreground" />
-                        {comp.hasThird && (
-                          <Slot label="3º lugar" team={p.thirdTeam} iso={p.thirdIso} color="text-state-missing" />
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div
+                    key={`${comp.key}-${p.user_id}`}
+                    className="flex items-center gap-3 rounded-[14px] border border-hairline bg-card px-3 py-2.5"
+                  >
+                    <Avatar className="h-8 w-8 flex-shrink-0 border border-border">
+                      <AvatarImage src={p.avatar_url || undefined} />
+                      <AvatarFallback className="bg-muted text-[10px] text-foreground">
+                        {getInitials(p.username)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Link
+                      href={`/${tournamentSlug}/desempenho/${p.user_id}`}
+                      className="min-w-0 flex-shrink truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                    >
+                      {p.username}
+                    </Link>
+                    <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+                      <TeamChip team={p.championTeam} iso={p.championIso} variant="champion" />
+                      <TeamChip team={p.viceTeam} iso={p.viceIso} variant="other" />
+                      {comp.hasThird && <TeamChip team={p.thirdTeam} iso={p.thirdIso} variant="other" />}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

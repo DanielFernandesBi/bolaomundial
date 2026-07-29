@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, AlertTriangle, CheckCircle, LockKeyhole } from 'lucide-react';
 
 interface TimeLeft {
   days: number;
@@ -53,21 +52,25 @@ export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCoun
 
   const tournamentStarted = timeLeft === null;
 
-  // ── Cores e urgência do countdown ──────────────────────────────────────────
-  const isUrgent   = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60;        // < 1h
-  const isWarning  = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60 * 24;   // < 24h
+  // ── Aparência por urgência ─────────────────────────────────────────────────
+  const isUrgent  = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60;        // < 1h
+  const isWarning = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60 * 24;   // < 24h
 
-  const countdownBg     = isUrgent  ? 'bg-destructive/10 border-destructive/40'
-                        : isWarning ? 'bg-primary/10 border-primary/40'
-                        :             'bg-muted/10 border-border';
+  const tone = tournamentStarted
+    ? 'border-border bg-surface-sunken text-muted-foreground'
+    : isUrgent
+    ? 'border-state-urgent/40 bg-state-urgent/10 text-state-urgent'
+    : isWarning
+    ? 'border-state-closing/30 bg-state-closing/10 text-state-closing'
+    : 'border-border bg-card text-muted-foreground';
 
-  const countdownText   = isUrgent  ? 'text-destructive'
-                        : isWarning ? 'text-primary'
-                        :             'text-muted-foreground';
-
-  const countdownIcon   = isUrgent  ? <Clock className="w-5 h-5 text-destructive flex-shrink-0" />
-                        : isWarning ? <Clock className="w-5 h-5 text-primary flex-shrink-0" />
-                        :             <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />;
+  const dot = tournamentStarted
+    ? 'bg-state-locked'
+    : isUrgent
+    ? 'bg-state-urgent'
+    : isWarning
+    ? 'bg-state-closing'
+    : 'bg-state-locked';
 
   // ── Texto do countdown ─────────────────────────────────────────────────────
   function buildCountdownText(): string {
@@ -84,57 +87,34 @@ export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCoun
   }
 
   return (
-    <div className="space-y-3 mb-6">
+    <div className={`mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[12px] border px-3 py-3 text-xs ${tone}`}>
+      <span className={`h-2 w-2 flex-shrink-0 rounded-full ${dot}`} aria-hidden="true" />
 
-      {/* ── Countdown do próximo jogo a fechar ─────────────────────────────── */}
       {tournamentStarted ? (
-        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 border-border/40 px-4 py-3">
-          <LockKeyhole className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <p className="text-muted-foreground text-sm font-medium">
-            Cada jogo encerra os palpites no seu próprio horário de início.
-          </p>
-        </div>
+        <span className="font-medium">Cada jogo encerra os palpites no seu próprio horário</span>
       ) : (
-        <div className={`flex items-center gap-3 rounded-lg border px-4 py-3 ${countdownBg}`}>
-          {countdownIcon}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-            <span className={`text-sm font-medium ${countdownText}`}>
-              Próximo jogo fecha os palpites em:
-            </span>
-            <span className={`text-base font-bold tracking-wider ${countdownText}`}>
-              {buildCountdownText()}
-            </span>
-          </div>
-        </div>
+        <>
+          <span className="font-medium">Próximo jogo fecha em</span>
+          <span className="font-mono text-sm font-bold tabular-nums tracking-wider">
+            {buildCountdownText()}
+          </span>
+        </>
       )}
 
-      {/* ── Alerta de palpites em branco (só antes do prazo) ──────────────── */}
-      {!tournamentStarted && missingPredictionsCount > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border bg-state-missing/10 border-state-missing/40 px-4 py-3">
-          <AlertTriangle className="w-5 h-5 text-state-missing flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-state-missing text-sm font-semibold">
-              {missingPredictionsCount === 1
-                ? 'Você tem 1 jogo sem palpite!'
-                : `Você tem ${missingPredictionsCount} jogos sem palpite!`}
-            </p>
-            <p className="text-state-missing/70 text-xs mt-0.5">
-              Jogos sem palpite valem 0 pontos. Preencha antes do início de cada jogo.
-            </p>
-          </div>
-        </div>
+      {/* Pendência, à direita */}
+      {!tournamentStarted && (
+        <span
+          className={`ml-auto flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            missingPredictionsCount > 0
+              ? 'bg-state-missing/15 text-state-missing'
+              : 'bg-state-open/10 text-state-open'
+          }`}
+        >
+          {missingPredictionsCount > 0
+            ? `${missingPredictionsCount} sem palpite`
+            : 'tudo em dia'}
+        </span>
       )}
-
-      {/* ── Tudo preenchido (só antes do prazo) ───────────────────────────── */}
-      {!tournamentStarted && missingPredictionsCount === 0 && (
-        <div className="flex items-center gap-3 rounded-lg border bg-state-open/10 border-state-open/30 px-4 py-3">
-          <CheckCircle className="w-5 h-5 text-state-open flex-shrink-0" />
-          <p className="text-state-open text-sm font-medium">
-            Todos os palpites preenchidos. Boa sorte!
-          </p>
-        </div>
-      )}
-
     </div>
   );
 }
