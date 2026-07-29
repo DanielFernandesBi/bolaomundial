@@ -21,9 +21,9 @@ export default async function RankingGeralPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <div className="text-red-500">Erro ao carregar ranking: {error.message}</div>
+          <div className="text-destructive">Erro ao carregar ranking: {error.message}</div>
         </div>
       </div>
     );
@@ -65,7 +65,7 @@ export default async function RankingGeralPage() {
   const currentUserId = user?.id;
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="container mx-auto px-4 py-12 max-w-full">
         <RankingGeralContent profiles={rankingsWithStats} currentUserId={currentUserId} />
       </div>

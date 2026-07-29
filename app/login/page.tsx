@@ -39,7 +39,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       {/* Header com Logo e Título */}
       <div className="flex flex-col items-center mb-8">
         {/* Logo do App */}
@@ -55,35 +55,35 @@ export default function LoginPage() {
         </div>
         
         {/* Título */}
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-amber-600 bg-clip-text text-transparent mb-2">
+        <h1 className="text-4xl font-bold text-primary mb-2">
           Arena de Bolões
         </h1>
         
         {/* Subtítulo */}
-        <p className="text-slate-300 text-sm">
+        <p className="text-card-foreground text-sm">
           {isSignup ? 'Crie sua conta para participar' : 'Faça seu login para participar'}
         </p>
       </div>
 
       {/* Card de Login/Cadastro */}
-      <Card className="w-full max-w-md bg-slate-900 border-slate-800">
+      <Card className="w-full max-w-md bg-card border-border">
         <CardContent className="p-6">
           <form action={handleSubmit} className="space-y-4">
             {/* Campo Username (apenas no cadastro) */}
             {isSignup && (
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-slate-200">
+                <Label htmlFor="username" className="text-foreground">
                   Username
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-amber-500/70 z-10" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary/70 z-10" />
                   <Input
                     id="username"
                     name="username"
                     type="text"
                     placeholder="seuusername"
                     required
-                    className="pl-10 !bg-slate-800/50 !border-slate-700 !text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500"
+                    className="pl-10 !bg-muted/50 !border-border !text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
                   />
                 </div>
               </div>
@@ -91,36 +91,36 @@ export default function LoginPage() {
 
             {/* Campo Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-200">
+              <Label htmlFor="email" className="text-foreground">
                 E-mail
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-amber-500/70 z-10" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary/70 z-10" />
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="seu@email.com"
                   required
-                  className="pl-10 !bg-slate-800/50 !border-slate-700 !text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500"
+                  className="pl-10 !bg-muted/50 !border-border !text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
                 />
               </div>
             </div>
 
             {/* Campo Senha */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-200">
+              <Label htmlFor="password" className="text-foreground">
                 Senha
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-amber-500/70 z-10" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary/70 z-10" />
                 <Input
                   id="password"
                   name="password"
                   type="password"
                   placeholder="••••••••"
                   required
-                  className="pl-10 !bg-slate-800/50 !border-slate-700 !text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500"
+                  className="pl-10 !bg-muted/50 !border-border !text-foreground placeholder:text-[hsl(var(--faint))] focus:border-primary focus:ring-ring"
                 />
               </div>
             </div>
@@ -143,14 +143,14 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full !bg-amber-500 !text-black hover:!bg-amber-400 h-11 text-base font-semibold shadow-lg shadow-amber-500/20 transition-all"
+              className="w-full !bg-primary !text-primary-foreground hover:!bg-amber-400 h-11 text-base font-semibold shadow-lg shadow-amber-500/20 transition-all"
             >
               {isLoading ? (
                 'Carregando...'
               ) : (
                 <>
                   {isSignup ? 'Cadastrar' : 'Entrar'}
-                  <ArrowRight className="ml-2 w-5 h-5 text-black" />
+                  <ArrowRight className="ml-2 w-5 h-5 text-primary-foreground" />
                 </>
               )}
             </Button>
@@ -160,14 +160,14 @@ export default function LoginPage() {
 
       {/* Rodapé com Link de Cadastro/Login */}
       <div className="mt-6 text-center">
-        <p className="text-slate-300 text-sm">
+        <p className="text-card-foreground text-sm">
           {isSignup ? 'Já tem uma conta? ' : 'Não tem uma conta? '}
           <button
             onClick={() => {
               setIsSignup(!isSignup);
               setError(null);
             }}
-            className="text-amber-500 hover:text-amber-400 hover:underline font-semibold transition-colors"
+            className="text-primary hover:text-primary hover:underline font-semibold transition-colors"
           >
             {isSignup ? 'Faça login' : 'Cadastre-se'}
           </button>

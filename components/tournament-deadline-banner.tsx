@@ -57,17 +57,17 @@ export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCoun
   const isUrgent   = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60;        // < 1h
   const isWarning  = timeLeft !== null && timeLeft.totalMs < 1000 * 60 * 60 * 24;   // < 24h
 
-  const countdownBg     = isUrgent  ? 'bg-red-500/10 border-red-500/40'
-                        : isWarning ? 'bg-amber-500/10 border-amber-500/40'
-                        :             'bg-blue-500/10 border-blue-500/30';
+  const countdownBg     = isUrgent  ? 'bg-destructive/10 border-destructive/40'
+                        : isWarning ? 'bg-primary/10 border-primary/40'
+                        :             'bg-muted/10 border-border';
 
-  const countdownText   = isUrgent  ? 'text-red-400'
-                        : isWarning ? 'text-amber-400'
-                        :             'text-blue-400';
+  const countdownText   = isUrgent  ? 'text-destructive'
+                        : isWarning ? 'text-primary'
+                        :             'text-muted-foreground';
 
-  const countdownIcon   = isUrgent  ? <Clock className="w-5 h-5 text-red-400 flex-shrink-0" />
-                        : isWarning ? <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                        :             <Clock className="w-5 h-5 text-blue-400 flex-shrink-0" />;
+  const countdownIcon   = isUrgent  ? <Clock className="w-5 h-5 text-destructive flex-shrink-0" />
+                        : isWarning ? <Clock className="w-5 h-5 text-primary flex-shrink-0" />
+                        :             <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />;
 
   // ── Texto do countdown ─────────────────────────────────────────────────────
   function buildCountdownText(): string {
@@ -88,9 +88,9 @@ export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCoun
 
       {/* ── Countdown do próximo jogo a fechar ─────────────────────────────── */}
       {tournamentStarted ? (
-        <div className="flex items-center gap-3 rounded-lg border bg-slate-800/50 border-slate-600/40 px-4 py-3">
-          <LockKeyhole className="w-5 h-5 text-slate-400 flex-shrink-0" />
-          <p className="text-slate-400 text-sm font-medium">
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 border-border/40 px-4 py-3">
+          <LockKeyhole className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <p className="text-muted-foreground text-sm font-medium">
             Cada jogo encerra os palpites no seu próprio horário de início.
           </p>
         </div>
@@ -110,15 +110,15 @@ export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCoun
 
       {/* ── Alerta de palpites em branco (só antes do prazo) ──────────────── */}
       {!tournamentStarted && missingPredictionsCount > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border bg-orange-500/10 border-orange-500/40 px-4 py-3">
-          <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-lg border bg-state-missing/10 border-state-missing/40 px-4 py-3">
+          <AlertTriangle className="w-5 h-5 text-state-missing flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-orange-400 text-sm font-semibold">
+            <p className="text-state-missing text-sm font-semibold">
               {missingPredictionsCount === 1
                 ? 'Você tem 1 jogo sem palpite!'
                 : `Você tem ${missingPredictionsCount} jogos sem palpite!`}
             </p>
-            <p className="text-orange-300/70 text-xs mt-0.5">
+            <p className="text-state-missing/70 text-xs mt-0.5">
               Jogos sem palpite valem 0 pontos. Preencha antes do início de cada jogo.
             </p>
           </div>
@@ -127,9 +127,9 @@ export function TournamentDeadlineBanner({ nextMatchDate, missingPredictionsCoun
 
       {/* ── Tudo preenchido (só antes do prazo) ───────────────────────────── */}
       {!tournamentStarted && missingPredictionsCount === 0 && (
-        <div className="flex items-center gap-3 rounded-lg border bg-green-500/10 border-green-500/30 px-4 py-3">
-          <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-          <p className="text-green-400 text-sm font-medium">
+        <div className="flex items-center gap-3 rounded-lg border bg-state-open/10 border-state-open/30 px-4 py-3">
+          <CheckCircle className="w-5 h-5 text-state-open flex-shrink-0" />
+          <p className="text-state-open text-sm font-medium">
             Todos os palpites preenchidos. Boa sorte!
           </p>
         </div>

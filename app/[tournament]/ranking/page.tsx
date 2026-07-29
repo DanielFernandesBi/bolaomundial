@@ -38,21 +38,21 @@ export default async function RankingPage({ params }: RankingPageProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <div className="text-red-500">Erro ao carregar ranking: {error}</div>
+          <div className="text-destructive">Erro ao carregar ranking: {error}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="container mx-auto px-4 py-8 max-w-full">
         {/* Cabeçalho */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Ranking</h1>
-          <p className="text-slate-400">Classificação do {tournament.name}</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Ranking</h1>
+          <p className="text-muted-foreground">Classificação do {tournament.name}</p>
         </div>
 
         {/* Conteúdo com Abas */}

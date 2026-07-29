@@ -60,7 +60,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-red-500">Erro ao carregar jogos: {error}</div>
+        <div className="text-destructive">Erro ao carregar jogos: {error}</div>
       </div>
     );
   }
@@ -99,11 +99,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   const { competitions: pendingBracket } = await getPendingBracketTies(tournamentSlug);
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="container mx-auto px-4 py-8 max-w-full">
         <div className="mb-6">
-          <h1 className="text-4xl font-bold text-white mb-2">Partidas</h1>
-          <p className="text-slate-400">Faça seus palpites para as partidas do {tournament.name}</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Partidas</h1>
+          <p className="text-muted-foreground">Faça seus palpites para as partidas do {tournament.name}</p>
         </div>
 
         {/* Prêmio em disputa */}
@@ -116,15 +116,15 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
           const fmt = (v: number) =>
             new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
           return (
-            <div className="mb-6 rounded-xl border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-amber-600/5 px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="mb-6 rounded-xl border-2 border-primary/40 bg-gradient-to-r from-primary/15 to-primary/5 px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
-                <Trophy className="w-8 h-8 text-amber-500 flex-shrink-0" />
+                <Trophy className="w-8 h-8 text-primary flex-shrink-0" />
                 <div>
-                  <p className="text-amber-400 text-xs font-semibold uppercase tracking-wide">Prêmio em disputa</p>
-                  <p className="text-white text-2xl sm:text-3xl font-bold">{fmt(pot)}</p>
+                  <p className="text-primary text-xs font-semibold uppercase tracking-wide">Prêmio em disputa</p>
+                  <p className="text-foreground text-2xl sm:text-3xl font-bold">{fmt(pot)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-sm text-slate-300">
+              <div className="flex items-center gap-4 text-sm text-card-foreground">
                 <span>🏆 {fmt(Number(tournament.prize_first) || 0)}</span>
                 <span>🥈 {fmt(Number(tournament.prize_second) || 0)}</span>
                 <span>🥉 {fmt(Number(tournament.prize_third) || 0)}</span>
@@ -139,7 +139,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
         />
 
         <Tabs defaultValue="upcoming" className="w-full">
-          <TabsList className="bg-slate-900 w-full flex-wrap h-auto">
+          <TabsList className="bg-card w-full flex-wrap h-auto">
             <TabsTrigger value="upcoming" className="flex items-center gap-1.5 text-xs sm:text-sm flex-1 min-w-0">
               <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
               <span className="truncate">Próximas</span>
@@ -186,8 +186,8 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
             {pendingBracket.length > 0 &&
               pendingBracket.map((comp: any) => (
                 <section key={`pending-${comp.key}`} className="mb-8">
-                  <h2 className="text-xl font-bold text-white mb-1">{comp.name}</h2>
-                  <p className="text-slate-500 text-sm mb-4">Confrontos aguardando os classificados dos playoffs</p>
+                  <h2 className="text-xl font-bold text-foreground mb-1">{comp.name}</h2>
+                  <p className="text-[hsl(var(--faint))] text-sm mb-4">Confrontos aguardando os classificados dos playoffs</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {comp.ties.map((t: any) => (
                       <PendingTieCard key={t.id} sideA={t.sideA} sideB={t.sideB} />
@@ -197,11 +197,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
               ))}
 
             {upcomingMatches.length === 0 && pendingBracket.length === 0 ? (
-              <div className="text-slate-400 text-center py-12">Nenhuma partida próxima no momento.</div>
+              <div className="text-muted-foreground text-center py-12">Nenhuma partida próxima no momento.</div>
             ) : (
               groupByCompetition(upcomingMatches).map((g) => (
                 <section key={g.key ?? 'all'} className="mb-8">
-                  {g.key && <h2 className="text-xl font-bold text-white mb-4">{g.name}</h2>}
+                  {g.key && <h2 className="text-xl font-bold text-foreground mb-4">{g.name}</h2>}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {g.items.map((match: any) => (
                       <MatchCard key={match.id} match={match} group={match.phase ?? 'Fase de Grupos'} />
@@ -215,9 +215,9 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
           {/* Transparência */}
           <TabsContent value="audit" className="mt-6">
             {auditError ? (
-              <div className="text-red-500 text-center py-12">Erro ao carregar partidas: {auditError}</div>
+              <div className="text-destructive text-center py-12">Erro ao carregar partidas: {auditError}</div>
             ) : inProgressMatches.length === 0 ? (
-              <div className="text-slate-400 text-center py-12">
+              <div className="text-muted-foreground text-center py-12">
                 <Eye className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg mb-2">Nenhuma partida com apostas encerradas no momento.</p>
                 <p className="text-sm">
@@ -226,12 +226,12 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6">
+                <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
-                    <Eye className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <Eye className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                     <div>
-                      <h3 className="text-amber-500 font-semibold mb-1">Transparência — Apostas Encerradas</h3>
-                      <p className="text-slate-300 text-sm">
+                      <h3 className="text-primary font-semibold mb-1">Transparência — Apostas Encerradas</h3>
+                      <p className="text-card-foreground text-sm">
                         Palpites de todos os participantes nas partidas cujas apostas já fecharam (a partir do
                         horário de início de cada jogo). Garante que nenhum palpite foi alterado depois do início.
                       </p>
@@ -240,7 +240,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                 </div>
                 {groupByCompetition(inProgressMatches).map((g) => (
                   <section key={g.key ?? 'all'} className="space-y-4">
-                    {g.key && <h2 className="text-xl font-bold text-white">{g.name}</h2>}
+                    {g.key && <h2 className="text-xl font-bold text-foreground">{g.name}</h2>}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {g.items.map((match: any) => (
                         <AuditMatchCard key={match.id} match={match} tournamentSlug={tournamentSlug} />
@@ -255,11 +255,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
           {/* Encerradas */}
           <TabsContent value="finished" className="mt-6">
             {finishedMatches.length === 0 ? (
-              <div className="text-slate-400 text-center py-12">Nenhuma partida encerrada ainda.</div>
+              <div className="text-muted-foreground text-center py-12">Nenhuma partida encerrada ainda.</div>
             ) : (
               groupByCompetition(finishedMatches).map((g) => (
                 <section key={g.key ?? 'all'} className="mb-8">
-                  {g.key && <h2 className="text-xl font-bold text-white mb-4">{g.name}</h2>}
+                  {g.key && <h2 className="text-xl font-bold text-foreground mb-4">{g.name}</h2>}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {g.items.map((match: any) => (
                       <Link
@@ -280,11 +280,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
           {showPodium && (
             <TabsContent value="podium-audit" className="mt-6">
               {!podiumTransparency || podiumTransparency.error ? (
-                <div className="text-red-500 text-center py-12">
+                <div className="text-destructive text-center py-12">
                   Erro ao carregar palpites de pódio{podiumTransparency?.error ? `: ${podiumTransparency.error}` : ''}
                 </div>
               ) : !podiumTransparency.started ? (
-                <div className="text-slate-400 text-center py-12">
+                <div className="text-muted-foreground text-center py-12">
                   <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg mb-2">A transparência do pódio aparece quando cada competição começar.</p>
                   <p className="text-sm">

@@ -172,11 +172,11 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
         <p className="text-indigo-300 text-xs font-semibold">Mata-mata (deixe vazio se não houve)</p>
         {showExtraTime && (
           <div className="flex items-center gap-2">
-            <label className="text-slate-400 text-xs w-20">Prorrogação</label>
+            <label className="text-muted-foreground text-xs w-20">Prorrogação</label>
             <select
               value={match.extra_time_result ?? ''}
               onChange={(e) => updateMatchField(match.id, 'extra_time_result', e.target.value || null)}
-              className="bg-slate-950 border border-slate-700 text-white rounded-md px-2 py-1 text-xs flex-1"
+              className="bg-background border border-border text-foreground rounded-md px-2 py-1 text-xs flex-1"
             >
               <option value="">— não houve —</option>
               <option value="home">{match.team_home} venceu</option>
@@ -187,7 +187,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
         )}
         {!penWinnerMode ? (
           <div className="flex items-center gap-2">
-            <label className="text-slate-400 text-xs w-20">Pênaltis</label>
+            <label className="text-muted-foreground text-xs w-20">Pênaltis</label>
             <Input
               type="number"
               min="0"
@@ -196,9 +196,9 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
               onChange={(e) =>
                 updateMatchField(match.id, 'pen_home', e.target.value === '' ? null : parseInt(e.target.value))
               }
-              className="w-16 text-center bg-slate-950 border-slate-700 text-white h-9"
+              className="w-16 text-center bg-background border-border text-foreground h-9"
             />
-            <span className="text-white">x</span>
+            <span className="text-foreground">x</span>
             <Input
               type="number"
               min="0"
@@ -207,16 +207,16 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
               onChange={(e) =>
                 updateMatchField(match.id, 'pen_away', e.target.value === '' ? null : parseInt(e.target.value))
               }
-              className="w-16 text-center bg-slate-950 border-slate-700 text-white h-9"
+              className="w-16 text-center bg-background border-border text-foreground h-9"
             />
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <label className="text-slate-400 text-xs w-20">Pênaltis (vencedor)</label>
+            <label className="text-muted-foreground text-xs w-20">Pênaltis (vencedor)</label>
             <select
               value={match.pen_winner ?? ''}
               onChange={(e) => updateMatchField(match.id, 'pen_winner', e.target.value || null)}
-              className="bg-slate-950 border border-slate-700 text-white rounded-md px-2 py-1 text-xs flex-1"
+              className="bg-background border border-border text-foreground rounded-md px-2 py-1 text-xs flex-1"
             >
               <option value="">— não houve —</option>
               <option value="home">{match.team_home} venceu</option>
@@ -235,8 +235,8 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
         <div
           className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-md shadow-lg ${
             toast.type === 'success'
-              ? 'bg-green-500 text-white'
-              : 'bg-red-500 text-white'
+              ? 'bg-green-500 text-foreground'
+              : 'bg-red-500 text-foreground'
           }`}
         >
           {toast.message}
@@ -250,18 +250,18 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
           return (
             <Card
               key={match.id}
-              className={`bg-slate-900 border-slate-800 ${
-                isFinished ? 'border-green-500/50 bg-green-500/5' : ''
+              className={`bg-card border-border ${
+                isFinished ? 'border-state-open/50 bg-state-open/5' : ''
               }`}
             >
               <CardContent className="p-4 space-y-4">
                 {/* Data e Status */}
                 <div className="flex items-center justify-between">
-                  <p className="text-slate-400 text-sm">{formatDate(match.match_date)}</p>
+                  <p className="text-muted-foreground text-sm">{formatDate(match.match_date)}</p>
                   <select
                     value={match.status}
                     onChange={(e) => updateMatchField(match.id, 'status', e.target.value)}
-                    className="bg-slate-950 border border-slate-700 text-white rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="bg-background border border-border text-foreground rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="SCHEDULED">SCHEDULED</option>
                     <option value="FINISHED">FINISHED</option>
@@ -270,7 +270,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
 
                 {/* Jogo */}
                 <div>
-                  <p className="text-white font-semibold text-lg mb-4">
+                  <p className="text-foreground font-semibold text-lg mb-4">
                     {match.team_home} vs {match.team_away}
                   </p>
                 </div>
@@ -278,7 +278,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                 {/* Placar - Inputs grandes */}
                 <div className="space-y-3">
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">
+                    <label className="text-muted-foreground text-sm mb-2 block">
                       Placar {match.team_home}
                     </label>
                     <Input
@@ -292,11 +292,11 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                           e.target.value === '' ? null : parseInt(e.target.value)
                         )
                       }
-                      className="w-full h-12 text-center text-lg bg-slate-950 border-slate-700 text-white"
+                      className="w-full h-12 text-center text-lg bg-background border-border text-foreground"
                     />
                   </div>
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">
+                    <label className="text-muted-foreground text-sm mb-2 block">
                       Placar {match.team_away}
                     </label>
                     <Input
@@ -310,7 +310,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                           e.target.value === '' ? null : parseInt(e.target.value)
                         )
                       }
-                      className="w-full h-12 text-center text-lg bg-slate-950 border-slate-700 text-white"
+                      className="w-full h-12 text-center text-lg bg-background border-border text-foreground"
                     />
                   </div>
                 </div>
@@ -323,7 +323,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                   <Button
                     onClick={() => handleSave(match.id)}
                     disabled={saving === match.id || deleting === match.id}
-                    className="w-full h-12 bg-amber-500 text-black hover:bg-amber-400 text-base font-semibold"
+                    className="w-full h-12 bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))] text-base font-semibold"
                   >
                     {saving === match.id ? (
                       'Salvando...'
@@ -348,14 +348,14 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                           Deletar
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-slate-900 border-slate-800">
+                      <AlertDialogContent className="bg-card border-border">
                         <AlertDialogHeader>
-                          <AlertDialogTitle className="text-white">
+                          <AlertDialogTitle className="text-foreground">
                             Confirmar Exclusão
                           </AlertDialogTitle>
-                          <AlertDialogDescription className="text-slate-300">
+                          <AlertDialogDescription className="text-card-foreground">
                             Tem certeza que deseja deletar o jogo{' '}
-                            <strong className="text-white">
+                            <strong className="text-foreground">
                               {match.team_home} vs {match.team_away}
                             </strong>
                             ?
@@ -366,7 +366,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel className="text-slate-300 hover:text-white">
+                          <AlertDialogCancel className="text-card-foreground hover:text-foreground">
                             Cancelar
                           </AlertDialogCancel>
                           <AlertDialogAction
@@ -388,18 +388,18 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
       </div>
 
       {/* Tabela Desktop (hidden md:block) */}
-      <Card className="bg-slate-900 border-slate-800 hidden md:block">
+      <Card className="bg-card border-border hidden md:block">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800">
-                  <TableHead className="text-slate-300">Data</TableHead>
-                  <TableHead className="text-slate-300">Jogo</TableHead>
-                  <TableHead className="text-slate-300 text-center">Placar A</TableHead>
-                  <TableHead className="text-slate-300 text-center">Placar B</TableHead>
-                  <TableHead className="text-slate-300">Status</TableHead>
-                  <TableHead className="text-slate-300">Ações</TableHead>
+                <TableRow className="border-border">
+                  <TableHead className="text-card-foreground">Data</TableHead>
+                  <TableHead className="text-card-foreground">Jogo</TableHead>
+                  <TableHead className="text-card-foreground text-center">Placar A</TableHead>
+                  <TableHead className="text-card-foreground text-center">Placar B</TableHead>
+                  <TableHead className="text-card-foreground">Status</TableHead>
+                  <TableHead className="text-card-foreground">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -408,16 +408,16 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                   return (
                     <TableRow
                       key={match.id}
-                      className={`border-slate-800 ${
+                      className={`border-border ${
                         isFinished
-                          ? 'bg-green-500/10 hover:bg-green-500/20'
-                          : 'hover:bg-slate-800/50'
+                          ? 'bg-state-open/10 hover:bg-state-open/20'
+                          : 'hover:bg-accent/50'
                       }`}
                     >
-                      <TableCell className="text-slate-300 text-sm">
+                      <TableCell className="text-card-foreground text-sm">
                         {formatDate(match.match_date)}
                       </TableCell>
-                      <TableCell className="text-white font-medium">
+                      <TableCell className="text-foreground font-medium">
                         <div>{match.team_home} vs {match.team_away}</div>
                         {match.is_knockout && renderKnockout(match)}
                       </TableCell>
@@ -433,7 +433,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                               e.target.value === '' ? null : parseInt(e.target.value)
                             )
                           }
-                          className="w-20 text-center bg-slate-950 border-slate-700 text-white"
+                          className="w-20 text-center bg-background border-border text-foreground"
                         />
                       </TableCell>
                       <TableCell className="text-center">
@@ -448,7 +448,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                               e.target.value === '' ? null : parseInt(e.target.value)
                             )
                           }
-                          className="w-20 text-center bg-slate-950 border-slate-700 text-white"
+                          className="w-20 text-center bg-background border-border text-foreground"
                         />
                       </TableCell>
                       <TableCell>
@@ -457,7 +457,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                           onChange={(e) =>
                             updateMatchField(match.id, 'status', e.target.value)
                           }
-                          className="bg-slate-950 border border-slate-700 text-white rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="bg-background border border-border text-foreground rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         >
                           <option value="SCHEDULED">SCHEDULED</option>
                           <option value="FINISHED">FINISHED</option>
@@ -470,7 +470,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                             onClick={() => handleSave(match.id)}
                             disabled={saving === match.id || deleting === match.id}
                             size="sm"
-                            className="bg-amber-500 text-black hover:bg-amber-400"
+                            className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]"
                           >
                             {saving === match.id ? (
                               'Salvando...'
@@ -492,14 +492,14 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-slate-900 border-slate-800">
+                            <AlertDialogContent className="bg-card border-border">
                               <AlertDialogHeader>
-                                <AlertDialogTitle className="text-white">
+                                <AlertDialogTitle className="text-foreground">
                                   Confirmar Exclusão
                                 </AlertDialogTitle>
-                                <AlertDialogDescription className="text-slate-300">
+                                <AlertDialogDescription className="text-card-foreground">
                                   Tem certeza que deseja deletar o jogo{' '}
-                                  <strong className="text-white">
+                                  <strong className="text-foreground">
                                     {match.team_home} vs {match.team_away}
                                   </strong>
                                   ?
@@ -510,7 +510,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel className="text-slate-300 hover:text-white">
+                                <AlertDialogCancel className="text-card-foreground hover:text-foreground">
                                   Cancelar
                                 </AlertDialogCancel>
                                 <AlertDialogAction
@@ -535,7 +535,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
       </Card>
 
       {/* Legenda */}
-      <div className="mt-4 text-slate-400 text-sm">
+      <div className="mt-4 text-muted-foreground text-sm">
         <p>
           💡 <strong>Dica:</strong> Jogos finalizados aparecem destacados em verde. 
           Ao alterar o status para 'FINISHED', os pontos serão calculados automaticamente.

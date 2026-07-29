@@ -21,10 +21,10 @@ import type { PlayerResult, SimResult } from '@/lib/probability/engine';
 type Metric = 'title' | 'top3' | 'z4' | 'lanterna';
 
 const METRICS: { key: Metric; label: string; icon: any; bar: string; chip: string; field: keyof PlayerResult }[] = [
-  { key: 'title', label: 'Campeão', icon: Trophy, bar: 'bg-amber-500', chip: 'text-amber-400', field: 'chance_title' },
-  { key: 'top3', label: 'Top 3', icon: Medal, bar: 'bg-green-500', chip: 'text-green-400', field: 'chance_top3' },
-  { key: 'z4', label: 'Zona (Z4)', icon: AlertTriangle, bar: 'bg-orange-500', chip: 'text-orange-400', field: 'chance_z4' },
-  { key: 'lanterna', label: 'Lanterna', icon: ArrowDown, bar: 'bg-red-500', chip: 'text-red-400', field: 'chance_lanterna' },
+  { key: 'title', label: 'Campeão', icon: Trophy, bar: 'bg-primary', chip: 'text-primary', field: 'chance_title' },
+  { key: 'top3', label: 'Top 3', icon: Medal, bar: 'bg-green-500', chip: 'text-state-open', field: 'chance_top3' },
+  { key: 'z4', label: 'Zona (Z4)', icon: AlertTriangle, bar: 'bg-orange-500', chip: 'text-state-missing', field: 'chance_z4' },
+  { key: 'lanterna', label: 'Lanterna', icon: ArrowDown, bar: 'bg-red-500', chip: 'text-destructive', field: 'chance_lanterna' },
 ];
 
 function pct(x: number): string {
@@ -75,7 +75,7 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
       <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <TrendingUp className="w-8 h-8 text-amber-500" />
+            <TrendingUp className="w-8 h-8 text-primary" />
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Simulador</h1>
           </div>
           <p className="text-muted-foreground text-sm">
@@ -86,7 +86,7 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
           onClick={load}
           disabled={loading}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-            loading ? 'bg-muted text-muted-foreground' : 'bg-amber-500 text-black hover:bg-amber-400'
+            loading ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]'
           }`}
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -96,7 +96,7 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
 
       {loading && (
         <div className="text-center py-20 text-muted-foreground">
-          <RefreshCw className="w-10 h-10 mx-auto mb-4 animate-spin text-amber-500" />
+          <RefreshCw className="w-10 h-10 mx-auto mb-4 animate-spin text-primary" />
           <p className="text-lg">Rodando milhares de simulações...</p>
           <p className="text-sm">Cruzando os palpites de todos contra cada cenário sorteado.</p>
         </div>
@@ -112,8 +112,8 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
       {!loading && !error && data && (
         <>
           {/* Aviso de escopo */}
-          <div className="flex items-start gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 mb-6 text-sm">
-            <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/10 px-4 py-3 mb-6 text-sm">
+            <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
             <p className="text-foreground">
               Simulação do chaveamento inteiro (90min → prorrogação → pênaltis) até a final e o 3º lugar, com a
               força das seleções a partir do <strong>ranking FIFA</strong> + <strong>fase de grupos</strong>
@@ -126,7 +126,7 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
             <Card className="bg-card border-border mb-6">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Trophy className="w-4 h-4 text-amber-500" />
+                  <Trophy className="w-4 h-4 text-primary" />
                   <h3 className="text-foreground text-sm font-semibold">Quem leva a taça? — chance por seleção</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
@@ -144,10 +144,10 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
                           ) : null}
                           <span className="text-foreground truncate">{t.team}</span>
                         </div>
-                        <span className="text-amber-400 font-bold tabular-nums flex-shrink-0">{pct(t.p_champion)}</span>
+                        <span className="text-primary font-bold tabular-nums flex-shrink-0">{pct(t.p_champion)}</span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                        <div className="h-full bg-amber-500" style={{ width: `${Math.max(t.p_champion * 100, t.p_champion > 0 ? 2 : 0)}%` }} />
+                        <div className="h-full bg-primary" style={{ width: `${Math.max(t.p_champion * 100, t.p_champion > 0 ? 2 : 0)}%` }} />
                       </div>
                     </div>
                   ))}
@@ -160,31 +160,31 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
           {/* Destaques */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             <HighlightCard
-              icon={<Trophy className="w-5 h-5 text-amber-400" />}
+              icon={<Trophy className="w-5 h-5 text-primary" />}
               title="Favorito ao título"
               player={favTitle}
               value={favTitle ? pct(favTitle.chance_title) : '—'}
-              accent="text-amber-400"
+              accent="text-primary"
             />
             <HighlightCard
-              icon={<Sparkles className="w-5 h-5 text-green-400" />}
+              icon={<Sparkles className="w-5 h-5 text-state-open" />}
               title="Maior pontuação projetada"
               player={topPoints}
               value={topPoints ? topPoints.projected_points.toFixed(0) + ' pts' : '—'}
-              accent="text-green-400"
+              accent="text-state-open"
             />
             <HighlightCard
-              icon={<ArrowDown className="w-5 h-5 text-red-400" />}
+              icon={<ArrowDown className="w-5 h-5 text-destructive" />}
               title="Risco de lanterna"
               player={favLanterna}
               value={favLanterna ? pct(favLanterna.chance_lanterna) : '—'}
-              accent="text-red-400"
+              accent="text-destructive"
             />
           </div>
 
           {/* Ranking projetado dos jogadores */}
           <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-5 h-5 text-amber-500" />
+            <TrendingUp className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-bold text-foreground">Ranking projetado dos jogadores</h2>
           </div>
 
@@ -199,7 +199,7 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
                   onClick={() => setMetric(m.key)}
                   className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold border transition-colors ${
                     active
-                      ? 'bg-amber-500 text-black border-amber-500'
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-card text-muted-foreground border-border hover:border-muted-foreground'
                   }`}
                 >

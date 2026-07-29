@@ -23,16 +23,16 @@ export function PredictionSummary({ teamHome, teamAway, predictions, className =
   const pct = (n: number) => Math.round((n / total) * 100);
 
   const rows = [
-    { label: `Vitória ${teamHome}`, count: homeWin, bar: 'bg-green-500', text: 'text-green-300' },
-    { label: 'Empate', count: draw, bar: 'bg-slate-400', text: 'text-slate-300' },
-    { label: `Vitória ${teamAway}`, count: awayWin, bar: 'bg-blue-500', text: 'text-blue-300' },
+    { label: `Vitória ${teamHome}`, count: homeWin, bar: 'bg-green-500', text: 'text-state-open' },
+    { label: 'Empate', count: draw, bar: 'bg-slate-400', text: 'text-card-foreground' },
+    { label: `Vitória ${teamAway}`, count: awayWin, bar: 'bg-blue-500', text: 'text-muted-foreground' },
   ];
 
   return (
-    <div className={`rounded-lg border border-slate-700 bg-slate-950/40 p-3 ${className}`}>
+    <div className={`rounded-lg border border-border bg-surface-sunken p-3 ${className}`}>
       <div className="flex items-center gap-2 mb-3">
-        <BarChart3 className="w-4 h-4 text-amber-500" />
-        <h4 className="text-white text-sm font-semibold">Resumo dos palpites (tempo normal)</h4>
+        <BarChart3 className="w-4 h-4 text-primary" />
+        <h4 className="text-foreground text-sm font-semibold">Resumo dos palpites (tempo normal)</h4>
       </div>
       <div className="space-y-2">
         {rows.map((r) => {
@@ -42,20 +42,20 @@ export function PredictionSummary({ teamHome, teamAway, predictions, className =
               <div className="flex items-center justify-between text-sm mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`font-bold tabular-nums w-10 ${r.text}`}>{p}%</span>
-                  <span className="text-slate-300 truncate">{r.label}</span>
+                  <span className="text-card-foreground truncate">{r.label}</span>
                 </div>
-                <span className="text-slate-400 text-xs flex-shrink-0">
+                <span className="text-muted-foreground text-xs flex-shrink-0">
                   {r.count} {r.count === 1 ? 'palpite' : 'palpites'}
                 </span>
               </div>
-              <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                 <div className={`h-full ${r.bar}`} style={{ width: `${p}%` }} />
               </div>
             </div>
           );
         })}
       </div>
-      <p className="text-slate-500 text-[11px] mt-2 text-right">Total: {total} {total === 1 ? 'palpite' : 'palpites'}</p>
+      <p className="text-[hsl(var(--faint))] text-[11px] mt-2 text-right">Total: {total} {total === 1 ? 'palpite' : 'palpites'}</p>
     </div>
   );
 }

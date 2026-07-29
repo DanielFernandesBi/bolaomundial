@@ -15,20 +15,20 @@ export type ScoringVariant = 'groups' | 'clubs' | 'legacy';
 
 function RuleRow({ rule }: { rule: Rule }) {
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
+    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
       <div className={`w-14 h-14 ${rule.bg} rounded flex items-center justify-center flex-shrink-0`}>
-        <span className={`font-bold text-lg ${rule.textColor ?? 'text-white'}`}>{rule.pts}</span>
+        <span className={`font-bold text-lg ${rule.textColor ?? 'text-foreground'}`}>{rule.pts}</span>
       </div>
       <div className="flex-1">
-        <div className="text-white font-semibold">{rule.title}</div>
-        <div className="text-slate-400 text-sm">{rule.desc}</div>
+        <div className="text-foreground font-semibold">{rule.title}</div>
+        <div className="text-muted-foreground text-sm">{rule.desc}</div>
       </div>
     </div>
   );
 }
 
 const REGULAR_RULES: Rule[] = [
-  { pts: '30', bg: 'bg-amber-500', textColor: 'text-black', title: 'A. Placar Exato (Cravada)', desc: 'Acertou exatamente o placar do tempo normal' },
+  { pts: '30', bg: 'bg-primary', textColor: 'text-primary-foreground', title: 'A. Placar Exato (Cravada)', desc: 'Acertou exatamente o placar do tempo normal' },
   { pts: '17', bg: 'bg-purple-500', title: 'B. Vencedor + Gols do Vencedor', desc: 'Acertou quem venceu e o nº exato de gols desse time' },
   { pts: '15', bg: 'bg-blue-500', title: 'C. Vencedor + Saldo de Gols', desc: 'Acertou quem venceu e a diferença exata de gols' },
   { pts: '15', bg: 'bg-teal-500', title: 'E. Empate Seco', desc: 'Acertou que terminaria empatado, mas errou o placar exato' },
@@ -51,16 +51,16 @@ const KNOCKOUT_CLUBS: Rule[] = [
 
 // Pódio do Mundial (campeão/vice/3º)
 const PODIUM_LEGACY: Rule[] = [
-  { pts: '40', bg: 'bg-amber-500', textColor: 'text-black', title: 'Campeão', desc: 'Acertou a seleção campeã' },
-  { pts: '20', bg: 'bg-slate-400', textColor: 'text-black', title: 'Vice-campeão', desc: 'Acertou a seleção vice-campeã' },
+  { pts: '40', bg: 'bg-primary', textColor: 'text-primary-foreground', title: 'Campeão', desc: 'Acertou a seleção campeã' },
+  { pts: '20', bg: 'bg-slate-400', textColor: 'text-primary-foreground', title: 'Vice-campeão', desc: 'Acertou a seleção vice-campeã' },
   { pts: '25', bg: 'bg-orange-500', title: '3º lugar', desc: 'Acertou a seleção em terceiro' },
   { pts: '+10', bg: 'bg-amber-700', title: 'Consolação de pódio', desc: 'Um time que você escalou chegou ao pódio, mas em posição diferente (uma vez por time)' },
 ];
 
 // Pódio dos clubes (campeão/vice por competição, sem 3º)
 const PODIUM_CLUBS: Rule[] = [
-  { pts: '40', bg: 'bg-amber-500', textColor: 'text-black', title: 'Campeão', desc: 'Acertou o campeão da competição' },
-  { pts: '25', bg: 'bg-slate-400', textColor: 'text-black', title: 'Vice-campeão', desc: 'Acertou o vice da competição' },
+  { pts: '40', bg: 'bg-primary', textColor: 'text-primary-foreground', title: 'Campeão', desc: 'Acertou o campeão da competição' },
+  { pts: '25', bg: 'bg-slate-400', textColor: 'text-primary-foreground', title: 'Vice-campeão', desc: 'Acertou o vice da competição' },
   { pts: '+10', bg: 'bg-amber-700', title: 'Consolação de pódio', desc: 'Acertou o time no pódio, mas na posição trocada (campeão↔vice)' },
 ];
 
@@ -71,10 +71,10 @@ export function ScoringLegend({ variant = 'legacy' }: { variant?: ScoringVariant
   const podiumRules = isClubs ? PODIUM_CLUBS : PODIUM_LEGACY;
 
   return (
-    <Card className="bg-slate-900 border-slate-800 mb-8">
+    <Card className="bg-card border-border mb-8">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-white">
-          <Award className="w-5 h-5 text-amber-500" />
+        <CardTitle className="flex items-center gap-2 text-foreground">
+          <Award className="w-5 h-5 text-primary" />
           Sistema de Pontuação
         </CardTitle>
       </CardHeader>
@@ -82,7 +82,7 @@ export function ScoringLegend({ variant = 'legacy' }: { variant?: ScoringVariant
         <div className="space-y-6">
           {/* Tempo normal */}
           <div className="space-y-3">
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               Pontuação hierárquica: você recebe sempre a pontuação da categoria mais alta que seu palpite atingir no
               tempo normal.
             </p>
@@ -96,21 +96,21 @@ export function ScoringLegend({ variant = 'legacy' }: { variant?: ScoringVariant
             <div className="space-y-3">
               <div className="flex items-center gap-2 pt-2">
                 <Timer className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-white font-semibold">
+                <h3 className="text-foreground font-semibold">
                   {isClubs ? 'Mata-mata (pênaltis)' : 'Mata-mata (prorrogação e pênaltis)'}
                 </h3>
               </div>
-              <p className="text-slate-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 {isClubs ? (
                   <>
-                    Nos jogos de volta você também palpita <strong className="text-slate-300">quem vence os pênaltis</strong>.
-                    É um ponto extra que <strong className="text-slate-300">soma</strong> ao tempo normal e só conta se o
-                    confronto for decidido nos pênaltis (agregado empatado). <strong className="text-slate-300">Não há prorrogação.</strong>
+                    Nos jogos de volta você também palpita <strong className="text-card-foreground">quem vence os pênaltis</strong>.
+                    É um ponto extra que <strong className="text-card-foreground">soma</strong> ao tempo normal e só conta se o
+                    confronto for decidido nos pênaltis (agregado empatado). <strong className="text-card-foreground">Não há prorrogação.</strong>
                   </>
                 ) : (
                   <>
                     Em jogos de mata-mata você também palpita a prorrogação e os pênaltis. São pontos extras que{' '}
-                    <strong className="text-slate-300">somam</strong> ao tempo normal — e só contam se a fase realmente acontecer.
+                    <strong className="text-card-foreground">somam</strong> ao tempo normal — e só contam se a fase realmente acontecer.
                   </>
                 )}
               </p>
@@ -124,12 +124,12 @@ export function ScoringLegend({ variant = 'legacy' }: { variant?: ScoringVariant
           {showKnockout && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 pt-2">
-                <Trophy className="w-4 h-4 text-amber-400" />
-                <h3 className="text-white font-semibold">
+                <Trophy className="w-4 h-4 text-primary" />
+                <h3 className="text-foreground font-semibold">
                   {isClubs ? 'Pódio por competição (campeão e vice)' : 'Pódio do torneio (campeão, vice e 3º)'}
                 </h3>
               </div>
-              <p className="text-slate-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 {isClubs
                   ? 'Palpite de campeão e vice de cada competição (Copa do Brasil, Sul-Americana, Libertadores), travado no início de cada uma. Conta no fim de cada competição.'
                   : 'Palpite único por torneio de mata-mata, travado no início do primeiro jogo. Conta no fim do torneio.'}
@@ -140,7 +140,7 @@ export function ScoringLegend({ variant = 'legacy' }: { variant?: ScoringVariant
             </div>
           )}
 
-          <div className="flex items-start gap-2 text-slate-500 text-xs pt-1">
+          <div className="flex items-start gap-2 text-[hsl(var(--faint))] text-xs pt-1">
             <Crosshair className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <span>
               {variant === 'groups'

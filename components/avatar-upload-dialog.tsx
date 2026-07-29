@@ -154,13 +154,13 @@ export function AvatarUploadDialog({
         >
           <Avatar className="w-full h-full">
             <AvatarImage src={currentAvatarUrl || undefined} className="object-cover" />
-            <AvatarFallback className="text-black text-3xl font-bold bg-amber-500">
+            <AvatarFallback className="text-primary-foreground text-3xl font-bold bg-primary">
               {userInitials}
             </AvatarFallback>
           </Avatar>
         </button>
       </DialogTrigger>
-      <DialogContent className="bg-slate-900 border-slate-800 max-w-2xl">
+      <DialogContent className="bg-card border-border max-w-2xl">
         <DialogHeader>
           <DialogTitle>Alterar Foto de Perfil</DialogTitle>
           <DialogDescription>
@@ -170,7 +170,7 @@ export function AvatarUploadDialog({
 
         <div className="space-y-4">
           {!imageSrc ? (
-            <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-slate-700 rounded-lg">
+            <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border rounded-lg">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -181,17 +181,17 @@ export function AvatarUploadDialog({
               />
               <label
                 htmlFor="avatar-upload"
-                className="cursor-pointer bg-amber-500 text-black px-6 py-3 rounded-md font-medium hover:bg-amber-400 transition-colors"
+                className="cursor-pointer bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-[hsl(var(--primary-hover))] transition-colors"
               >
                 Selecionar Imagem
               </label>
-              <p className="text-slate-400 text-sm mt-4">
+              <p className="text-muted-foreground text-sm mt-4">
                 Formatos aceitos: JPG, PNG, GIF
               </p>
             </div>
           ) : (
             <>
-              <div className="relative w-full h-[400px] bg-slate-950 rounded-lg overflow-hidden">
+              <div className="relative w-full h-[400px] bg-background rounded-lg overflow-hidden">
                 <Cropper
                   image={imageSrc}
                   crop={crop}
@@ -206,7 +206,7 @@ export function AvatarUploadDialog({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-300">Zoom</label>
+                <label className="text-sm text-card-foreground">Zoom</label>
                 <Slider
                   value={[zoom]}
                   min={1}
@@ -220,13 +220,13 @@ export function AvatarUploadDialog({
           )}
 
           {error && (
-            <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md p-3">
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-md p-3">
+            <div className="text-sm text-state-open bg-state-open/10 border border-state-open/20 rounded-md p-3">
               Foto atualizada com sucesso!
             </div>
           )}
@@ -238,7 +238,7 @@ export function AvatarUploadDialog({
             variant="ghost"
             onClick={handleCancel}
             disabled={isUploading}
-            className="text-slate-300 hover:text-white"
+            className="text-card-foreground hover:text-foreground"
           >
             {imageSrc ? 'Cancelar' : 'Fechar'}
           </Button>
@@ -247,7 +247,7 @@ export function AvatarUploadDialog({
               type="button"
               onClick={handleSave}
               disabled={isUploading || !croppedAreaPixels}
-              className="bg-amber-500 text-black hover:bg-amber-400"
+              className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]"
             >
               {isUploading ? 'Salvando...' : 'Salvar Foto'}
             </Button>

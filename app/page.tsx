@@ -33,10 +33,10 @@ export default async function HomePage() {
     (allTournaments || []).map(async (tournament) => {
       let status: 'active' | 'pending' | 'finished' = 'active';
       let statusText = 'Torneio Ativo';
-      let statusColor = 'text-green-400';
-      let borderColor = 'border-green-500/30';
-      let badgeBg = 'bg-green-500/20';
-      let badgeText = 'text-green-400';
+      let statusColor = 'text-state-open';
+      let borderColor = 'border-state-open/30';
+      let badgeBg = 'bg-state-open/20';
+      let badgeText = 'text-state-open';
 
       if (!tournament.active) {
         // Verificar se há jogos finalizados neste torneio
@@ -50,25 +50,25 @@ export default async function HomePage() {
           // Torneio encerrado
           status = 'finished';
           statusText = 'Torneio encerrado';
-          statusColor = 'text-slate-400';
-          borderColor = 'border-slate-700';
+          statusColor = 'text-muted-foreground';
+          borderColor = 'border-border';
           badgeBg = 'bg-slate-600/20';
-          badgeText = 'text-slate-400';
+          badgeText = 'text-muted-foreground';
         } else {
           // Torneio pendente
           status = 'pending';
           statusText = 'Torneio ainda não disponível';
-          statusColor = 'text-orange-400';
-          borderColor = 'border-orange-500/30';
-          badgeBg = 'bg-orange-500/20';
-          badgeText = 'text-orange-400';
+          statusColor = 'text-state-missing';
+          borderColor = 'border-state-missing/30';
+          badgeBg = 'bg-state-missing/20';
+          badgeText = 'text-state-missing';
         }
       } else {
         // Torneio ativo
-        statusColor = 'text-green-400';
-        borderColor = 'border-green-500/30';
-        badgeBg = 'bg-green-500/20';
-        badgeText = 'text-green-400';
+        statusColor = 'text-state-open';
+        borderColor = 'border-state-open/30';
+        badgeBg = 'bg-state-open/20';
+        badgeText = 'text-state-open';
       }
 
       return {
@@ -85,14 +85,14 @@ export default async function HomePage() {
 
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="container mx-auto px-4 py-12 max-w-full">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <h1 className="text-6xl font-bold text-white mb-4 bg-gradient-to-r from-amber-500 to-amber-600 bg-clip-text text-transparent">
+          <h1 className="text-6xl font-bold text-foreground mb-4 text-primary">
             Arena de Bolões
           </h1>
-          <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Jogue, palpite e conquiste o topo do ranking em múltiplos torneios
           </p>
         </div>
@@ -100,8 +100,8 @@ export default async function HomePage() {
         {/* Torneios */}
         <section className="mb-16">
           <div className="flex items-center gap-3 mb-8">
-            <Calendar className="w-8 h-8 text-amber-500" />
-            <h2 className="text-3xl font-bold text-white">Torneios</h2>
+            <Calendar className="w-8 h-8 text-primary" />
+            <h2 className="text-3xl font-bold text-foreground">Torneios</h2>
           </div>
 
           {tournamentsWithStatus && tournamentsWithStatus.length > 0 ? (
@@ -121,7 +121,7 @@ export default async function HomePage() {
                 // Inativo: encerrado (clicável -> ranking) ou pendente (bloqueado)
                 if (!isActive) {
                   const cardInner = (
-                    <Card className={`bg-gradient-to-br from-slate-900 to-slate-800 border-2 ${tournament.borderColor} ${isFinished ? 'opacity-90 hover:border-slate-400 hover:scale-105 transition-all cursor-pointer' : 'opacity-70 cursor-not-allowed'} h-full relative`}>
+                    <Card className={`bg-card border-2 ${tournament.borderColor} ${isFinished ? 'opacity-90 hover:border-slate-400 hover:scale-105 transition-all cursor-pointer' : 'opacity-70 cursor-not-allowed'} h-full relative`}>
                       <CardContent className="p-8 flex flex-col items-center text-center">
                         {tournament.logo_url ? (
                           <img
@@ -130,8 +130,8 @@ export default async function HomePage() {
                             className={`w-24 h-24 mb-4 rounded-full object-cover ${isFinished ? '' : 'opacity-80'}`}
                           />
                         ) : (
-                          <div className={`w-24 h-24 mb-4 rounded-full ${isPending ? 'bg-orange-500/20' : 'bg-slate-700/20'} flex items-center justify-center border-2 ${isPending ? 'border-orange-500/50' : 'border-slate-600/50'}`}>
-                            <span className={`text-3xl font-bold ${isPending ? 'text-orange-500' : 'text-slate-500'}`}>
+                          <div className={`w-24 h-24 mb-4 rounded-full ${isPending ? 'bg-state-missing/20' : 'bg-muted/20'} flex items-center justify-center border-2 ${isPending ? 'border-state-missing/50' : 'border-border/50'}`}>
+                            <span className={`text-3xl font-bold ${isPending ? 'text-state-missing' : 'text-[hsl(var(--faint))]'}`}>
                               {initials}
                             </span>
                           </div>
@@ -149,11 +149,11 @@ export default async function HomePage() {
                         <p className={`${tournament.statusColor} mb-4 text-sm`}>
                           {tournament.statusText}
                         </p>
-                        <div className="mt-auto pt-4 border-t border-slate-700 w-full">
+                        <div className="mt-auto pt-4 border-t border-border w-full">
                           {isFinished ? (
-                            <div className="flex items-center justify-center gap-2 text-amber-400">
+                            <div className="flex items-center justify-center gap-2 text-primary">
                               <Award className="w-5 h-5" />
-                              <span className="text-sm font-medium bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full">
+                              <span className="text-sm font-medium bg-primary/20 text-primary px-3 py-1 rounded-full">
                                 Encerrado · Ver ranking
                               </span>
                               <ChevronRight className="w-4 h-4" />
@@ -192,7 +192,7 @@ export default async function HomePage() {
                     href={`/${tournament.slug}/matches`}
                     className="block"
                   >
-                    <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-green-500/30 hover:border-green-500 transition-all duration-300 hover:scale-105 cursor-pointer h-full">
+                    <Card className="bg-card border-2 border-state-open/30 hover:border-green-500 transition-all duration-300 hover:scale-105 cursor-pointer h-full">
                       <CardContent className="p-8 flex flex-col items-center text-center">
                         {tournament.logo_url ? (
                           <img
@@ -201,22 +201,22 @@ export default async function HomePage() {
                             className="w-24 h-24 mb-4 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-24 h-24 mb-4 rounded-full bg-green-500/20 flex items-center justify-center border-2 border-green-500/50">
-                            <span className="text-3xl font-bold text-green-500">
+                          <div className="w-24 h-24 mb-4 rounded-full bg-state-open/20 flex items-center justify-center border-2 border-state-open/50">
+                            <span className="text-3xl font-bold text-state-open">
                               {initials}
                             </span>
                           </div>
                         )}
-                        <h3 className="text-2xl font-bold text-white mb-2">
+                        <h3 className="text-2xl font-bold text-foreground mb-2">
                           {tournament.name}
                         </h3>
-                        <p className="text-slate-400 mb-4">
+                        <p className="text-muted-foreground mb-4">
                           Clique para ver partidas e ranking
                         </p>
-                        <div className="mt-auto pt-4 border-t border-slate-700 w-full">
-                          <div className="flex items-center justify-center gap-2 text-green-400">
+                        <div className="mt-auto pt-4 border-t border-border w-full">
+                          <div className="flex items-center justify-center gap-2 text-state-open">
                             <Users className="w-5 h-5" />
-                            <span className="text-sm font-medium bg-green-500/20 text-green-400 px-3 py-1 rounded-full">
+                            <span className="text-sm font-medium bg-state-open/20 text-state-open px-3 py-1 rounded-full">
                               Torneio Ativo
                             </span>
                           </div>
@@ -228,8 +228,8 @@ export default async function HomePage() {
               })}
             </div>
           ) : (
-            <div className="text-center py-12 bg-slate-900 rounded-lg border border-slate-800">
-              <p className="text-slate-400 text-lg">
+            <div className="text-center py-12 bg-card rounded-lg border border-border">
+              <p className="text-muted-foreground text-lg">
                 Nenhum torneio disponível no momento.
               </p>
             </div>
@@ -239,15 +239,15 @@ export default async function HomePage() {
         {/* Link para Hall da Fama */}
         <section>
           <Link href="/hall-of-fame">
-            <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-2 border-amber-500/30 hover:border-amber-500 transition-all duration-300 hover:scale-105 cursor-pointer">
+            <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/30 hover:border-primary transition-all duration-300 hover:scale-105 cursor-pointer">
               <CardContent className="p-8">
                 <div className="flex items-center justify-center gap-4">
-                  <Trophy className="w-12 h-12 text-amber-500" />
+                  <Trophy className="w-12 h-12 text-primary" />
                   <div className="text-center">
-                    <h2 className="text-3xl font-bold text-white mb-2">
+                    <h2 className="text-3xl font-bold text-foreground mb-2">
                       Hall da Fama
                     </h2>
-                    <p className="text-slate-400">
+                    <p className="text-muted-foreground">
                       Veja os campeões e destaques dos torneios finalizados
                     </p>
                   </div>

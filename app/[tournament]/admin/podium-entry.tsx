@@ -52,32 +52,32 @@ export function PodiumEntry({ tournamentSlug, teams, current }: PodiumEntryProps
     setTimeout(() => setToast(null), 4000);
   }
 
-  const selectClass = 'w-full bg-slate-950 border border-slate-700 text-white rounded-md px-3 py-2 text-sm';
+  const selectClass = 'w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm';
 
   return (
-    <Card className="bg-slate-900 border-slate-800 mb-8">
+    <Card className="bg-card border-border mb-8">
       <CardContent className="p-6">
         {toast && (
           <div
             className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-md shadow-lg ${
-              toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+              toast.type === 'success' ? 'bg-green-500 text-foreground' : 'bg-red-500 text-foreground'
             }`}
           >
             {toast.message}
           </div>
         )}
         <div className="flex items-center gap-2 mb-1">
-          <Trophy className="w-5 h-5 text-amber-500" />
-          <h2 className="text-xl font-bold text-white">Lançar Pódio do Torneio</h2>
+          <Trophy className="w-5 h-5 text-primary" />
+          <h2 className="text-xl font-bold text-foreground">Lançar Pódio do Torneio</h2>
         </div>
-        <p className="text-slate-400 text-sm mb-4">
+        <p className="text-muted-foreground text-sm mb-4">
           Defina o resultado final. Ao salvar, os pontos de pódio de todos os participantes são recalculados
           (campeão 40, vice 20, terceiro 25, consolação +10).
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1">
-            <label className="text-amber-400 text-sm font-semibold">Campeão (40)</label>
+            <label className="text-primary text-sm font-semibold">Campeão (40)</label>
             <select value={champion} onChange={(e) => setChampion(e.target.value)} className={selectClass}>
               <option value="">—</option>
               {teams.map((t) => (
@@ -86,7 +86,7 @@ export function PodiumEntry({ tournamentSlug, teams, current }: PodiumEntryProps
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-slate-300 text-sm font-semibold">Vice (20)</label>
+            <label className="text-card-foreground text-sm font-semibold">Vice (20)</label>
             <select value={runnerUp} onChange={(e) => setRunnerUp(e.target.value)} className={selectClass}>
               <option value="">—</option>
               {teams.map((t) => (
@@ -95,7 +95,7 @@ export function PodiumEntry({ tournamentSlug, teams, current }: PodiumEntryProps
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-orange-400 text-sm font-semibold">3º lugar (25)</label>
+            <label className="text-state-missing text-sm font-semibold">3º lugar (25)</label>
             <select value={third} onChange={(e) => setThird(e.target.value)} className={selectClass}>
               <option value="">—</option>
               {teams.map((t) => (
@@ -105,7 +105,7 @@ export function PodiumEntry({ tournamentSlug, teams, current }: PodiumEntryProps
           </div>
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="mt-4 bg-amber-500 text-black hover:bg-amber-400">
+        <Button onClick={handleSave} disabled={saving} className="mt-4 bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
           {saving ? 'Salvando...' : 'Lançar Pódio'}
         </Button>
       </CardContent>

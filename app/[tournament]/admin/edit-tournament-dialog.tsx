@@ -107,30 +107,30 @@ export function EditTournamentDialog({ tournamentSlug, current }: EditTournament
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="text-slate-300 border-slate-600 hover:bg-slate-800">
+        <Button variant="outline" className="text-card-foreground border-border hover:bg-accent">
           <Settings className="w-4 h-4 mr-2" />
           Editar Torneio
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-slate-900 border-slate-800">
+      <DialogContent className="bg-card border-border">
         <DialogHeader>
           <DialogTitle>Editar Torneio</DialogTitle>
           <DialogDescription>Altere o nome, a foto (logo), o regime e a visibilidade do torneio.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="et-name" className="text-slate-300">Nome</Label>
+            <Label htmlFor="et-name" className="text-card-foreground">Nome</Label>
             <Input
               id="et-name"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               required
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-slate-300">Foto / Logo</Label>
+            <Label className="text-card-foreground">Foto / Logo</Label>
 
             {/* Enviar do dispositivo */}
             <input
@@ -147,18 +147,18 @@ export function EditTournamentDialog({ tournamentSlug, current }: EditTournament
                 <img
                   src={form.logoUrl}
                   alt="Prévia do logo"
-                  className="w-16 h-16 rounded-full object-cover border border-slate-700 flex-shrink-0"
+                  className="w-16 h-16 rounded-full object-cover border border-border flex-shrink-0"
                   onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
                 />
               ) : (
-                <div className="w-16 h-16 rounded-full border border-dashed border-slate-700 flex items-center justify-center text-slate-600 flex-shrink-0 text-xs">
+                <div className="w-16 h-16 rounded-full border border-dashed border-border flex items-center justify-center text-[hsl(var(--faint))] flex-shrink-0 text-xs">
                   sem foto
                 </div>
               )}
               <label
                 htmlFor="et-logo-file"
                 className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isUploading ? 'bg-slate-700 text-slate-400' : 'bg-amber-500 text-black hover:bg-amber-400'
+                  isUploading ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]'
                 }`}
               >
                 <Upload className="w-4 h-4" />
@@ -171,18 +171,18 @@ export function EditTournamentDialog({ tournamentSlug, current }: EditTournament
               id="et-logo"
               value={form.logoUrl}
               onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))}
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="ou cole uma URL: https://..."
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="et-format" className="text-slate-300">Regime</Label>
+            <Label htmlFor="et-format" className="text-card-foreground">Regime</Label>
             <select
               id="et-format"
               value={form.format}
               onChange={(e) => setForm((p) => ({ ...p, format: e.target.value as typeof p.format }))}
-              className="w-full bg-slate-950 border border-slate-700 text-white rounded-md px-3 py-2 text-sm"
+              className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm"
             >
               <option value="groups">Grupos (só placar)</option>
               <option value="knockout">Mata-mata (prorrogação + pênaltis + pódio)</option>
@@ -196,25 +196,25 @@ export function EditTournamentDialog({ tournamentSlug, current }: EditTournament
               type="checkbox"
               checked={form.active}
               onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))}
-              className="w-4 h-4 accent-amber-500"
+              className="w-4 h-4 accent-primary"
             />
-            <Label htmlFor="et-active" className="text-slate-300">Torneio ativo (visível e liberado)</Label>
+            <Label htmlFor="et-active" className="text-card-foreground">Torneio ativo (visível e liberado)</Label>
           </div>
 
           {error && (
-            <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md p-3">{error}</div>
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">{error}</div>
           )}
           {success && (
-            <div className="text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-md p-3">
+            <div className="text-sm text-state-open bg-state-open/10 border border-state-open/20 rounded-md p-3">
               Torneio atualizado!
             </div>
           )}
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-slate-300 hover:text-white">
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-card-foreground hover:text-foreground">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isPending || isUploading} className="bg-amber-500 text-black hover:bg-amber-400">
+            <Button type="submit" disabled={isPending || isUploading} className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
               {isPending ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>

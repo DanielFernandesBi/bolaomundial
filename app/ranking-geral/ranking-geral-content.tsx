@@ -98,7 +98,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
     <div>
       {/* Toast */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-md shadow-lg">
+        <div className="fixed top-4 right-4 z-50 bg-green-500 text-foreground px-4 py-3 rounded-md shadow-lg">
           {toast}
         </div>
       )}
@@ -142,10 +142,10 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
       <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <Award className="w-8 h-8 text-amber-500" />
-            <h1 className="text-4xl font-bold text-white">Ranking Geral</h1>
+            <Award className="w-8 h-8 text-primary" />
+            <h1 className="text-4xl font-bold text-foreground">Ranking Geral</h1>
           </div>
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             Classificação geral de todos os jogadores por total de pontos
           </p>
         </div>
@@ -154,7 +154,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
           variant="outline"
           onClick={handleShareFullRanking}
           disabled={sharingFullRanking}
-          className="text-amber-500 border-amber-500 hover:bg-amber-500/10"
+          className="text-primary border-primary hover:bg-primary/10"
         >
           {sharingFullRanking ? (
             'Gerando...'
@@ -177,27 +177,27 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
             return (
               <Card
                 key={profile.id}
-                className={`bg-slate-900 border-slate-800 ${
-                  isTop3 ? 'border-amber-500/50 bg-amber-500/5' : ''
+                className={`bg-card border-border ${
+                  isTop3 ? 'border-primary/50 bg-primary/5' : ''
                 }`}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3 flex-1">
                       <span className={`font-bold text-lg min-w-[40px] ${
-                        isTop3 ? 'text-amber-500' : 'text-slate-400'
+                        isTop3 ? 'text-primary' : 'text-muted-foreground'
                       }`}>
                         {position}º
                       </span>
-                      <Avatar className="w-12 h-12 border-2 border-slate-700">
+                      <Avatar className="w-12 h-12 border-2 border-border">
                         <AvatarImage src={profile.avatar_url || undefined} />
-                        <AvatarFallback className="bg-slate-800 text-white">
+                        <AvatarFallback className="bg-muted text-foreground">
                           {getInitials(profile.username)}
                         </AvatarFallback>
                       </Avatar>
                       <Link 
                         href={`/profile/${profile.id}`}
-                        className="text-white font-semibold flex-1 truncate hover:text-amber-500 transition-colors"
+                        className="text-foreground font-semibold flex-1 truncate hover:text-primary transition-colors"
                       >
                         {profile.username}
                       </Link>
@@ -207,7 +207,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
                       variant="ghost"
                       onClick={() => handleShareRanking(profile, position)}
                       disabled={sharingId === profile.id}
-                      className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+                      className="text-primary hover:text-primary hover:bg-primary/10"
                     >
                       {sharingId === profile.id ? (
                         'Gerando...'
@@ -216,18 +216,18 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
                       )}
                     </Button>
                   </div>
-                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <div className="space-y-2 pt-2 border-t border-border">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 text-sm">Pontos</span>
-                      <span className="text-amber-500 font-bold text-lg">
+                      <span className="text-muted-foreground text-sm">Pontos</span>
+                      <span className="text-primary font-bold text-lg">
                         {profile.total_points.toLocaleString('pt-BR')}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 text-sm">Dinheiro</span>
+                      <span className="text-muted-foreground text-sm">Dinheiro</span>
                       <div className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4 text-amber-500" />
-                        <span className="text-amber-500 font-semibold">
+                        <DollarSign className="w-4 h-4 text-primary" />
+                        <span className="text-primary font-semibold">
                           {formatMoney(profile.total_money)}
                         </span>
                       </div>
@@ -238,8 +238,8 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
             );
           })
         ) : (
-          <Card className="bg-slate-900 border-slate-800">
-            <CardContent className="p-8 text-center text-slate-400">
+          <Card className="bg-card border-border">
+            <CardContent className="p-8 text-center text-muted-foreground">
               Nenhum jogador encontrado.
             </CardContent>
           </Card>
@@ -247,17 +247,17 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
       </div>
 
       {/* Tabela Desktop (hidden md:block) */}
-      <Card className="bg-slate-900 border-slate-800 hidden md:block">
+      <Card className="bg-card border-border hidden md:block">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800">
-                  <TableHead className="text-slate-300 w-16">#</TableHead>
-                  <TableHead className="text-slate-300">Jogador</TableHead>
-                  <TableHead className="text-slate-300 text-right">Dinheiro Total</TableHead>
-                  <TableHead className="text-slate-300 text-right">Pontos Totais</TableHead>
-                  <TableHead className="text-slate-300 text-right">Cravadas Totais</TableHead>
+                <TableRow className="border-border">
+                  <TableHead className="text-card-foreground w-16">#</TableHead>
+                  <TableHead className="text-card-foreground">Jogador</TableHead>
+                  <TableHead className="text-card-foreground text-right">Dinheiro Total</TableHead>
+                  <TableHead className="text-card-foreground text-right">Pontos Totais</TableHead>
+                  <TableHead className="text-card-foreground text-right">Cravadas Totais</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -269,28 +269,28 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
                     return (
                       <TableRow
                         key={profile.id}
-                        className={`border-slate-800 ${
+                        className={`border-border ${
                           isTop3
-                            ? 'bg-amber-500/10 hover:bg-amber-500/20'
-                            : 'hover:bg-slate-800/50'
+                            ? 'bg-primary/10 hover:bg-primary/20'
+                            : 'hover:bg-accent/50'
                         }`}
                       >
-                        <TableCell className="text-slate-300 font-bold">
+                        <TableCell className="text-card-foreground font-bold">
                           {position}º
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <Avatar className="w-10 h-10 border-2 border-slate-700">
+                            <Avatar className="w-10 h-10 border-2 border-border">
                               <AvatarImage
                                 src={profile.avatar_url || undefined}
                               />
-                              <AvatarFallback className="bg-slate-800 text-white">
+                              <AvatarFallback className="bg-muted text-foreground">
                                 {getInitials(profile.username)}
                               </AvatarFallback>
                             </Avatar>
                             <Link
                               href={`/profile/${profile.id}`}
-                              className="text-white font-medium hover:text-amber-500 transition-colors"
+                              className="text-foreground font-medium hover:text-primary transition-colors"
                             >
                               {profile.username}
                             </Link>
@@ -299,7 +299,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
                               variant="ghost"
                               onClick={() => handleShareRanking(profile, position)}
                               disabled={sharingId === profile.id}
-                              className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 ml-auto"
+                              className="text-primary hover:text-primary hover:bg-primary/10 ml-auto"
                             >
                               {sharingId === profile.id ? (
                                 'Gerando...'
@@ -311,16 +311,16 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <DollarSign className="w-5 h-5 text-amber-500" />
-                            <span className="text-amber-500 font-bold text-lg">
+                            <DollarSign className="w-5 h-5 text-primary" />
+                            <span className="text-primary font-bold text-lg">
                               {formatMoney(profile.total_money)}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-300 text-right">
+                        <TableCell className="text-card-foreground text-right">
                           {profile.total_points.toLocaleString('pt-BR')}
                         </TableCell>
-                        <TableCell className="text-slate-300 text-right">
+                        <TableCell className="text-card-foreground text-right">
                           {profile.total_exact_matches}
                         </TableCell>
                       </TableRow>
@@ -328,7 +328,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-slate-400 py-8">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                       Nenhum jogador encontrado.
                     </TableCell>
                   </TableRow>
@@ -340,7 +340,7 @@ export function RankingGeralContent({ profiles, currentUserId }: RankingGeralCon
       </Card>
 
       {/* Legenda */}
-      <div className="mt-6 text-slate-400 text-sm">
+      <div className="mt-6 text-muted-foreground text-sm">
         <p>
           💰 <strong>Dinheiro Total:</strong> Soma de todos os prêmios ganhos em todos os torneios.
         </p>

@@ -37,7 +37,7 @@ function TeamFlag({ iso, alt, size = 32 }: { iso: string | null; alt: string; si
   const trimmed = iso.trim();
   if (trimmed.toLowerCase().startsWith('http')) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={trimmed} alt={alt} style={{ width: size, height: size }} className="rounded object-contain bg-slate-800" loading="lazy" />;
+    return <img src={trimmed} alt={alt} style={{ width: size, height: size }} className="rounded object-contain bg-muted" loading="lazy" />;
   }
   return <Image src={getFlagUrl(iso)} alt={alt} width={size} height={size} className="rounded" style={{ height: 'auto' }} />;
 }
@@ -46,13 +46,13 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
   const slotDefs: { key: SlotKey; label: string; pts: number; color: string }[] =
     mode === 'legacy'
       ? [
-          { key: 'champion', label: 'Campeão', pts: 40, color: 'text-amber-400' },
-          { key: 'vice', label: 'Vice', pts: 20, color: 'text-slate-300' },
-          { key: 'third', label: '3º lugar', pts: 25, color: 'text-orange-400' },
+          { key: 'champion', label: 'Campeão', pts: 40, color: 'text-primary' },
+          { key: 'vice', label: 'Vice', pts: 20, color: 'text-card-foreground' },
+          { key: 'third', label: '3º lugar', pts: 25, color: 'text-state-missing' },
         ]
       : [
-          { key: 'champion', label: 'Campeão', pts: 40, color: 'text-amber-400' },
-          { key: 'vice', label: 'Vice', pts: 25, color: 'text-slate-300' },
+          { key: 'champion', label: 'Campeão', pts: 40, color: 'text-primary' },
+          { key: 'vice', label: 'Vice', pts: 25, color: 'text-card-foreground' },
         ];
 
   const [picks, setPicks] = useState<Record<SlotKey, Team | null>>({
@@ -102,24 +102,24 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
   const hasAnyPick = slotKeys.some((k) => picks[k]);
 
   return (
-    <Card className="bg-slate-900 border-slate-800 relative">
+    <Card className="bg-card border-border relative">
       <CardContent className="p-4">
         {toast && (
-          <div className="absolute top-4 right-4 bg-slate-800 text-white px-4 py-2 rounded-md shadow-lg z-10">{toast}</div>
+          <div className="absolute top-4 right-4 bg-muted text-foreground px-4 py-2 rounded-md shadow-lg z-10">{toast}</div>
         )}
 
         <div className="flex items-center gap-2 mb-4">
-          <Trophy className="w-5 h-5 text-amber-500 flex-shrink-0" />
-          <h3 className="text-white font-bold text-sm">{mode === 'legacy' ? 'Palpite de Pódio' : `Pódio — ${competitionName}`}</h3>
+          <Trophy className="w-5 h-5 text-primary flex-shrink-0" />
+          <h3 className="text-foreground font-bold text-sm">{mode === 'legacy' ? 'Palpite de Pódio' : `Pódio — ${competitionName}`}</h3>
           {locked && !pending && (
-            <span className="flex items-center gap-1 text-slate-400 text-xs ml-auto">
+            <span className="flex items-center gap-1 text-muted-foreground text-xs ml-auto">
               <Lock className="w-3 h-3" /> Encerrado
             </span>
           )}
         </div>
 
         {pending && (
-          <p className="text-slate-400 text-sm text-center py-4">
+          <p className="text-muted-foreground text-sm text-center py-4">
             Aguardando definição dos playoffs para liberar o palpite de pódio.
           </p>
         )}
@@ -137,15 +137,15 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
                 type="button"
                 onClick={() => !locked && setActiveSlot(slot.key)}
                 className={`flex flex-col items-center gap-1 rounded-lg border p-3 transition-colors ${
-                  isActive ? 'border-amber-500 bg-amber-500/10' : 'border-slate-700 bg-slate-950/40'
+                  isActive ? 'border-primary bg-primary/10' : 'border-border bg-surface-sunken'
                 } ${locked ? 'cursor-default' : 'cursor-pointer'}`}
               >
                 <span className={`text-xs font-semibold ${slot.color}`}>{slot.label}</span>
-                <span className="text-[10px] text-slate-500">{slot.pts} pts</span>
+                <span className="text-[10px] text-[hsl(var(--faint))]">{slot.pts} pts</span>
                 <div className="h-9 flex items-center justify-center">
-                  {team ? <TeamFlag iso={team.iso} alt={team.name} size={32} /> : <span className="text-slate-600 text-xs">—</span>}
+                  {team ? <TeamFlag iso={team.iso} alt={team.name} size={32} /> : <span className="text-[hsl(var(--faint))] text-xs">—</span>}
                 </div>
-                <span className="text-[11px] text-slate-300 text-center truncate w-full">{team?.name ?? 'Escolher'}</span>
+                <span className="text-[11px] text-card-foreground text-center truncate w-full">{team?.name ?? 'Escolher'}</span>
               </button>
             );
           })}
@@ -154,8 +154,8 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
         {/* Grade de times */}
         {!locked && (
           <>
-            <p className="text-xs text-slate-400 mb-2">
-              Escolhendo: <span className="text-amber-400 font-semibold">{slotDefs.find((s) => s.key === activeSlot)?.label}</span>
+            <p className="text-xs text-muted-foreground mb-2">
+              Escolhendo: <span className="text-primary font-semibold">{slotDefs.find((s) => s.key === activeSlot)?.label}</span>
             </p>
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto mb-4">
               {teams.map((team) => {
@@ -167,11 +167,11 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
                     onClick={() => selectTeam(team)}
                     title={team.name}
                     className={`flex flex-col items-center gap-1 rounded-md border p-2 transition-colors ${
-                      isPicked ? 'border-amber-500 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40 hover:border-slate-600'
+                      isPicked ? 'border-primary bg-primary/10' : 'border-border bg-surface-sunken hover:border-border'
                     }`}
                   >
                     <TeamFlag iso={team.iso} alt={team.name} size={28} />
-                    <span className="text-[10px] text-slate-300 truncate w-full text-center">{team.name}</span>
+                    <span className="text-[10px] text-card-foreground truncate w-full text-center">{team.name}</span>
                   </button>
                 );
               })}
@@ -182,7 +182,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
                 onClick={handleSave}
                 disabled={isSaving}
                 className={`w-full px-4 py-2 rounded-md font-semibold text-sm transition-colors ${
-                  isSaving ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white'
+                  isSaving ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-foreground'
                 }`}
               >
                 {isSaving ? 'Salvando...' : 'Salvar Pódio'}
@@ -192,7 +192,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
         )}
 
         {locked && !hasAnyPick && (
-          <p className="text-slate-500 text-sm text-center">
+          <p className="text-[hsl(var(--faint))] text-sm text-center">
             {mode === 'legacy' ? 'Você não palpitou o pódio deste torneio.' : 'Você não palpitou o pódio desta competição.'}
           </p>
         )}

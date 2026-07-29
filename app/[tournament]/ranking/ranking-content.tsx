@@ -130,7 +130,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
     <div>
       {/* Toast */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-md shadow-lg">
+        <div className="fixed top-4 right-4 z-50 bg-green-500 text-foreground px-4 py-3 rounded-md shadow-lg">
           {toast}
         </div>
       )}
@@ -173,7 +173,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
       {/* Tabs com botão de compartilhar */}
       <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'daily')}>
-          <TabsList className="bg-slate-900">
+          <TabsList className="bg-card">
             <TabsTrigger value="general">Classificação Geral</TabsTrigger>
             <TabsTrigger value="cravadas">Reis da Cravada</TabsTrigger>
             <TabsTrigger value="daily" className="flex items-center gap-1.5">
@@ -187,7 +187,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
           variant="outline"
           onClick={handleShareFullRanking}
           disabled={sharingFullRanking}
-          className="text-amber-500 border-amber-500 hover:bg-amber-500/10"
+          className="text-primary border-primary hover:bg-primary/10"
         >
           {sharingFullRanking ? (
             'Gerando...'
@@ -210,27 +210,27 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
             return (
               <Card
                 key={profile.id}
-                className={`bg-slate-900 border-slate-800 ${
-                  isTop3 ? 'border-amber-500/50 bg-amber-500/5' : ''
+                className={`bg-card border-border ${
+                  isTop3 ? 'border-primary/50 bg-primary/5' : ''
                 }`}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3 flex-1">
                       <span className={`font-bold text-lg min-w-[40px] ${
-                        isTop3 ? 'text-amber-500' : 'text-slate-400'
+                        isTop3 ? 'text-primary' : 'text-muted-foreground'
                       }`}>
                         {position}º
                       </span>
-                      <Avatar className="w-12 h-12 border-2 border-slate-700">
+                      <Avatar className="w-12 h-12 border-2 border-border">
                         <AvatarImage src={profile.avatar_url || undefined} />
-                        <AvatarFallback className="bg-slate-800 text-white">
+                        <AvatarFallback className="bg-muted text-foreground">
                           {getInitials(profile.username)}
                         </AvatarFallback>
                       </Avatar>
                       <Link 
                         href={tournamentSlug ? `/${tournamentSlug}/desempenho/${profile.id}` : `/profile/${profile.id}`}
-                        className="text-white font-semibold flex-1 truncate hover:text-amber-500 transition-colors"
+                        className="text-foreground font-semibold flex-1 truncate hover:text-primary transition-colors"
                       >
                         {profile.username}
                       </Link>
@@ -240,7 +240,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                       variant="ghost"
                       onClick={() => handleShareRanking(profile, position)}
                       disabled={sharingId === profile.id}
-                      className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+                      className="text-primary hover:text-primary hover:bg-primary/10"
                     >
                       {sharingId === profile.id ? (
                         'Gerando...'
@@ -249,29 +249,29 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                       )}
                     </Button>
                   </div>
-                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <div className="space-y-2 pt-2 border-t border-border">
                     {showCravadas ? (
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400 text-sm">Cravadas</span>
+                        <span className="text-muted-foreground text-sm">Cravadas</span>
                         <div className="flex items-center gap-1">
-                          <Trophy className="w-4 h-4 text-amber-500" />
-                          <span className="text-amber-500 font-bold text-lg">
+                          <Trophy className="w-4 h-4 text-primary" />
+                          <span className="text-primary font-bold text-lg">
                             {profile.exact_matches}
                           </span>
                         </div>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400 text-sm">Pontos</span>
-                        <span className="text-amber-500 font-bold text-lg">
+                        <span className="text-muted-foreground text-sm">Pontos</span>
+                        <span className="text-primary font-bold text-lg">
                           {profile.total_points.toLocaleString('pt-BR')}
                         </span>
                       </div>
                     )}
                     {!showCravadas && (
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400 text-sm">Cravadas</span>
-                        <div className="flex items-center gap-1 text-slate-400">
+                        <span className="text-muted-foreground text-sm">Cravadas</span>
+                        <div className="flex items-center gap-1 text-muted-foreground">
                           <Trophy className="w-4 h-4" />
                           <span>{profile.exact_matches}</span>
                         </div>
@@ -283,8 +283,8 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
             );
           })
         ) : (
-          <Card className="bg-slate-900 border-slate-800">
-            <CardContent className="p-8 text-center text-slate-400">
+          <Card className="bg-card border-border">
+            <CardContent className="p-8 text-center text-muted-foreground">
               Ainda não há participantes no ranking.
             </CardContent>
           </Card>
@@ -295,13 +295,13 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
       {activeTab === 'daily' && (
         <div>
           {!hasMatchesToday ? (
-            <div className="text-slate-400 text-center py-16">
+            <div className="text-muted-foreground text-center py-16">
               <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-40" />
               <p className="text-lg mb-1">Nenhum jogo hoje.</p>
               <p className="text-sm">Volte nos dias de jogo para acompanhar o ranking do dia.</p>
             </div>
           ) : dailyEntries.length === 0 ? (
-            <div className="text-slate-400 text-center py-16">
+            <div className="text-muted-foreground text-center py-16">
               <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-40" />
               <p className="text-lg mb-1">Resultados ainda não registrados.</p>
               <p className="text-sm">O mini-ranking aparece após o admin lançar os placares de hoje.</p>
@@ -316,11 +316,11 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                 const pos = myPos + 1;
                 const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : null;
                 return (
-                  <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 flex items-center gap-3">
-                    <span className="text-2xl font-bold text-amber-400">{pos}º</span>
+                  <div className="mb-6 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 flex items-center gap-3">
+                    <span className="text-2xl font-bold text-primary">{pos}º</span>
                     {medal && <span className="text-2xl">{medal}</span>}
                     <div>
-                      <p className="text-amber-300 font-semibold text-sm">
+                      <p className="text-primary font-semibold text-sm">
                         {pos === 1
                           ? 'Você está liderando o dia!'
                           : `Hoje você está em ${pos}º lugar`}
@@ -343,28 +343,28 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                   return (
                     <Card key={entry.user_id} className={`border ${
                       isMe
-                        ? 'bg-amber-500/10 border-amber-500/50'
+                        ? 'bg-primary/10 border-primary/50'
                         : isTop3
-                        ? 'bg-slate-900 border-amber-500/30'
-                        : 'bg-slate-900 border-slate-800'
+                        ? 'bg-card border-primary/30'
+                        : 'bg-card border-border'
                     }`}>
                       <CardContent className="p-4 flex items-center gap-3">
-                        <span className={`font-bold text-lg min-w-[36px] ${isTop3 || isMe ? 'text-amber-400' : 'text-slate-400'}`}>
+                        <span className={`font-bold text-lg min-w-[36px] ${isTop3 || isMe ? 'text-primary' : 'text-muted-foreground'}`}>
                           {position}º
                         </span>
-                        <Avatar className="w-10 h-10 border-2 border-slate-700">
+                        <Avatar className="w-10 h-10 border-2 border-border">
                           <AvatarImage src={entry.avatar_url || undefined} />
-                          <AvatarFallback className="bg-slate-800 text-white">
+                          <AvatarFallback className="bg-muted text-foreground">
                             {getInitials(entry.username)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className={`flex-1 font-semibold truncate ${isMe ? 'text-amber-300' : 'text-white'}`}>
+                        <span className={`flex-1 font-semibold truncate ${isMe ? 'text-primary' : 'text-foreground'}`}>
                           {entry.username}{isMe ? ' (você)' : ''}
                         </span>
                         <div className="text-right">
-                          <p className="text-amber-400 font-bold">{entry.daily_points} pts</p>
+                          <p className="text-primary font-bold">{entry.daily_points} pts</p>
                           {entry.daily_exact > 0 && (
-                            <p className="text-slate-400 text-xs flex items-center justify-end gap-1">
+                            <p className="text-muted-foreground text-xs flex items-center justify-end gap-1">
                               <Trophy className="w-3 h-3" />{entry.daily_exact}
                             </p>
                           )}
@@ -376,15 +376,15 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
               </div>
 
               {/* Tabela Desktop */}
-              <Card className="bg-slate-900 border-slate-800 hidden md:block">
+              <Card className="bg-card border-border hidden md:block">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-slate-800">
-                        <TableHead className="text-slate-300 w-16">#</TableHead>
-                        <TableHead className="text-slate-300">Jogador</TableHead>
-                        <TableHead className="text-slate-300 text-center">Cravadas hoje</TableHead>
-                        <TableHead className="text-slate-300 text-right">Pts hoje</TableHead>
+                      <TableRow className="border-border">
+                        <TableHead className="text-card-foreground w-16">#</TableHead>
+                        <TableHead className="text-card-foreground">Jogador</TableHead>
+                        <TableHead className="text-card-foreground text-center">Cravadas hoje</TableHead>
+                        <TableHead className="text-card-foreground text-right">Pts hoje</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -393,40 +393,40 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                         const isMe = entry.user_id === currentUserId;
                         const isTop3 = position <= 3;
                         return (
-                          <TableRow key={entry.user_id} className={`border-slate-800 ${
+                          <TableRow key={entry.user_id} className={`border-border ${
                             isMe
-                              ? 'bg-amber-500/15 hover:bg-amber-500/20'
+                              ? 'bg-primary/15 hover:bg-primary/20'
                               : isTop3
-                              ? 'bg-amber-500/5 hover:bg-amber-500/10'
-                              : 'hover:bg-slate-800/50'
+                              ? 'bg-primary/5 hover:bg-primary/10'
+                              : 'hover:bg-accent/50'
                           }`}>
-                            <TableCell className={`font-bold ${isTop3 || isMe ? 'text-amber-400' : 'text-slate-300'}`}>
+                            <TableCell className={`font-bold ${isTop3 || isMe ? 'text-primary' : 'text-card-foreground'}`}>
                               {position}º
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <Avatar className="w-9 h-9 border-2 border-slate-700">
+                                <Avatar className="w-9 h-9 border-2 border-border">
                                   <AvatarImage src={entry.avatar_url || undefined} />
-                                  <AvatarFallback className="bg-slate-800 text-white">
+                                  <AvatarFallback className="bg-muted text-foreground">
                                     {getInitials(entry.username)}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className={`font-medium ${isMe ? 'text-amber-300' : 'text-white'}`}>
+                                <span className={`font-medium ${isMe ? 'text-primary' : 'text-foreground'}`}>
                                   {entry.username}{isMe ? ' (você)' : ''}
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
                               {entry.daily_exact > 0 ? (
-                                <div className="flex items-center justify-center gap-1 text-amber-500">
+                                <div className="flex items-center justify-center gap-1 text-primary">
                                   <Trophy className="w-4 h-4" />
                                   <span className="font-bold">{entry.daily_exact}</span>
                                 </div>
                               ) : (
-                                <span className="text-slate-600">—</span>
+                                <span className="text-[hsl(var(--faint))]">—</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-bold text-amber-400">
+                            <TableCell className="text-right font-bold text-primary">
                               {entry.daily_points}
                             </TableCell>
                           </TableRow>
@@ -442,16 +442,16 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
       )}
 
       {/* Tabela Desktop (hidden md:block) */}
-      {activeTab !== 'daily' && <Card className="bg-slate-900 border-slate-800 hidden md:block">
+      {activeTab !== 'daily' && <Card className="bg-card border-border hidden md:block">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800">
-                  <TableHead className="text-slate-300 w-16">#</TableHead>
-                  <TableHead className="text-slate-300">Jogador</TableHead>
-                  <TableHead className="text-slate-300 text-center">Cravadas</TableHead>
-                  <TableHead className="text-slate-300 text-right">Pontos</TableHead>
+                <TableRow className="border-border">
+                  <TableHead className="text-card-foreground w-16">#</TableHead>
+                  <TableHead className="text-card-foreground">Jogador</TableHead>
+                  <TableHead className="text-card-foreground text-center">Cravadas</TableHead>
+                  <TableHead className="text-card-foreground text-right">Pontos</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -463,28 +463,28 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                     return (
                       <TableRow
                         key={profile.id}
-                        className={`border-slate-800 ${
+                        className={`border-border ${
                           isTop3
-                            ? 'bg-amber-500/10 hover:bg-amber-500/20'
-                            : 'hover:bg-slate-800/50'
+                            ? 'bg-primary/10 hover:bg-primary/20'
+                            : 'hover:bg-accent/50'
                         }`}
                       >
-                        <TableCell className="text-slate-300 font-bold">
+                        <TableCell className="text-card-foreground font-bold">
                           {position}º
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <Avatar className="w-10 h-10 border-2 border-slate-700">
+                            <Avatar className="w-10 h-10 border-2 border-border">
                               <AvatarImage
                                 src={profile.avatar_url || undefined}
                               />
-                              <AvatarFallback className="bg-slate-800 text-white">
+                              <AvatarFallback className="bg-muted text-foreground">
                                 {getInitials(profile.username)}
                               </AvatarFallback>
                             </Avatar>
                             <Link
                               href={tournamentSlug ? `/${tournamentSlug}/desempenho/${profile.id}` : `/profile/${profile.id}`}
-                              className="text-white font-medium hover:text-amber-500 transition-colors"
+                              className="text-foreground font-medium hover:text-primary transition-colors"
                             >
                               {profile.username}
                             </Link>
@@ -493,7 +493,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                               variant="ghost"
                               onClick={() => handleShareRanking(profile, position)}
                               disabled={sharingId === profile.id}
-                              className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 ml-auto"
+                              className="text-primary hover:text-primary hover:bg-primary/10 ml-auto"
                             >
                               {sharingId === profile.id ? (
                                 'Gerando...'
@@ -506,8 +506,8 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                         <TableCell className="text-center">
                           <div className={`flex items-center justify-center gap-1 ${
                             showCravadas 
-                              ? 'text-amber-500' 
-                              : 'text-slate-400'
+                              ? 'text-primary' 
+                              : 'text-muted-foreground'
                           }`}>
                             <Trophy className={`${showCravadas ? 'w-5 h-5' : 'w-4 h-4'}`} />
                             <span className={showCravadas ? 'font-bold text-lg' : ''}>
@@ -515,7 +515,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-300 text-right">
+                        <TableCell className="text-card-foreground text-right">
                           {profile.total_points.toLocaleString('pt-BR')}
                         </TableCell>
                       </TableRow>
@@ -523,7 +523,7 @@ export function RankingContent({ profiles, currentUserId, tournamentName, tourna
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-slate-400 py-8">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                       Ainda não há participantes no ranking.
                     </TableCell>
                   </TableRow>

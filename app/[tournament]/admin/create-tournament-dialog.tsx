@@ -51,46 +51,46 @@ export function CreateTournamentDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="text-amber-500 border-amber-500 hover:bg-amber-500/10">
+        <Button variant="outline" className="text-primary border-primary hover:bg-primary/10">
           <Trophy className="w-4 h-4 mr-2" />
           Criar Torneio
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-slate-900 border-slate-800">
+      <DialogContent className="bg-card border-border">
         <DialogHeader>
           <DialogTitle>Criar Novo Torneio</DialogTitle>
           <DialogDescription>Defina o regime: grupos (palpites só de placar) ou mata-mata (com prorrogação, pênaltis e pódio).</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="t-name" className="text-slate-300">Nome</Label>
+            <Label htmlFor="t-name" className="text-card-foreground">Nome</Label>
             <Input
               id="t-name"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               required
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="Ex: Copa do Mundo 2026"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="t-slug" className="text-slate-300">Slug (URL)</Label>
+            <Label htmlFor="t-slug" className="text-card-foreground">Slug (URL)</Label>
             <Input
               id="t-slug"
               value={form.slug}
               onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))}
               required
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="Ex: copa-2026"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="t-format" className="text-slate-300">Regime</Label>
+            <Label htmlFor="t-format" className="text-card-foreground">Regime</Label>
             <select
               id="t-format"
               value={form.format}
               onChange={(e) => setForm((p) => ({ ...p, format: e.target.value as typeof p.format }))}
-              className="w-full bg-slate-950 border border-slate-700 text-white rounded-md px-3 py-2 text-sm"
+              className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm"
             >
               <option value="groups">Grupos (só placar)</option>
               <option value="knockout">Mata-mata (prorrogação + pênaltis + pódio)</option>
@@ -98,30 +98,30 @@ export function CreateTournamentDialog() {
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="t-logo" className="text-slate-300">URL do Logo (opcional)</Label>
+            <Label htmlFor="t-logo" className="text-card-foreground">URL do Logo (opcional)</Label>
             <Input
               id="t-logo"
               value={form.logoUrl}
               onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))}
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="https://..."
             />
           </div>
 
           {error && (
-            <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md p-3">{error}</div>
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">{error}</div>
           )}
           {success && (
-            <div className="text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-md p-3">
+            <div className="text-sm text-state-open bg-state-open/10 border border-state-open/20 rounded-md p-3">
               Torneio criado com sucesso!
             </div>
           )}
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-slate-300 hover:text-white">
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-card-foreground hover:text-foreground">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isPending} className="bg-amber-500 text-black hover:bg-amber-400">
+            <Button type="submit" disabled={isPending} className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
               {isPending ? 'Criando...' : 'Criar'}
             </Button>
           </DialogFooter>

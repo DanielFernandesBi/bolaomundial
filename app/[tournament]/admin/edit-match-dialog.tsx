@@ -131,13 +131,13 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
         <Button
           variant="ghost"
           size="sm"
-          className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+          className="text-primary hover:text-primary hover:bg-primary/10"
         >
           <Edit className="w-4 h-4 mr-2" />
           Editar
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-slate-900 border-slate-800">
+      <DialogContent className="bg-card border-border">
         <DialogHeader>
           <DialogTitle>Editar Jogo</DialogTitle>
           <DialogDescription>
@@ -147,7 +147,7 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Time da Casa */}
           <div className="space-y-2">
-            <Label htmlFor="teamHome" className="text-slate-300">
+            <Label htmlFor="teamHome" className="text-card-foreground">
               Time da Casa
             </Label>
             <Input
@@ -157,14 +157,14 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               value={formData.teamHome}
               onChange={handleChange}
               required
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="Ex: Brasil"
             />
           </div>
 
           {/* ISO Casa */}
           <div className="space-y-2">
-            <Label htmlFor="homeIso" className="text-slate-300">
+            <Label htmlFor="homeIso" className="text-card-foreground">
               Código ISO ou URL do Logo (Casa)
             </Label>
             <Input
@@ -175,14 +175,14 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               onChange={handleChange}
               required
               maxLength={500}
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="Ex: br ou https://upload.wikimedia.org/..."
             />
           </div>
 
           {/* Time Visitante */}
           <div className="space-y-2">
-            <Label htmlFor="teamAway" className="text-slate-300">
+            <Label htmlFor="teamAway" className="text-card-foreground">
               Time Visitante
             </Label>
             <Input
@@ -192,14 +192,14 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               value={formData.teamAway}
               onChange={handleChange}
               required
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="Ex: Argentina"
             />
           </div>
 
           {/* ISO Visitante */}
           <div className="space-y-2">
-            <Label htmlFor="awayIso" className="text-slate-300">
+            <Label htmlFor="awayIso" className="text-card-foreground">
               Código ISO ou URL do Logo (Visitante)
             </Label>
             <Input
@@ -210,14 +210,14 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               onChange={handleChange}
               required
               maxLength={500}
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="Ex: ar ou https://upload.wikimedia.org/..."
             />
           </div>
 
           {/* Competição */}
           <div className="space-y-2">
-            <Label htmlFor="competition" className="text-slate-300">
+            <Label htmlFor="competition" className="text-card-foreground">
               Competição
             </Label>
             <select
@@ -225,7 +225,7 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               name="competition"
               value={formData.competition}
               onChange={handleChange}
-              className="w-full bg-slate-950 border border-slate-700 text-white rounded-md px-3 py-2 text-sm"
+              className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm"
             >
               <option value="">— nenhuma —</option>
               {COMPETITIONS.map((c) => (
@@ -236,7 +236,7 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
 
           {/* Perna (ida/volta) */}
           <div className="space-y-2">
-            <Label htmlFor="leg" className="text-slate-300">
+            <Label htmlFor="leg" className="text-card-foreground">
               Perna do confronto
             </Label>
             <select
@@ -244,7 +244,7 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               name="leg"
               value={formData.leg}
               onChange={handleChange}
-              className="w-full bg-slate-950 border border-slate-700 text-white rounded-md px-3 py-2 text-sm"
+              className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm"
             >
               <option value="">— jogo único —</option>
               <option value="ida">Ida</option>
@@ -254,7 +254,7 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
 
           {/* Fase */}
           <div className="space-y-2">
-            <Label htmlFor="phase" className="text-slate-300">
+            <Label htmlFor="phase" className="text-card-foreground">
               Fase do jogo
             </Label>
             <Input
@@ -263,28 +263,28 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               type="text"
               value={formData.phase}
               onChange={handleChange}
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="Ex: Oitavas de final – ida"
             />
           </div>
 
           {/* Estádio */}
           <div className="space-y-2">
-            <Label htmlFor="venue" className="text-slate-300">Estádio</Label>
+            <Label htmlFor="venue" className="text-card-foreground">Estádio</Label>
             <Input
               id="venue"
               name="venue"
               type="text"
               value={formData.venue}
               onChange={handleChange}
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
               placeholder="Ex: Maracanã"
             />
           </div>
 
           {/* Data e Hora (opcional: em branco = "a definir") */}
           <div className="space-y-2">
-            <Label htmlFor="matchDate" className="text-slate-300">
+            <Label htmlFor="matchDate" className="text-card-foreground">
               Data e Hora (horário de Brasília) — opcional
             </Label>
             <Input
@@ -293,9 +293,9 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               type="datetime-local"
               value={formData.matchDate}
               onChange={handleChange}
-              className="bg-slate-950 border-slate-700 text-white"
+              className="bg-background border-border text-foreground"
             />
-            <p className="text-xs text-slate-500">Em branco = “data a definir”.</p>
+            <p className="text-xs text-[hsl(var(--faint))]">Em branco = “data a definir”.</p>
           </div>
 
           {/* Mata-mata */}
@@ -306,9 +306,9 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               type="checkbox"
               checked={formData.isKnockout}
               onChange={handleChange}
-              className="w-4 h-4 accent-amber-500"
+              className="w-4 h-4 accent-primary"
             />
-            <Label htmlFor="isKnockout" className="text-slate-300">
+            <Label htmlFor="isKnockout" className="text-card-foreground">
               Jogo de mata-mata (habilita pênaltis) — use na volta
             </Label>
           </div>
@@ -321,23 +321,23 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               type="checkbox"
               checked={formData.hasExtraTime}
               onChange={handleChange}
-              className="w-4 h-4 accent-amber-500"
+              className="w-4 h-4 accent-primary"
             />
-            <Label htmlFor="hasExtraTime" className="text-slate-300">
+            <Label htmlFor="hasExtraTime" className="text-card-foreground">
               Tem prorrogação (desmarque nos clubes)
             </Label>
           </div>
 
           {/* Mensagem de Erro */}
           {error && (
-            <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md p-3">
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
               {error}
             </div>
           )}
 
           {/* Mensagem de Sucesso */}
           {success && (
-            <div className="text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-md p-3">
+            <div className="text-sm text-state-open bg-state-open/10 border border-state-open/20 rounded-md p-3">
               Jogo atualizado com sucesso!
             </div>
           )}
@@ -347,14 +347,14 @@ export function EditMatchDialog({ match, tournamentSlug }: EditMatchDialogProps)
               type="button"
               variant="ghost"
               onClick={() => setOpen(false)}
-              className="text-slate-300 hover:text-white"
+              className="text-card-foreground hover:text-foreground"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={isPending}
-              className="bg-amber-500 text-black hover:bg-amber-400"
+              className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]"
             >
               {isPending ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
