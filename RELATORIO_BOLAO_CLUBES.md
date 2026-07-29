@@ -180,6 +180,11 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 |---|---|
 | A trava de prazo do palpite de pódio estava só no server action `savePodiumPrediction`. A RLS de `podium_predictions` só garantia `auth.uid() = user_id`, **sem trigger de prazo** — então via Data API o usuário podia inserir/alterar o palpite de pódio **depois do início** (até depois de saber o resultado real) e ser premiado quando o admin lançasse o campeão/vice. | Trigger **`check_podium_window`** (BEFORE INSERT/UPDATE) bloqueia gravar/alterar o palpite de pódio depois do 1º jogo da competição (mesma regra do server action; espelha o `check_prediction_window`). A outra ponta — `recompute_competition_podium` exposto — **já havia sido fechada** na `000007` (REVOKE EXECUTE dos clientes). |
 
+### 🔴 P0 funcional — Pódio dos clubes zerado por UPDATE do torneio (`20260728000010_fix_podium_mechanisms_isolation.sql`)
+| Como estava | O que mudou |
+|---|---|
+| Regressão introduzida na feature: coexistiam dois mecanismos gravando `tournament_rankings.podium_points`. O **legado** (`process_tournament_podium`, AFTER UPDATE em `tournaments`) percorria `podium_predictions` **sem filtrar `competition`** e usava `tournaments.champion_team/...`. Se rodasse no torneio de clubes (por divergência do `WHEN` em produção, ou por mexer nas colunas de pódio), recalculava com `champion_team = NULL` → `calc_podium_points = 0` → **zerava** o pódio somado das 3 competições (ex.: 115 → 0). | **Isolamento dos dois mecanismos**: `process_tournament_podium` passa a processar só picks **legados** (`competition IS NULL`) — no torneio de clubes o laço fica vazio e não toca em `podium_points`; a trigger é reafirmada com o `WHEN` correto (só dispara quando as colunas de pódio do torneio mudam), corrigindo divergência de prod; e, por simetria, `recompute_competition_podium` soma só picks **por competição** (`competition IS NOT NULL`). |
+
 ---
 
 ## 12. Índice de arquivos
@@ -194,6 +199,7 @@ Compatível com as telas: "Próximas" lê só o próprio palpite; "Transparênci
 - `supabase/migrations/20260728000007_harden_function_execute.sql`
 - `supabase/migrations/20260728000008_rls_hide_predictions_before_kickoff.sql`
 - `supabase/migrations/20260728000009_podium_deadline_trigger.sql`
+- `supabase/migrations/20260728000010_fix_podium_mechanisms_isolation.sql`
 - `supabase_seed_mata_mata_clubes_2026.sql`
 - `lib/competitions.ts`
 - `lib/bracket.ts`
