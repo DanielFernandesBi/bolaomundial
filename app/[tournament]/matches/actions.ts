@@ -7,35 +7,51 @@ import { COMPETITIONS } from '@/lib/competitions';
 // ============================================================================
 // Prazo do palpite
 // ============================================================================
-// Num bolão de competições, o prazo de TODOS os palpites de uma competição é o
-// PRIMEIRO jogo dela — ida, volta e fases seguintes fecham juntos. Cada
-// competição tem o seu, então Copa do Brasil, Libertadores e Sul-Americana
-// fecham em datas diferentes.
+// O prazo de uma FASE de uma competição é o horário do PRIMEIRO jogo daquela
+// fase — ida e volta fecham juntos. Cada competição tem o seu, e cada fase abre
+// um prazo novo: as quartas só fecham no 1º jogo das quartas.
 //
-// Partida SEM competição (Mundial, torneios de grupos) mantém a regra antiga:
-// fecha no início dela mesma.
+// A fase de verdade é `ties.round`, alcançada por `matches.tie_id`. NÃO se usa
+// `matches.phase`: é rótulo de texto e separa ida de volta ("Oitavas de final –
+// ida" / "– volta"), o que daria dois prazos para o mesmo confronto.
 //
-// A trava de verdade é o gatilho check_prediction_window no banco (migração
-// 20260730000001). Isto aqui é a mesma regra, para a mensagem de erro e para a
-// tela — não é a única defesa.
+// Partida sem competição (Mundial, grupos) ou sem confronto associado mantém a
+// regra antiga, o início dela mesma.
+//
+// A trava de verdade é a função public.prediction_deadline + o gatilho
+// check_prediction_window, no banco (migração 20260730000001). O que está aqui é
+// o espelho para a tela e para a mensagem de erro — não é a única defesa.
 // ============================================================================
-function buildDeadlineByCompetition(matches: { competition?: string | null; match_date?: string | null }[]) {
+type MatchParaPrazo = { competition?: string | null; match_date?: string | null; tie_id?: number | null };
+
+function chaveDoPrazo(match: MatchParaPrazo, roundByTie: Map<number, string>): string | null {
+  if (!match.competition || !match.tie_id) return null;
+  const round = roundByTie.get(match.tie_id);
+  if (!round) return null;
+  return `${match.competition}|${round}`;
+}
+
+function buildDeadlineByPhase(matches: MatchParaPrazo[], roundByTie: Map<number, string>) {
   const mapa = new Map<string, string>();
   for (const m of matches) {
-    if (!m.competition || !m.match_date) continue;
-    const atual = mapa.get(m.competition);
-    if (!atual || new Date(m.match_date) < new Date(atual)) mapa.set(m.competition, m.match_date);
+    if (!m.match_date) continue;
+    const chave = chaveDoPrazo(m, roundByTie);
+    if (!chave) continue;
+    const atual = mapa.get(chave);
+    if (!atual || new Date(m.match_date) < new Date(atual)) mapa.set(chave, m.match_date);
   }
   return mapa;
 }
 
-/** Instante em que o palpite DESTA partida fecha. null = sem prazo (jogo/competição sem data). */
+/** Instante em que o palpite DESTA partida fecha. null = sem prazo. */
 function deadlineForMatch(
-  match: { competition?: string | null; match_date?: string | null },
-  porCompeticao: Map<string, string>
+  match: MatchParaPrazo,
+  porFase: Map<string, string>,
+  roundByTie: Map<number, string>
 ): string | null {
-  if (match.competition) return porCompeticao.get(match.competition) ?? null;
-  return match.match_date ?? null;
+  const chave = chaveDoPrazo(match, roundByTie);
+  if (!chave) return match.match_date ?? null;
+  return porFase.get(chave) ?? null;
 }
 
 export async function getMatchesWithPredictions(tournamentSlug: string) {
@@ -69,10 +85,17 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
     return { matches: [], error: error.message, tournamentFormat: tournament.format };
   }
 
-  // `tournamentStartDate` era devolvido aqui, declarado como prop do MatchCard e
-  // NUNCA passado nem usado — resquício de um prazo único de torneio que existiu
-  // antes. Removido junto com a prop órfã.
-  const prazoPorCompeticao = buildDeadlineByCompetition((matches as any[]) || []);
+  // (Aqui havia `tournamentStartDate`: calculado, devolvido e declarado como prop
+  // do MatchCard, nunca passado nem usado — resquício de um prazo único de
+  // torneio que existiu antes. Removido junto com a prop órfã.)
+  //
+  // A fase vem de ties.round; `matches` não tem essa coluna.
+  const { data: ties } = await supabase
+    .from('ties')
+    .select('id, round')
+    .eq('tournament_id', tournament.id);
+  const roundByTie = new Map<number, string>((ties as any[])?.map((t: any) => [t.id, t.round]) ?? []);
+  const prazoPorFase = buildDeadlineByPhase((matches as any[]) || [], roundByTie);
 
   const matchIds = matches?.map((m: any) => m.id) || [];
   const { data: predictions } = await supabase
@@ -91,7 +114,7 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
         ...match,
         // Instante em que ESTE palpite fecha. A tela não recalcula a regra:
         // consome este campo.
-        lock_at: deadlineForMatch(match, prazoPorCompeticao),
+        lock_at: deadlineForMatch(match, prazoPorFase, roundByTie),
         user_prediction: prediction
           ? {
               id: prediction.id,
@@ -151,25 +174,16 @@ export async function savePrediction(
     return { error: 'Não é possível alterar palpite de um jogo finalizado' };
   }
 
-  // Prazo: com competição, é o 1º jogo dela (ida e volta fecham juntos); sem
-  // competição, é o início da própria partida. Data ausente = palpite aberto.
+  // Prazo: consulta a MESMA função que o gatilho usa, em vez de reimplementar a
+  // regra aqui. Duas definições do prazo divergiriam com o tempo — e a do banco é
+  // a que manda. Se a RPC falhar, o upsert segue e o gatilho barra de qualquer
+  // forma; a checagem daqui existe para dar mensagem decente, não para proteger.
   const now = new Date();
-  let prazo: string | null = match.match_date;
-  if ((match as any).competition) {
-    const { data: irmaos } = await supabase
-      .from('matches')
-      .select('competition, match_date')
-      .eq('tournament_id', match.tournament_id)
-      .eq('competition', (match as any).competition)
-      .not('match_date', 'is', null)
-      .order('match_date', { ascending: true })
-      .limit(1);
-    prazo = irmaos?.[0]?.match_date ?? null;
-  }
-  if (prazo && now > new Date(prazo)) {
+  const { data: prazo } = await supabase.rpc('prediction_deadline', { p_match_id: matchId });
+  if (prazo && now > new Date(prazo as string)) {
     return {
       error: (match as any).competition
-        ? 'Os palpites desta competição já encerraram — o prazo era o horário do primeiro jogo.'
+        ? 'Os palpites desta fase já encerraram — o prazo era o horário do primeiro jogo da fase.'
         : 'A partida já começou. Não é mais possível fazer ou alterar este palpite.',
     };
   }

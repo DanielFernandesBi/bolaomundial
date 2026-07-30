@@ -101,7 +101,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   // duas contas divergem e a etiqueta passa a mentir.
   //
   // Usa lock_at, não match_date: o que conta é se o jogador AINDA PODE palpitar.
-  // Depois que a competição fecha, o jogo sem palpite virou prejuízo consumado —
+  // Depois que a FASE fecha, o jogo sem palpite virou prejuízo consumado —
   // continuar contando ele como pendência mandaria o jogador a uma tela onde não
   // há nada a fazer.
   const semPalpite = (match: any) =>
@@ -116,20 +116,30 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   const missingMatches = matches.filter(semPalpite);
   const missingPredictionsCount = missingMatches.length;
 
-  // Próximo PRAZO a vencer — não o próximo jogo. Com a trava por competição, o
-  // que o jogador precisa saber é quando fecha a próxima competição, que pode ser
-  // bem antes do próximo jogo dela e bem depois de outro jogo já em andamento.
+  // Próximo PRAZO a vencer — não o próximo jogo. Com a trava por fase, o que o
+  // jogador precisa saber é quando fecha a próxima fase, que pode ser bem antes
+  // do próximo jogo dela e bem depois de outro jogo já em andamento.
   const prazosFuturos = matches
     .map((m: any) => m.lock_at as string | null)
     .filter((d: string | null): d is string => !!d && new Date(d) > now)
     .sort();
   const nextMatchDate = prazosFuturos[0] ?? null;
 
-  // Prazo de cada competição, para o banner listar "fecha em" por competição.
+  // Prazo VIGENTE de cada competição, para o banner. É o próximo prazo ainda por
+  // vencer — não o primeiro da lista: quando as oitavas fecharem e as quartas
+  // ganharem data, o que interessa é o prazo das quartas.
   const prazoPorCompeticao = temCompeticoesLista
     ? COMPETITIONS.filter((c) => matches.some((m: any) => m.competition === c.key)).map((c) => {
-        const lock = matches.find((m: any) => m.competition === c.key)?.lock_at ?? null;
-        return { key: c.key, short: c.short, lockAt: lock as string | null };
+        const locks = matches
+          .filter((m: any) => m.competition === c.key && m.lock_at)
+          .map((m: any) => m.lock_at as string);
+        const futuros = locks.filter((d) => new Date(d) > now).sort();
+        const passados = locks.sort();
+        return {
+          key: c.key,
+          short: c.short,
+          lockAt: (futuros[0] ?? passados[passados.length - 1] ?? null) as string | null,
+        };
       })
     : [];
 

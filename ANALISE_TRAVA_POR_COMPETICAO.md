@@ -1,4 +1,4 @@
-# Trava do palpite por competição — análise e implementação
+# Trava do palpite por competição + fase — análise e implementação
 
 Branch: `feature/trava-por-competicao` · Base: `4ace0a1` (main)
 **Nada foi aplicado no Supabase de produção.** A migração está no repositório,
@@ -9,21 +9,35 @@ aguardando decisão.
 ## A mudança
 
 **Hoje:** cada palpite fecha no horário de início da *própria partida*.
-**Proposto:** num bolão de competições, TODOS os palpites de uma competição —
-ida, volta e fases seguintes — fecham no horário do **primeiro jogo daquela
-competição**. Cada competição tem o seu prazo.
+**Adotado:** os palpites de uma **FASE** de uma competição — ida e volta juntos —
+fecham no horário do **primeiro jogo daquela fase**. Cada competição tem o seu
+prazo, e **cada fase abre um prazo novo**: as quartas só fecham no primeiro jogo
+das quartas.
 
-Com o calendário atual:
+Com o calendário atual (oitavas):
 
-| Competição | Prazo | Jogos que fecham junto |
+| Competição | Prazo das oitavas | Jogos que fecham junto |
 | --- | --- | --- |
 | Copa do Brasil | **01/08, 17:30** | 16 |
 | Libertadores | **11/08, 19:00** | 16 |
-| Sul-Americana | *sem prazo* (nenhum jogo tem data) | 4 |
+| Sul-Americana | *sem prazo* (nenhum dos 10 jogos tem data) | 10 |
 
-Partidas **sem competição** (Mundial, torneios de grupos) mantêm a regra antiga,
-por partida. Trocar isso travaria uma Copa do Mundo inteira no primeiro jogo —
-não é o que se pediu e mudaria torneios já em andamento.
+Partidas **sem competição** (Mundial, torneios de grupos) ou sem confronto
+associado mantêm a regra antiga, por partida.
+
+### Por que FASE e não competição inteira
+
+A primeira versão desta análise travava a competição inteira. O efeito colateral
+era grave: os jogos das quartas em diante são criados só depois, pela fase
+anterior, e **nasceriam com o prazo já vencido** — ninguém poderia palpitar
+deles. Com a trava por fase, cada fase abre a sua janela em tempo oportuno.
+
+### Por que `ties.round` e não `matches.phase`
+
+`matches` **não tem coluna de fase**. Existe `phase`, mas é rótulo de texto e
+separa ida de volta ("Oitavas de final – ida" / "– volta") — agrupar por ele
+daria dois prazos para o mesmo confronto. A fase de verdade é `ties.round`,
+alcançada por `matches.tie_id`.
 
 ---
 
@@ -69,8 +83,8 @@ dos dois lados.
 
 | Área | Antes | Agora |
 | --- | --- | --- |
-| `check_prediction_window` (banco) | prazo da partida | prazo da competição |
-| `savePrediction` (server action) | prazo da partida | prazo da competição |
+| `check_prediction_window` (banco) | prazo da partida | prazo da fase |
+| `savePrediction` (server action) | prazo da partida | consulta a MESMA função do banco, por RPC |
 | `MatchCard.isLocked` | `now > match_date` | `now > lock_at` |
 | Contagem regressiva da pílula | até o jogo | até o prazo |
 | Pílula de estado | "Apostas fechadas" | "Apostas fechadas" (travado) × "Em andamento" (jogo rolando) |
@@ -87,19 +101,22 @@ regra na tela. Regra de prazo em dois lugares diverge com o tempo.
 
 ### 5. O pódio passa a ficar coerente
 
-`check_podium_window` já usava exatamente esta regra (1º jogo da competição).
-Hoje o pódio fecha **antes** dos palpites de placar; depois desta mudança os
-dois fecham no mesmo instante. É uma simplificação real para explicar ao grupo.
+`check_podium_window` usa o 1º jogo da COMPETIÇÃO (não da fase). Hoje o pódio
+fecha antes dos palpites de placar; depois desta mudança os dois passam a fechar
+no mesmo instante **nas oitavas**. Nas fases seguintes eles voltam a divergir: o
+pódio continua fechado, e cada nova fase abre prazo próprio para os placares.
+Isso está correto — o pódio é palpite de campeão, e tem de fechar antes de a
+competição começar.
 
 ### 6. O que NÃO mudei, de propósito
 
 **A RLS `Predictions visible after kickoff or own` continua revelando palpite a
-palpite**, no início de cada jogo — não no prazo da competição. Ou seja: os
-palpites ficam congelados no 1º jogo, mas só aparecem para os outros quando cada
+palpite**, no início de cada jogo — não no prazo da fase. Ou seja: os palpites
+ficam congelados no 1º jogo da fase, mas só aparecem para os outros quando cada
 jogo começa.
 
 Isso é **mais restritivo** que a trava, nunca menos — não abre brecha. E preserva
-a graça: ninguém vê o chaveamento inteiro de todo mundo de uma vez.
+a graça: ninguém vê a fase inteira de todo mundo de uma vez.
 
 A alternativa seria revelar tudo de uma vez no 1º jogo, já que a partir dali nada
 pode mudar — o argumento a favor é que a transparência ("ninguém alterou depois
@@ -112,15 +129,20 @@ não só a mecânica.
 ## Verificação executada
 
 A migração foi instalada, testada e revertida dentro de um bloco abortado por
-exceção — produção nunca foi alterada (conferido depois: função original intacta,
-datas originais, 3.187 palpites):
+exceção — produção nunca foi alterada (conferido depois: a função nova nem
+existe lá, nenhum registro de teste sobrou, datas originais):
 
 ```
-copa_placar          = BLOQUEADO   (jogo FUTURO da Copa, competição já aberta) ✓
-copa_so_pen_winner   = BLOQUEADO   (o furo fechou) ✓
-liber_ainda_aberta   = PASSOU      (prazo independente por competição) ✓
-gatilho_pontuacao    = PASSOU      (o sistema ainda grava points_*) ✓
+oitavas_volta      = BLOQUEADO   (jogo de VOLTA, ainda no futuro, já fechado) ✓
+QUARTAS_NOVAS      = PASSOU      (fase criada depois abre prazo próprio)     ✓
+libertadores       = PASSOU      (prazo independente por competição)          ✓
+pen_winner_oitavas = BLOQUEADO   (o furo fechou)                              ✓
+pontuacao          = PASSOU      (o sistema ainda grava points_*)             ✓
 ```
+
+O segundo é o que a mudança de "competição" para "fase" resolveu: criei umas
+quartas de final com data futura enquanto as oitavas estavam fechadas, e elas
+aceitaram palpite.
 
 `tsc`: 251 erros, os mesmos 251 da `main` — nenhum novo. `next build` compila.
 
@@ -128,7 +150,8 @@ gatilho_pontuacao    = PASSOU      (o sistema ainda grava points_*) ✓
 
 ## Como aplicar (quando decidir)
 
-1. Aplicar `supabase/migrations/20260730000001_prediction_window_per_competition.sql`.
+1. Aplicar `supabase/migrations/20260730000001_prediction_window_per_competition.sql`
+   (cria `public.prediction_deadline` e reescreve `check_prediction_window`).
 2. Fazer merge da branch na `main`.
 
 **Na ordem.** Se o código subir antes da migração, a tela dirá que o prazo é o 1º
@@ -141,18 +164,19 @@ fica mais estrito e a tela só ficaria otimista.
 ## Riscos e pontos de atenção
 
 - **Encurta MUITO o prazo.** Hoje dá para palpitar o jogo de volta até o dia dele;
-  depois, tudo tem de estar pronto antes do primeiro jogo. Na Copa do Brasil isso
-  é **01/08 às 17:30** — daqui a pouco. **Avise o grupo antes de aplicar.**
-- **Sul-Americana continua sem prazo**, porque nenhum dos 4 jogos tem data. Ela só
-  passa a ter prazo quando o admin lançar a primeira data. Enquanto isso, os
-  palpites da Sula ficam abertos.
+  depois, ida e volta das oitavas têm de estar prontos antes do primeiro jogo da
+  fase. Na Copa do Brasil isso é **01/08 às 17:30**. **Avise o grupo antes de
+  aplicar** — o bolão está em uso agora (os palpites subiram de 3.187 para 3.340
+  durante esta análise).
+- **Sul-Americana continua sem prazo**, porque nenhum dos 10 jogos tem data.
 - **Palpites de ida e volta viram aposta no escuro**: o jogador terá de palpitar o
   jogo de volta sem saber o resultado da ida. É o efeito pretendido, mas muda o
   jogo e vale explicar ao grupo.
-- **Jogos "a definir" das fases seguintes**: quando o admin gerar as quartas, esses
-  jogos herdam o prazo da competição — que já terá vencido. Na prática **ninguém
-  poderá palpitar as quartas em diante.** Isto precisa de decisão: ou o prazo vale
-  só para as oitavas (e cada fase seguinte ganha o seu), ou o bolão inteiro é
-  decidido antes do primeiro jogo. **A implementação atual faz a segunda coisa** —
-  é a leitura literal do pedido, mas é a consequência mais séria e provavelmente
-  não é o que se quer.
+- **Fases seguintes**: resolvido pela trava por fase — as quartas abrem prazo
+  próprio quando ganharem data. Mas isso vira uma **obrigação operacional**: se o
+  admin criar os jogos das quartas com data e o primeiro deles já tiver passado,
+  a fase inteira nasce fechada. Lançar as datas com antecedência deixa de ser
+  zelo e passa a ser requisito.
+- **Fase sem data nenhuma fica aberta**, não fechada. É o caso da Sul-Americana
+  hoje: 10 jogos, nenhum com data, prazo `NULL` → palpite liberado. Quando a
+  primeira data entrar, a fase inteira passa a ter prazo.

@@ -234,12 +234,12 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   const matchDate = match.match_date ? new Date(match.match_date) : null;
   const dateTbd = !match.match_date;
   // O PRAZO não é mais o início desta partida: num bolão de competições é o
-  // primeiro jogo da competição, e ida e volta fecham juntos. O servidor manda
-  // isso pronto em `lock_at`; o fallback cobre quem ainda não recebeu o campo.
+  // primeiro jogo da FASE (oitavas, quartas…), e ida e volta fecham juntos. O
+  // servidor manda isso pronto em `lock_at`; o fallback cobre quem não o recebeu.
   const lockAt = match.lock_at ? new Date(match.lock_at) : matchDate;
   const isLocked = (lockAt ? new Date() > lockAt : false) || isFinished;
   // "Já começou" é diferente de "fechado": o jogo pode não ter começado e o
-  // palpite já estar travado porque a competição abriu.
+  // palpite já estar travado porque a fase abriu.
   const hasKickedOff = matchDate ? new Date() > matchDate : false;
 
   // Contagem regressiva fina da pílula ("Fecha em 3h 12m").
