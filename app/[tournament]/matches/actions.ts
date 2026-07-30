@@ -4,6 +4,40 @@ import { createServerSupabaseClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import { COMPETITIONS } from '@/lib/competitions';
 
+// ============================================================================
+// Prazo do palpite
+// ============================================================================
+// Num bolão de competições, o prazo de TODOS os palpites de uma competição é o
+// PRIMEIRO jogo dela — ida, volta e fases seguintes fecham juntos. Cada
+// competição tem o seu, então Copa do Brasil, Libertadores e Sul-Americana
+// fecham em datas diferentes.
+//
+// Partida SEM competição (Mundial, torneios de grupos) mantém a regra antiga:
+// fecha no início dela mesma.
+//
+// A trava de verdade é o gatilho check_prediction_window no banco (migração
+// 20260730000001). Isto aqui é a mesma regra, para a mensagem de erro e para a
+// tela — não é a única defesa.
+// ============================================================================
+function buildDeadlineByCompetition(matches: { competition?: string | null; match_date?: string | null }[]) {
+  const mapa = new Map<string, string>();
+  for (const m of matches) {
+    if (!m.competition || !m.match_date) continue;
+    const atual = mapa.get(m.competition);
+    if (!atual || new Date(m.match_date) < new Date(atual)) mapa.set(m.competition, m.match_date);
+  }
+  return mapa;
+}
+
+/** Instante em que o palpite DESTA partida fecha. null = sem prazo (jogo/competição sem data). */
+function deadlineForMatch(
+  match: { competition?: string | null; match_date?: string | null },
+  porCompeticao: Map<string, string>
+): string | null {
+  if (match.competition) return porCompeticao.get(match.competition) ?? null;
+  return match.match_date ?? null;
+}
+
 export async function getMatchesWithPredictions(tournamentSlug: string) {
   const supabase = await createServerSupabaseClient();
 
@@ -12,7 +46,7 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { matches: [], error: 'Usuário não autenticado', tournamentStartDate: null, tournamentFormat: 'groups' };
+    return { matches: [], error: 'Usuário não autenticado', tournamentFormat: 'groups' };
   }
 
   const { data: tournament, error: tournamentError } = await supabase
@@ -22,7 +56,7 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
     .single();
 
   if (tournamentError || !tournament) {
-    return { matches: [], error: 'Torneio não encontrado', tournamentStartDate: null, tournamentFormat: 'groups' };
+    return { matches: [], error: 'Torneio não encontrado', tournamentFormat: 'groups' };
   }
 
   const { data: matches, error } = await supabase
@@ -32,10 +66,13 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
     .order('match_date', { ascending: true });
 
   if (error) {
-    return { matches: [], error: error.message, tournamentStartDate: null, tournamentFormat: tournament.format };
+    return { matches: [], error: error.message, tournamentFormat: tournament.format };
   }
 
-  const tournamentStartDate = matches && matches.length > 0 ? (matches[0].match_date as string) : null;
+  // `tournamentStartDate` era devolvido aqui, declarado como prop do MatchCard e
+  // NUNCA passado nem usado — resquício de um prazo único de torneio que existiu
+  // antes. Removido junto com a prop órfã.
+  const prazoPorCompeticao = buildDeadlineByCompetition((matches as any[]) || []);
 
   const matchIds = matches?.map((m: any) => m.id) || [];
   const { data: predictions } = await supabase
@@ -52,6 +89,9 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
 
       return {
         ...match,
+        // Instante em que ESTE palpite fecha. A tela não recalcula a regra:
+        // consome este campo.
+        lock_at: deadlineForMatch(match, prazoPorCompeticao),
         user_prediction: prediction
           ? {
               id: prediction.id,
@@ -70,7 +110,7 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
       };
     }) || [];
 
-  return { matches: processedMatches, error: null, tournamentStartDate, tournamentFormat: tournament.format };
+  return { matches: processedMatches, error: null, tournamentFormat: tournament.format };
 }
 
 interface ExtraPrediction {
@@ -99,7 +139,7 @@ export async function savePrediction(
 
   const { data: match, error: matchError } = await supabase
     .from('matches')
-    .select('match_date, status, tournament_id, is_knockout')
+    .select('match_date, status, tournament_id, is_knockout, competition')
     .eq('id', matchId)
     .single();
 
@@ -111,11 +151,27 @@ export async function savePrediction(
     return { error: 'Não é possível alterar palpite de um jogo finalizado' };
   }
 
-  // Prazo por partida: bloqueia no horário de início do jogo.
-  // match_date NULL = "data a definir" (jogo gerado pela fase anterior) → palpite aberto.
+  // Prazo: com competição, é o 1º jogo dela (ida e volta fecham juntos); sem
+  // competição, é o início da própria partida. Data ausente = palpite aberto.
   const now = new Date();
-  if (match.match_date && now > new Date(match.match_date)) {
-    return { error: 'A partida já começou. Não é mais possível fazer ou alterar este palpite.' };
+  let prazo: string | null = match.match_date;
+  if ((match as any).competition) {
+    const { data: irmaos } = await supabase
+      .from('matches')
+      .select('competition, match_date')
+      .eq('tournament_id', match.tournament_id)
+      .eq('competition', (match as any).competition)
+      .not('match_date', 'is', null)
+      .order('match_date', { ascending: true })
+      .limit(1);
+    prazo = irmaos?.[0]?.match_date ?? null;
+  }
+  if (prazo && now > new Date(prazo)) {
+    return {
+      error: (match as any).competition
+        ? 'Os palpites desta competição já encerraram — o prazo era o horário do primeiro jogo.'
+        : 'A partida já começou. Não é mais possível fazer ou alterar este palpite.',
+    };
   }
 
   const payload: Record<string, unknown> = {

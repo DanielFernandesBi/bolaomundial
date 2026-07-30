@@ -36,6 +36,9 @@ interface MatchCardProps {
     home_iso: string | null;
     away_iso: string | null;
     match_date: string | null;
+    /** Instante em que o palpite fecha. Vem pronto do servidor: com competição é
+        o 1º jogo dela, sem competição é o início da própria partida. */
+    lock_at?: string | null;
     score_home: number | null;
     score_away: number | null;
     status: string;
@@ -63,7 +66,6 @@ interface MatchCardProps {
     } | null;
   };
   group?: string;
-  tournamentStartDate?: string;
 }
 
 function TeamLogo({ iso, alt }: { iso: string | null; alt: string }) {
@@ -231,7 +233,14 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   // match_date pode ser NULL ("data a definir") → sem prazo, palpite aberto.
   const matchDate = match.match_date ? new Date(match.match_date) : null;
   const dateTbd = !match.match_date;
-  const isLocked = (matchDate ? new Date() > matchDate : false) || isFinished;
+  // O PRAZO não é mais o início desta partida: num bolão de competições é o
+  // primeiro jogo da competição, e ida e volta fecham juntos. O servidor manda
+  // isso pronto em `lock_at`; o fallback cobre quem ainda não recebeu o campo.
+  const lockAt = match.lock_at ? new Date(match.lock_at) : matchDate;
+  const isLocked = (lockAt ? new Date() > lockAt : false) || isFinished;
+  // "Já começou" é diferente de "fechado": o jogo pode não ter começado e o
+  // palpite já estar travado porque a competição abriu.
+  const hasKickedOff = matchDate ? new Date() > matchDate : false;
 
   // Contagem regressiva fina da pílula ("Fecha em 3h 12m").
   // Só passa a valer DEPOIS da montagem: no primeiro render o cliente precisa
@@ -240,13 +249,14 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
   // não mostra segundos — quem mostra é o banner de prazo, que tem relógio de 1s.
   const [msAteFechar, setMsAteFechar] = useState<number | null>(null);
   useEffect(() => {
-    if (!match.match_date || isFinished) return;
-    const alvo = new Date(match.match_date).getTime();
+    const quando = match.lock_at ?? match.match_date;
+    if (!quando || isFinished) return;
+    const alvo = new Date(quando).getTime();
     const tick = () => setMsAteFechar(alvo - Date.now());
     tick();
     const id = setInterval(tick, 30_000);
     return () => clearInterval(id);
-  }, [match.match_date, isFinished]);
+  }, [match.lock_at, match.match_date, isFinished]);
 
   const hasUnsavedChanges =
     homeScore !== saved.home ||
@@ -404,7 +414,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
       text = 'Encerrada';
     } else if (isLocked) {
       tone = 'text-state-locked bg-state-locked/10';
-      text = 'Apostas fechadas';
+      text = hasKickedOff ? 'Em andamento' : 'Apostas fechadas';
     } else if (dateTbd) {
       tone = 'text-state-closing bg-state-closing/15';
       text = 'Data a definir';

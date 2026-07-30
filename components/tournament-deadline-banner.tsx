@@ -28,19 +28,29 @@ interface MissingByCompetition {
   count: number;
 }
 
+interface DeadlineByCompetition {
+  key: string;
+  short: string;
+  lockAt: string | null;
+}
+
 interface Props {
-  // Horário do próximo jogo a fechar os palpites (bloqueio é por partida)
+  /** Próximo PRAZO a vencer (não o próximo jogo). Com a trava por competição,
+      o prazo de uma competição é o horário do primeiro jogo dela. */
   nextMatchDate: string | null;
   missingPredictionsCount: number;
   /** Detalhamento do "sem palpite" por competição, no bolão unificado. Vazio
       (o padrão) mantém exatamente a etiqueta única de antes. */
   missingByCompetition?: MissingByCompetition[];
+  /** Prazo de cada competição, para o jogador ver que são datas diferentes. */
+  deadlinesByCompetition?: DeadlineByCompetition[];
 }
 
 export function TournamentDeadlineBanner({
   nextMatchDate,
   missingPredictionsCount,
   missingByCompetition = [],
+  deadlinesByCompetition = [],
 }: Props) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -106,16 +116,33 @@ export function TournamentDeadlineBanner({
   // Desempenho e do Perfil.
   const detalhado = missingByCompetition.length > 0;
 
+  // Prazos por competição. A formatação da data acontece SÓ no cliente — o
+  // componente já retorna null até `mounted`, então não há divergência de fuso
+  // entre servidor e navegador (o servidor roda em UTC; o jogador, em BRT).
+  const prazos = deadlinesByCompetition.filter((d) => d.lockAt);
+  const formatarPrazo = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   return (
     <div className={`mb-6 rounded-[12px] border px-3 py-3 text-xs ${tone}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className={`h-2 w-2 flex-shrink-0 rounded-full ${dot}`} aria-hidden="true" />
 
         {tournamentStarted ? (
-          <span className="font-medium">Cada jogo encerra os palpites no seu próprio horário</span>
+          <span className="font-medium">Os prazos de palpite já encerraram</span>
         ) : (
           <>
-            <span className="font-medium">Próximo jogo fecha em</span>
+            {/* "Próximo jogo fecha em" mentia depois da trava por competição: o
+                que vence é o PRAZO da competição, que é o horário do primeiro
+                jogo dela — não do próximo jogo da lista. */}
+            <span className="font-medium">Próximo prazo fecha em</span>
             <span className="font-mono text-sm font-bold tabular-nums tracking-wider">
               {buildCountdownText()}
             </span>
@@ -187,6 +214,45 @@ export function TournamentDeadlineBanner({
                 );
               }
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Prazos por competição. Cada uma fecha no horário do PRIMEIRO jogo dela,
+          então são três datas diferentes — e o jogador precisa ver isso, senão
+          descobre que perdeu a Copa do Brasil olhando para o prazo da
+          Libertadores. */}
+      {prazos.length > 0 && (
+        <div className="mt-2.5 border-t border-hairline pt-2.5">
+          <p className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
+            Palpites fecham em
+          </p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {prazos.map(({ key, short, lockAt }) => {
+              const venceu = new Date(lockAt!) <= new Date();
+              return (
+                <div
+                  key={key}
+                  className={`rounded-[10px] border px-1.5 py-1.5 text-center ${
+                    venceu ? 'border-hairline bg-surface-sunken' : 'border-hairline bg-card'
+                  }`}
+                >
+                  <p
+                    className="font-mono text-[8.5px] uppercase leading-[1.2] tracking-[0.06em] text-[hsl(var(--faint))]"
+                    title={short}
+                  >
+                    {short}
+                  </p>
+                  <p
+                    className={`mt-1 text-[11px] font-bold leading-none tabular-nums ${
+                      venceu ? 'text-state-locked line-through' : 'text-card-foreground'
+                    }`}
+                  >
+                    {formatarPrazo(lockAt!)}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
