@@ -75,6 +75,55 @@ BEGIN
 END;
 $function$;
 
+-- ---------------------------------------------------------------------------
+-- A fase já começou? Não basta comparar com o prazo: o prazo é MIN(match_date) e
+-- é RECALCULADO a cada consulta, então ele anda nos dois sentidos quando o admin
+-- mexe nas datas. Se o jogo mais cedo for adiado, o MIN salta para frente e uma
+-- fase JÁ DISPUTADA reabriria — com os resultados conhecidos.
+--
+-- Por isso a fase também é considerada fechada quando qualquer jogo dela já foi
+-- finalizado ou já começou. Assim ela nunca reabre.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.phase_already_started(p_match_id INT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+    v_comp TEXT; v_tournament INT; v_round TEXT; v_encontrou BOOLEAN;
+BEGIN
+    SELECT m.competition, m.tournament_id, t.round
+      INTO v_comp, v_tournament, v_round
+      FROM public.matches m
+      LEFT JOIN public.ties t ON t.id = m.tie_id
+     WHERE m.id = p_match_id;
+
+    IF v_comp IS NULL OR v_round IS NULL THEN
+        SELECT m.status = 'FINISHED' INTO v_encontrou FROM public.matches m WHERE m.id = p_match_id;
+        RETURN COALESCE(v_encontrou, FALSE);
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1
+          FROM public.matches m2
+          JOIN public.ties t2 ON t2.id = m2.tie_id
+         WHERE m2.tournament_id = v_tournament
+           AND m2.competition = v_comp
+           AND t2.round = v_round
+           AND (m2.status = 'FINISHED' OR (m2.match_date IS NOT NULL AND m2.match_date <= now()))
+    ) INTO v_encontrou;
+
+    RETURN COALESCE(v_encontrou, FALSE);
+END;
+$function$;
+
+COMMENT ON FUNCTION public.phase_already_started IS
+  'TRUE quando algum jogo da mesma competição+fase já começou ou foi finalizado. Impede que a fase reabra se o admin adiar a data do jogo mais cedo.';
+
+GRANT EXECUTE ON FUNCTION public.phase_already_started(INT) TO authenticated;
+
 COMMENT ON FUNCTION public.prediction_deadline IS
   'Instante em que o palpite de uma partida fecha: 1º jogo da mesma competição E fase (ties.round). Sem competição/fase, o início da própria partida. NULL = sem prazo.';
 
@@ -109,6 +158,11 @@ BEGIN
     END IF;
 
     deadline := public.prediction_deadline(NEW.match_id);
+
+    -- Fase que já rolou nunca reabre, mesmo que o admin mexa nas datas.
+    IF public.phase_already_started(NEW.match_id) THEN
+        RAISE EXCEPTION 'Os palpites desta fase já encerraram.';
+    END IF;
 
     -- Sem data conhecida (fase ainda sem calendário): permite.
     IF deadline IS NULL THEN

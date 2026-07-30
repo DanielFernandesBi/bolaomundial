@@ -32,6 +32,40 @@ era grave: os jogos das quartas em diante são criados só depois, pela fase
 anterior, e **nasceriam com o prazo já vencido** — ninguém poderia palpitar
 deles. Com a trava por fase, cada fase abre a sua janela em tempo oportuno.
 
+### O prazo é a MENOR data da fase, não a primeira cadastrada
+
+`prediction_deadline` faz `MIN(match_date)` sobre a fase e é **recalculada a cada
+consulta** — não congela. Confirmado em produção, com rollback:
+
+| Ação do admin numa fase sem datas | Prazo resultante |
+| --- | --- |
+| nenhuma data | *sem prazo* |
+| cadastra um jogo em 20/09 | 20/09 21:30 |
+| cadastra outro em 05/09 | **05/09 19:00** (andou para trás) |
+| adia esse de 05/09 para 30/09 | **20/09 21:30** (voltou) |
+
+Ou seja: sempre coincide com o primeiro jogo da fase, na ordem do calendário. A
+ordem em que o admin digita não importa.
+
+**Isso trouxe um risco que a trava por partida não tinha.** Como o prazo anda nos
+dois sentidos, adiar o jogo mais cedo faria uma fase JÁ DISPUTADA reabrir — com
+os resultados na mesa. E o gatilho antigo não checava `status`, então dava para
+alterar palpite de jogo finalizado.
+
+Fechado com `phase_already_started()`: a fase também conta como encerrada quando
+**qualquer jogo dela já começou ou foi finalizado**. Assim ela nunca reabre.
+Adiamento sem nada disputado continua reabrindo — aí a fase de fato não
+aconteceu. Verificado:
+
+```
+fase_em_curso                     = BLOQUEADO ✓
+apos_adiar_jogo_ja_disputado      = BLOQUEADO (fase não reabre) ✓
+tudo_adiado_sem_jogo_disputado    = PASSOU (reabre, e deve mesmo) ✓
+```
+
+A mesma conta é refeita no TypeScript (`buildPhaseClosedAt`), para a tela não
+mostrar aberto o que o banco bloqueia.
+
 ### Por que `ties.round` e não `matches.phase`
 
 `matches` **não tem coluna de fase**. Existe `phase`, mas é rótulo de texto e

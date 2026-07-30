@@ -43,14 +43,47 @@ function buildDeadlineByPhase(matches: MatchParaPrazo[], roundByTie: Map<number,
   return mapa;
 }
 
+// Fases que JÁ ROLARAM, com o instante em que fecharam.
+//
+// O prazo é MIN(match_date) e é recalculado a cada consulta, então ele anda nos
+// dois sentidos quando o admin mexe nas datas. Se o jogo mais cedo for adiado
+// DEPOIS de já ter sido disputado, o MIN salta para frente e a fase reabriria —
+// com os resultados na mesa. O banco impede isso (phase_already_started); aqui
+// a mesma conta é refeita para a TELA não mostrar aberto o que o banco bloqueia.
+//
+// Adiar sem ter disputado nada é diferente e continua reabrindo: aí a fase de
+// fato não aconteceu.
+function buildPhaseClosedAt(
+  matches: (MatchParaPrazo & { status?: string | null })[],
+  roundByTie: Map<number, string>,
+  now: Date
+) {
+  const mapa = new Map<string, string>();
+  for (const m of matches) {
+    const chave = chaveDoPrazo(m, roundByTie);
+    if (!chave) continue;
+    const jaComecou = m.match_date ? new Date(m.match_date) <= now : false;
+    if (m.status !== 'FINISHED' && !jaComecou) continue;
+    const quando = m.match_date && jaComecou ? m.match_date : now.toISOString();
+    const atual = mapa.get(chave);
+    if (!atual || new Date(quando) < new Date(atual)) mapa.set(chave, quando);
+  }
+  return mapa;
+}
+
 /** Instante em que o palpite DESTA partida fecha. null = sem prazo. */
 function deadlineForMatch(
   match: MatchParaPrazo,
   porFase: Map<string, string>,
+  fechadaEm: Map<string, string>,
   roundByTie: Map<number, string>
 ): string | null {
   const chave = chaveDoPrazo(match, roundByTie);
   if (!chave) return match.match_date ?? null;
+  // Fase já disputada manda: nunca reabre, mesmo que o MIN das datas tenha ido
+  // para o futuro.
+  const fechada = fechadaEm.get(chave);
+  if (fechada) return fechada;
   return porFase.get(chave) ?? null;
 }
 
@@ -96,6 +129,7 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
     .eq('tournament_id', tournament.id);
   const roundByTie = new Map<number, string>((ties as any[])?.map((t: any) => [t.id, t.round]) ?? []);
   const prazoPorFase = buildDeadlineByPhase((matches as any[]) || [], roundByTie);
+  const faseFechadaEm = buildPhaseClosedAt((matches as any[]) || [], roundByTie, new Date());
 
   const matchIds = matches?.map((m: any) => m.id) || [];
   const { data: predictions } = await supabase
@@ -114,7 +148,7 @@ export async function getMatchesWithPredictions(tournamentSlug: string) {
         ...match,
         // Instante em que ESTE palpite fecha. A tela não recalcula a regra:
         // consome este campo.
-        lock_at: deadlineForMatch(match, prazoPorFase, roundByTie),
+        lock_at: deadlineForMatch(match, prazoPorFase, faseFechadaEm, roundByTie),
         user_prediction: prediction
           ? {
               id: prediction.id,
