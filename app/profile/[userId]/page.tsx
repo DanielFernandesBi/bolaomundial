@@ -1,17 +1,20 @@
-import {
-  Trophy,
-  TrendingUp,
-  Target,
-  User,
-  Award,
-  DollarSign,
-  BarChart3,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Trophy, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { getPublicProfile } from '../actions';
 import { notFound } from 'next/navigation';
+
+// ============================================================================
+// Perfil de OUTRO jogador
+// ============================================================================
+// Tela irmã de app/profile/page.tsx. O redesign do bloco 6c reorganizou só a
+// própria, e esta ficou com o layout velho — quem abria o perfil de um colega
+// via a versão anterior do app, com o valor em dinheiro estourando o card.
+//
+// Agora as duas seguem o MESMO desenho. A diferença é só o que não faz sentido
+// aqui: sem upload de avatar (é de outra pessoa), sem alternador de tema, e a
+// cópia fala em terceira pessoa.
+// ============================================================================
 
 // Função para formatar data em português
 function formatDate(dateString: string): string {
@@ -41,6 +44,21 @@ function formatMoney(value: number): string {
   }).format(value);
 }
 
+const legenda = 'font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]';
+
+function FaixaMetricas({ itens }: { itens: readonly (readonly [string, string | number])[] }) {
+  return (
+    <div className="mb-4 grid grid-cols-4 divide-x divide-hairline rounded-[16px] border border-border bg-card">
+      {itens.map(([label, value]) => (
+        <div key={label} className="px-2 py-3 text-center">
+          <p className="text-lg font-bold tabular-nums text-foreground">{value}</p>
+          <p className={`mt-0.5 truncate ${legenda} text-[9px]`}>{label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface PublicProfilePageProps {
   params: Promise<{
     userId: string;
@@ -64,298 +82,150 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
 
   const memberSince = formatDate(profile.created_at);
 
+  const taxaAcerto =
+    profile.total_predictions > 0
+      ? Math.round((profile.correct_predictions / profile.total_predictions) * 100)
+      : 0;
+
+  const distribuicao = [
+    ['Cravadas (30 pts)', profile.points_distribution?.exact || 0, 'text-score-exact'],
+    ['17 pts', profile.points_distribution?.category17 || 0, 'text-score-partial'],
+    ['15 pts', profile.points_distribution?.category15 || 0, 'text-score-partial'],
+    ['12 pts', profile.points_distribution?.category12 || 0, 'text-score-partial'],
+    ['10 pts', profile.points_distribution?.category9 || 0, 'text-score-partial'],
+    ['3 pts', profile.points_distribution?.category3 || 0, 'text-score-partial'],
+    ['0 pts', profile.points_distribution?.zero || 0, 'text-score-none'],
+  ] as const;
+
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-full">
-        {/* Cabeçalho do Perfil */}
-        <Card className="bg-card border-border mb-8">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-6 flex-wrap">
-              {/* Avatar */}
-              <div className="bg-primary rounded-full p-1 w-24 h-24">
-                <Avatar className="w-full h-full">
-                  <AvatarImage src={profile.avatar_url || undefined} />
-                  <AvatarFallback className="bg-muted text-foreground text-2xl">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-
-              {/* Informações */}
-              <div className="flex-1 min-w-[200px]">
-                <h1 className="text-3xl font-bold text-foreground mb-2">
-                  {profile.username}
-                </h1>
-                <p className="text-muted-foreground text-sm mb-3">
-                  Membro desde {memberSince}
-                </p>
-                {profile.general_ranking_position && (
-                  <div className="inline-flex items-center gap-2 bg-muted px-3 py-1 rounded-full">
-                    <Trophy className="w-4 h-4 text-primary" />
-                    <span className="text-foreground text-sm">
-                      {profile.general_ranking_position}º Lugar no Ranking Geral
-                    </span>
-                  </div>
-                )}
-              </div>
+    <div className="min-h-screen overflow-x-hidden bg-background">
+      <div className="container mx-auto max-w-full px-4 py-8 pb-28 md:pb-8">
+        {/* Cabeçalho centralizado */}
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="h-[76px] w-[76px] rounded-full bg-primary p-1">
+            <Avatar className="h-full w-full">
+              <AvatarImage src={profile.avatar_url || undefined} />
+              <AvatarFallback className="bg-muted text-xl font-bold text-foreground">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          <h1 className="mt-3 text-xl font-bold text-foreground">{profile.username}</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">Membro desde {memberSince}</p>
+          {profile.general_ranking_position && (
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1">
+              <Trophy className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              <span className="text-xs font-semibold text-foreground">
+                {profile.general_ranking_position}º no ranking geral
+              </span>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Grid de Estatísticas Gerais */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {/* Pontos Totais */}
-          <Card className="bg-card border-border">
-            <CardContent className="p-6 text-center">
-              <TrendingUp className="w-8 h-8 text-primary mx-auto mb-2" />
-              <div className="text-3xl font-bold text-foreground mb-1">
-                {profile.total_points}
-              </div>
-              <div className="text-muted-foreground text-sm">Pontos Totais</div>
-            </CardContent>
-          </Card>
-
-          {/* Cravadas Totais */}
-          <Card className="bg-card border-border">
-            <CardContent className="p-6 text-center">
-              <Trophy className="w-8 h-8 text-primary mx-auto mb-2" />
-              <div className="text-3xl font-bold text-foreground mb-1">
-                {profile.exact_matches}
-              </div>
-              <div className="text-muted-foreground text-sm">Cravadas Totais</div>
-            </CardContent>
-          </Card>
-
-          {/* Dinheiro Total */}
-          <Card className="bg-card border-border">
-            <CardContent className="p-6 text-center">
-              <DollarSign className="w-8 h-8 text-state-open mx-auto mb-2" />
-              <div className="text-3xl font-bold text-foreground mb-1">
-                {formatMoney(profile.total_money)}
-              </div>
-              <div className="text-muted-foreground text-sm">Dinheiro Ganho</div>
-            </CardContent>
-          </Card>
-
-          {/* Total de Palpites */}
-          <Card className="bg-card border-border">
-            <CardContent className="p-6 text-center">
-              <User className="w-8 h-8 text-primary mx-auto mb-2" />
-              <div className="text-3xl font-bold text-foreground mb-1">
-                {profile.total_predictions}
-              </div>
-              <div className="text-muted-foreground text-sm">Palpites Totais</div>
-            </CardContent>
-          </Card>
+          )}
         </div>
 
-        {/* Estatísticas de Acertos */}
-        <Card className="bg-card border-border mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              Estatísticas de Acertos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="text-muted-foreground text-sm">Acertos</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {profile.correct_predictions}
-                  </p>
-                </div>
-                <Target className="w-8 h-8 text-state-open" />
-              </div>
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="text-muted-foreground text-sm">Taxa de Acerto</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {profile.total_predictions > 0
-                      ? Math.round(
-                          (profile.correct_predictions / profile.total_predictions) * 100
-                        )
-                      : 0}
-                    %
-                  </p>
-                </div>
-                <Award className="w-8 h-8 text-primary" />
-              </div>
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="text-muted-foreground text-sm">% Cravadas</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {profile.exact_matches_percentage || 0}%
-                  </p>
-                </div>
-                <Trophy className="w-8 h-8 text-primary" />
-              </div>
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="text-muted-foreground text-sm">Média de Pontos</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {profile.average_points || 0}
-                  </p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-muted-foreground" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Herói: pontos e dinheiro */}
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="rounded-[16px] border border-primary/30 bg-primary/5 p-4">
+            <p className={legenda}>Pontos totais</p>
+            <p className="mt-1 text-[32px] font-bold leading-none tabular-nums text-primary">
+              {profile.total_points}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {profile.total_predictions} {profile.total_predictions === 1 ? 'palpite' : 'palpites'}
+            </p>
+          </div>
+          <div className="rounded-[16px] border border-border bg-card p-4">
+            <p className={legenda}>Dinheiro ganho</p>
+            {/* O valor era `text-3xl` num card estreito e estourava a borda com
+                4 dígitos (R$ 1.510,00). Aqui ele é menor e a caixa deixa quebrar. */}
+            <p className="mt-1 break-words text-[26px] font-bold leading-none tabular-nums text-money">
+              {formatMoney(profile.total_money)}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">somando todos os bolões</p>
+          </div>
+        </div>
 
-        {/* Estatísticas Avançadas */}
-        <Card className="bg-card border-border mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              Estatísticas Avançadas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-sm mb-2">Melhor Pontuação em um Jogo</p>
-                <p className="text-3xl font-bold text-primary">
-                  {profile.best_score || 0} pts
-                </p>
+        {/* Faixas de métricas */}
+        <FaixaMetricas
+          itens={[
+            ['Cravadas', profile.exact_matches],
+            ['Acertos', profile.correct_predictions],
+            ['Aproveit.', `${taxaAcerto}%`],
+            ['Média', profile.average_points || 0],
+          ]}
+        />
+        <FaixaMetricas
+          itens={[
+            ['% Cravadas', `${profile.exact_matches_percentage || 0}%`],
+            ['Palpites', profile.total_predictions],
+            ['Melhor jogo', `${profile.best_score || 0}`],
+            ['Bolões', profile.tournaments?.length ?? 0],
+          ]}
+        />
+
+        {/* Distribuição de pontos */}
+        <div className="mb-6 rounded-[16px] border border-border bg-card p-4">
+          <p className={`mb-2 ${legenda}`}>Distribuição de pontos</p>
+          <div className="space-y-2">
+            {distribuicao.map(([label, valor, tom]) => (
+              <div key={label} className="flex items-center justify-between text-sm">
+                <span className="text-card-foreground">{label}</span>
+                <span className={`font-semibold tabular-nums ${tom}`}>{valor}</span>
               </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-muted-foreground text-sm mb-2">
-                  Distribuição de pontos
-                  <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
-                    cravada · parcial · zero
+            ))}
+          </div>
+        </div>
+
+        {/* Bolões que jogou — uma linha por torneio */}
+        <p className={`mb-2 ${legenda}`}>Bolões que jogou</p>
+        {profile.tournaments && profile.tournaments.length > 0 ? (
+          <div className="mb-6 space-y-2">
+            {profile.tournaments.map((tournament) => (
+              <Link
+                key={tournament.tournament_id}
+                href={`/${tournament.tournament_slug}/desempenho/${userId}`}
+                className="flex min-h-[64px] items-center gap-3 rounded-[14px] border border-hairline bg-card px-3 py-2.5 transition-colors hover:border-primary/40"
+              >
+                {tournament.tournament_logo ? (
+                  <img
+                    src={tournament.tournament_logo}
+                    alt=""
+                    className="h-9 w-9 flex-shrink-0 object-contain"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-surface-sunken">
+                    <Trophy className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  </div>
+                )}
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {tournament.tournament_name}
+                  </p>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {tournament.total_points} pts · {tournament.exact_matches} cravadas
+                    {tournament.tournament_status === 'active' && ' · em disputa'}
+                    {tournament.tournament_status === 'pending' && ' · a começar'}
+                  </p>
+                </div>
+
+                {tournament.prize_money > 0 && (
+                  <span className="flex-shrink-0 text-sm font-bold tabular-nums text-money">
+                    {formatMoney(tournament.prize_money)}
                   </span>
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-card-foreground">Cravadas (30 pts)</span>
-                    <span className="text-score-exact font-semibold tabular-nums">
-                      {profile.points_distribution?.exact || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-card-foreground">17 pts</span>
-                    <span className="text-score-partial font-semibold tabular-nums">
-                      {profile.points_distribution?.category17 || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-card-foreground">15 pts</span>
-                    <span className="text-score-partial font-semibold tabular-nums">
-                      {profile.points_distribution?.category15 || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-card-foreground">12 pts</span>
-                    <span className="text-score-partial font-semibold tabular-nums">
-                      {profile.points_distribution?.category12 || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-card-foreground">10 pts</span>
-                    <span className="text-score-partial font-semibold tabular-nums">
-                      {profile.points_distribution?.category9 || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-card-foreground">3 pts</span>
-                    <span className="text-score-partial font-semibold tabular-nums">
-                      {profile.points_distribution?.category3 || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-card-foreground">0 pts</span>
-                    <span className="text-score-none font-semibold tabular-nums">
-                      {profile.points_distribution?.zero || 0}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Torneios Participados */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Trophy className="w-5 h-5 text-primary" />
-              Torneios Participados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {profile.tournaments && profile.tournaments.length > 0 ? (
-              <div className="space-y-4">
-                {profile.tournaments.map((tournament) => (
-                  <Link
-                    key={tournament.tournament_id}
-                    href={`/${tournament.tournament_slug}/desempenho`}
-                    className="block"
-                  >
-                    <Card className="bg-muted border-border hover:border-primary transition-colors cursor-pointer">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 flex-1">
-                            {tournament.tournament_logo && (
-                              <img
-                                src={tournament.tournament_logo}
-                                alt={tournament.tournament_name}
-                                className="w-12 h-12 object-contain"
-                              />
-                            )}
-                            <div>
-                              <h3 className="text-lg font-semibold text-foreground">
-                                {tournament.tournament_name}
-                              </h3>
-                              <div className="flex items-center gap-4 mt-1">
-                                <span className="text-muted-foreground text-sm">
-                                  {tournament.total_points} pontos
-                                </span>
-                                <span className="text-muted-foreground text-sm">
-                                  {tournament.exact_matches} cravadas
-                                </span>
-                                {tournament.prize_money > 0 && (
-                                  <span className="text-state-open text-sm font-semibold">
-                                    {formatMoney(tournament.prize_money)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {tournament.tournament_status === 'active' && (
-                              <span className="px-2 py-1 bg-state-open/20 text-state-open text-xs rounded-full">
-                                Ativo
-                              </span>
-                            )}
-                            {tournament.tournament_status === 'pending' && (
-                              <span className="px-2 py-1 bg-state-closing/15 text-state-closing text-xs rounded-full">
-                                Pendente
-                              </span>
-                            )}
-                            {tournament.tournament_status === 'finished' && (
-                              <span className="px-2 py-1 bg-score-none/10 text-muted-foreground text-xs rounded-full">
-                                Encerrado
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Trophy className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Este usuário ainda não participou de nenhum torneio.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+                <ChevronRight
+                  className="h-4 w-4 flex-shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="mb-6 rounded-[16px] border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+            Este jogador ainda não participou de nenhum bolão.
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

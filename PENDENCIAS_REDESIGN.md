@@ -138,6 +138,29 @@ bloco 11 (filtro por competição) como sem bug bate com o que eu havia verifica
 
 ## Fase 6 — pendências, por origem
 
+### ⚠️ Erro cometido: telas `[userId]` esquecidas (corrigido depois)
+
+O redesign tratou as telas do PRÓPRIO usuário e deixou para trás as telas
+equivalentes de OUTRO jogador, que são arquivos separados com layout duplicado:
+
+| Tela própria | Tela de terceiro | Redesenhada em | Esquecida até |
+| --- | --- | --- | --- |
+| `app/profile/page.tsx` | `app/profile/[userId]/page.tsx` | 6c | correção pós-produção |
+| `app/[tournament]/desempenho/page.tsx` | `.../desempenho/[userId]/page.tsx` | 5b | correção pós-produção |
+
+Resultado: quem abria o perfil de um colega via o app ANTIGO, inclusive com o
+valor em dinheiro estourando o card (`text-3xl` num card estreito). O Daniel
+encontrou em produção.
+
+Por que passou: o bloco 5a mexeu nas duas telas (só cores) e os blocos de LAYOUT
+(5b, 6c) mexeram só na própria. A varredura de "cores fixas" cobria os dois
+arquivos; a de layout, não.
+
+**Lição para o futuro**: no app existem pares próprio/terceiro. Toda mudança de
+layout em `profile/` ou `desempenho/` precisa ser aplicada nos dois arquivos.
+Conferido que só existem esses dois pares (`find app -name page.tsx -path "*[userId]*"`)
+e que `simulador/page.tsx` é invólucro de 30 linhas, sem layout próprio.
+
 ### Vindas da Fase 2 (classes que sobraram de propósito)
 
 Trocar agora mudaria a aparência, e a Fase 2 tinha de sair visualmente idêntica.
