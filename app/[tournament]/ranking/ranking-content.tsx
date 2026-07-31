@@ -242,8 +242,16 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
 
       {escopo === 'torneio' && (
       <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'recentes' | 'projecao')}>
-          <TabsList className="grid auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+        {/* `w-full` no celular para a faixa encostar nas duas margens, como as
+            abas de Partidas e os cards logo abaixo. Sem ela o Tabs era um item
+            flex do tamanho do conteúdo e parava antes da margem direita.
+            No desktop volta à largura natural, ao lado do botão de compartilhar. */}
+        <Tabs
+          className="w-full md:w-auto"
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'recentes' | 'projecao')}
+        >
+          <TabsList className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
             <TabsTrigger
               value="general"
               className="h-9 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"

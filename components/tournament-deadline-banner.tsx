@@ -227,7 +227,14 @@ export function TournamentDeadlineBanner({
           <p className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
             Palpites fecham em
           </p>
-          <div className="grid grid-cols-3 gap-1.5">
+          {/* Colunas conforme a quantidade: com a Sul-Americana ainda sem data
+              sobram duas competições, e uma grade fixa de 3 deixaria um vão à
+              direita. */}
+          <div
+            className={`grid gap-1.5 ${
+              prazos.length === 1 ? 'grid-cols-1' : prazos.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+            }`}
+          >
             {prazos.map(({ key, short, lockAt }) => {
               const venceu = new Date(lockAt!) <= new Date();
               return (
