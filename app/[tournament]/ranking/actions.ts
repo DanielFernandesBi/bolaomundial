@@ -27,7 +27,11 @@ import { createServerSupabaseClient } from '@/lib/supabase';
 // status = FINISHED. O bug do 31/12 não tem como voltar.
 // ============================================================================
 
-export const RECENT_FORM_SIZE = 5;
+// NÃO exportar: este arquivo é 'use server' e ali TODO export precisa ser função
+// assíncrona. Um `export const` invalida o módulo inteiro — o Next.js passa a
+// enxergar "no exports at all" e a página que importa getRanking deixa de
+// compilar. Foi o que derrubou o build do commit 0a848da.
+const RECENT_FORM_SIZE = 5;
 
 export async function getRecentFormRanking(tournamentSlug: string, size: number = RECENT_FORM_SIZE) {
   const supabase = await createServerSupabaseClient();
