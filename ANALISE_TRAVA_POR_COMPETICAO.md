@@ -1,8 +1,22 @@
 # Trava do palpite por competição + fase — análise e implementação
 
 Branch: `feature/trava-por-competicao` · Base: `4ace0a1` (main)
-**Nada foi aplicado no Supabase de produção.** A migração está no repositório,
-aguardando decisão.
+**APLICADA em produção em 31/07/2026**, com o Daniel ciente dos efeitos.
+Reversão pronta em `supabase/migrations/REVERTER_20260730000001.sql` (a definição
+anterior da função foi capturada do banco logo antes de aplicar).
+
+Verificação pós-aplicação, no banco real:
+
+| Competição | Fase | Prazo | Estado |
+| --- | --- | --- | --- |
+| Copa do Brasil | oitavas | 01/08 17:30 | aberta |
+| Libertadores | oitavas | 11/08 19:00 | aberta |
+| Sul-Americana | oitavas | *sem prazo* | aberta |
+
+Nenhuma fase fechou no momento da aplicação. Comportamento conferido ao vivo, com
+rollback: fase aberta aceita palpite; simulando a abertura da Copa, alterar placar
+e trocar `pred_pen_winner` passam a ser BLOQUEADOS; regravar o mesmo valor
+continua passando (é o que permite o gatilho de pontuação gravar `points_*`).
 
 ---
 
