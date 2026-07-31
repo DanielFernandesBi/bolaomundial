@@ -1,4 +1,4 @@
-import { getRanking, getDailyRanking } from './actions';
+import { getRanking, getRecentFormRanking } from './actions';
 import { RankingContent } from './ranking-content';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { loadGeneralRanking } from '@/app/ranking-geral/load';
@@ -32,11 +32,11 @@ export default async function RankingPage({ params }: RankingPageProps) {
 
   const [
     { profiles, error },
-    { entries: dailyEntries, hasMatchesToday, matchDayLabel },
+    { matches: recentMatches, entries: recentEntries },
     { data: { user } },
   ] = await Promise.all([
     getRanking(tournamentSlug),
-    getDailyRanking(tournamentSlug),
+    getRecentFormRanking(tournamentSlug),
     supabase.auth.getUser(),
   ]);
 
@@ -69,9 +69,8 @@ export default async function RankingPage({ params }: RankingPageProps) {
           tournamentName={tournament.name}
           tournamentSlug={tournamentSlug}
           hasSimulator={!!(tournament as any).has_simulator}
-          dailyEntries={dailyEntries}
-          hasMatchesToday={hasMatchesToday}
-          todayLabel={matchDayLabel}
+          recentMatches={recentMatches}
+          recentEntries={recentEntries}
         />
       </div>
     </div>

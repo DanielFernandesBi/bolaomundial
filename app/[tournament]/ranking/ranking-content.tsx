@@ -10,6 +10,7 @@ import { ShareRankingCard } from '@/components/share-ranking-card';
 import { ShareFullRankingCard } from '@/components/share-full-ranking-card';
 import { shareAsImage } from '@/lib/shareUtils';
 import { Toast } from '@/components/toast';
+import { scoreTier } from '@/lib/scoring-ui';
 import { SimuladorContent } from '@/app/[tournament]/simulador/simulador-content';
 import { RankingGeralContent } from '@/app/ranking-geral/ranking-geral-content';
 import type { GeneralRankingProfile } from '@/app/ranking-geral/load';
@@ -22,12 +23,25 @@ interface Profile {
   exact_matches: number;
 }
 
-interface DailyEntry {
+interface RecentMatch {
+  id: number;
+  team_home: string;
+  team_away: string;
+  match_date: string | null;
+  competition: string | null;
+  score_home: number | null;
+  score_away: number | null;
+}
+
+interface RecentEntry {
   user_id: string;
   username: string;
   avatar_url: string | null;
-  daily_points: number;
-  daily_exact: number;
+  /** Uma casa por jogo, na mesma ordem de `recentMatches`.
+      null = não palpitou; 0 = palpitou e não pontuou. */
+  points: (number | null)[];
+  total: number;
+  exact: number;
 }
 
 interface RankingContentProps {
@@ -40,13 +54,12 @@ interface RankingContentProps {
       seleções (ranking FIFA, grupos, disputa de 3º). Default false: quem não
       passar a prop não ganha a aba. */
   hasSimulator?: boolean;
-  dailyEntries?: DailyEntry[];
-  hasMatchesToday?: boolean;
-  todayLabel?: string;
+  recentMatches?: RecentMatch[];
+  recentEntries?: RecentEntry[];
 }
 
-export function RankingContent({ profiles, currentUserId, generalProfiles = [], tournamentName, tournamentSlug, hasSimulator = false, dailyEntries = [], hasMatchesToday = false, todayLabel }: RankingContentProps) {
-  const [activeTab, setActiveTab] = useState<'general' | 'cravadas' | 'daily' | 'projecao'>('general');
+export function RankingContent({ profiles, currentUserId, generalProfiles = [], tournamentName, tournamentSlug, hasSimulator = false, recentMatches = [], recentEntries = [] }: RankingContentProps) {
+  const [activeTab, setActiveTab] = useState<'general' | 'cravadas' | 'recentes' | 'projecao'>('general');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -229,7 +242,7 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
 
       {escopo === 'torneio' && (
       <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'daily' | 'projecao')}>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'general' | 'cravadas' | 'recentes' | 'projecao')}>
           <TabsList className="grid auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
             <TabsTrigger
               value="general"
@@ -244,11 +257,11 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
               Cravadas
             </TabsTrigger>
             <TabsTrigger
-              value="daily"
+              value="recentes"
               className="flex h-9 items-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               <CalendarDays className="h-3.5 w-3.5" />
-              Hoje {todayLabel ? `(${todayLabel})` : ''}
+              Últimos {recentMatches.length || 5}
             </TabsTrigger>
             {hasSimulator && (
               <TabsTrigger
@@ -292,7 +305,7 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
 
       {/* Lista única, responsiva. Antes eram DOIS blocos com o mesmo conteúdo:
           cards md:hidden e tabela hidden md:block. */}
-      {escopo === 'torneio' && activeTab !== 'daily' && activeTab !== 'projecao' && (
+      {escopo === 'torneio' && activeTab !== 'recentes' && activeTab !== 'projecao' && (
         <div className="space-y-2">
           {sortedProfiles.length > 0 ? (
             sortedProfiles.map((profile, index) => {
@@ -367,108 +380,145 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
         </div>
       )}
 
-      {/* ── Aba: Mini-ranking do dia ──────────────────────────────────────────── */}
-      {escopo === 'torneio' && activeTab === 'daily' && (
+      {/* ── Aba: forma recente (últimos N jogos) ─────────────────────────────── */}
+      {escopo === 'torneio' && activeTab === 'recentes' && (
         <div>
-          {!hasMatchesToday ? (
+          {recentMatches.length === 0 ? (
             <div className="text-muted-foreground text-center py-16">
               <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-40" />
-              <p className="text-lg mb-1">Nenhum jogo hoje.</p>
-              <p className="text-sm">Volte nos dias de jogo para acompanhar o ranking do dia.</p>
-            </div>
-          ) : dailyEntries.length === 0 ? (
-            <div className="text-muted-foreground text-center py-16">
-              <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-40" />
-              <p className="text-lg mb-1">Resultados ainda não registrados.</p>
-              <p className="text-sm">O mini-ranking aparece após o admin lançar os placares de hoje.</p>
+              <p className="text-lg mb-1">Nenhum jogo finalizado ainda.</p>
+              <p className="text-sm">
+                A forma recente aparece assim que os primeiros placares forem lançados.
+              </p>
             </div>
           ) : (
             <>
-              {/* Destaque da posição do usuário logado */}
-              {currentUserId && (() => {
-                const myPos = dailyEntries.findIndex(e => e.user_id === currentUserId);
-                if (myPos === -1) return null;
-                const me = dailyEntries[myPos];
-                const pos = myPos + 1;
-                const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : null;
-                return (
-                  <div className="mb-6 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 flex items-center gap-3">
-                    <span className="text-2xl font-bold text-primary">{pos}º</span>
-                    {medal && <span className="text-2xl">{medal}</span>}
-                    <div>
-                      <p className="text-primary font-semibold text-sm">
-                        {pos === 1
-                          ? 'Você está liderando o dia!'
-                          : `Hoje você está em ${pos}º lugar`}
-                      </p>
-                      <p className="text-primary/70 text-xs">
-                        {me.daily_points} pts hoje
-                        {me.daily_exact > 0 ? ` · ${me.daily_exact} cravada${me.daily_exact > 1 ? 's' : ''}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Lista única do dia (antes: cards md:hidden + tabela desktop) */}
-              <div className="space-y-2">
-                {dailyEntries.map((entry, index) => {
-                  const position = index + 1;
-                  const isMe = entry.user_id === currentUserId;
-                  const isTop3 = position <= 3;
-                  const row = isMe
-                    ? 'border-primary/45 bg-primary/10'
-                    : isTop3
-                    ? 'border-border bg-card'
-                    : 'border-hairline bg-surface-sunken';
-                  return (
-                    <div
-                      key={entry.user_id}
-                      className={`flex items-center gap-3 rounded-[14px] border px-3 py-2.5 ${row}`}
-                    >
-                      <span
-                        className={`w-7 flex-shrink-0 text-center text-[15px] font-bold tabular-nums ${
-                          isTop3 || isMe ? 'text-primary' : 'text-muted-foreground'
-                        }`}
-                      >
-                        {position}
+              {/* Quais são os jogos. Sem isto as casas coloridas não querem dizer
+                  nada — o jogador precisa saber a que jogo cada casa se refere. */}
+              <div className="mb-4 rounded-[16px] border border-border bg-card p-4">
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+                  {recentMatches.length === 1 ? 'O último jogo' : `Os ${recentMatches.length} últimos jogos`}
+                </p>
+                <div className="space-y-1.5">
+                  {recentMatches.map((m, i) => (
+                    <div key={m.id} className="flex items-baseline gap-2 text-[12px]">
+                      <span className="w-4 flex-shrink-0 font-mono text-[10px] text-[hsl(var(--faint))]">
+                        {i + 1}
                       </span>
-                      <Avatar className="h-9 w-9 flex-shrink-0 border border-border">
-                        <AvatarImage src={entry.avatar_url || undefined} />
-                        <AvatarFallback className="bg-muted text-xs text-foreground">
-                          {getInitials(entry.username)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-foreground">
-                          {entry.username}
-                          {isMe && <span className="ml-1.5 text-[11px] font-normal text-primary">você</span>}
-                        </p>
-                        {entry.daily_exact > 0 && (
-                          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <Trophy className="h-3 w-3" />
-                            {entry.daily_exact} {entry.daily_exact === 1 ? 'cravada' : 'cravadas'} hoje
-                          </p>
-                        )}
-                      </div>
-                      <span className="flex-shrink-0 text-base font-bold tabular-nums text-foreground">
-                        {entry.daily_points}
+                      <span className="min-w-0 flex-1 truncate text-card-foreground">
+                        {m.team_home} {m.score_home ?? '-'}×{m.score_away ?? '-'} {m.team_away}
                       </span>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
+
+              {recentEntries.length === 0 ? (
+                <div className="rounded-[14px] border border-hairline bg-surface-sunken p-8 text-center text-muted-foreground">
+                  Ninguém palpitou nesses jogos.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {recentEntries.map((entry, index) => {
+                    const position = index + 1;
+                    const isMe = entry.user_id === currentUserId;
+                    const isTop3 = position <= 3;
+                    const row = isMe
+                      ? 'border-primary/45 bg-primary/10'
+                      : isTop3
+                      ? 'border-border bg-card'
+                      : 'border-hairline bg-surface-sunken';
+                    return (
+                      <div key={entry.user_id} className={`rounded-[14px] border px-3 py-2.5 ${row}`}>
+                        {/* Linha 1: quem é e quanto somou */}
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`w-7 flex-shrink-0 text-center text-[15px] font-bold tabular-nums ${
+                              isTop3 || isMe ? 'text-primary' : 'text-muted-foreground'
+                            }`}
+                          >
+                            {position}
+                          </span>
+                          <Avatar className="h-9 w-9 flex-shrink-0 border border-border">
+                            <AvatarImage src={entry.avatar_url || undefined} />
+                            <AvatarFallback className="bg-muted text-xs text-foreground">
+                              {getInitials(entry.username)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-foreground">
+                              {entry.username}
+                              {isMe && (
+                                <span className="ml-1.5 text-[11px] font-normal text-primary">você</span>
+                              )}
+                            </p>
+                            {entry.exact > 0 && (
+                              <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <Trophy className="h-3 w-3" />
+                                {entry.exact} {entry.exact === 1 ? 'cravada' : 'cravadas'}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0 text-right">
+                            <span className="text-base font-bold tabular-nums text-foreground">
+                              {entry.total}
+                            </span>
+                            <p className="font-mono text-[9px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+                              total
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Linha 2: uma casa por jogo, na mesma ordem do bloco acima.
+                            Fica embaixo e não ao lado porque cinco casas + nome não
+                            cabem numa linha de 360px sem truncar o nome. */}
+                        <div className="mt-2 flex gap-1.5">
+                          {entry.points.map((pts, i) => {
+                            const jogo = recentMatches[i];
+                            if (pts === null) {
+                              return (
+                                <span
+                                  key={jogo?.id ?? i}
+                                  title={jogo ? `${jogo.team_home} × ${jogo.team_away}: sem palpite` : ''}
+                                  className="flex h-[30px] flex-1 items-center justify-center rounded-[8px] border border-dashed border-hairline text-xs font-bold text-[hsl(var(--faint))]"
+                                >
+                                  —
+                                </span>
+                              );
+                            }
+                            const tier = scoreTier(pts);
+                            const tone =
+                              tier === 'exact'
+                                ? 'bg-score-exact text-primary-foreground'
+                                : tier === 'partial'
+                                ? 'bg-score-partial/20 text-score-partial'
+                                : 'bg-score-none/10 text-muted-foreground';
+                            return (
+                              <span
+                                key={jogo?.id ?? i}
+                                title={jogo ? `${jogo.team_home} × ${jogo.team_away}: ${pts} pts` : ''}
+                                className={`flex h-[30px] flex-1 items-center justify-center rounded-[8px] text-xs font-bold tabular-nums ${tone}`}
+                              >
+                                {pts}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </>
           )}
         </div>
       )}
 
-
       {/* Barra fixa "Você" — só quando a sua linha não está visível */}
       {(() => {
         if (myRowVisible) return null;
         if (escopo !== 'torneio') return null;
-        if (activeTab === 'daily' || activeTab === 'projecao') return null;
+        if (activeTab === 'recentes' || activeTab === 'projecao') return null;
         const idx = sortedProfiles.findIndex((pr) => pr.id === currentUserId);
         if (idx < 0) return null;
         const me = sortedProfiles[idx];
