@@ -156,15 +156,42 @@ pódio continua fechado, e cada nova fase abre prazo próprio para os placares.
 Isso está correto — o pódio é palpite de campeão, e tem de fechar antes de a
 competição começar.
 
-### 6. O que NÃO mudei, de propósito
+### 6. Transparência por fase (feito depois, migração 20260731000001)
 
-**A RLS `Predictions visible after kickoff or own` continua revelando palpite a
-palpite**, no início de cada jogo — não no prazo da fase. Ou seja: os palpites
-ficam congelados no 1º jogo da fase, mas só aparecem para os outros quando cada
-jogo começa.
+A primeira versão manteve a RLS revelando palpite a palpite. O Daniel decidiu o
+contrário, e com razão: com a trava por fase os palpites já estão congelados
+desde o primeiro jogo, então esconder os demais não protegia mais nada — só
+adiava a conferência.
 
-Isso é **mais restritivo** que a trava, nunca menos — não abre brecha. E preserva
-a graça: ninguém vê a fase inteira de todo mundo de uma vez.
+**Agora:** assim que o primeiro jogo de uma fase começa, os palpites de TODOS
+naquela fase ficam visíveis, inclusive nos jogos que ainda não aconteceram.
+Separados por competição (o agrupamento da tela já fazia isso) e ordenados do
+jogo mais próximo para o mais distante, com os sem data no fim.
+
+A política reaproveita `phase_already_started`, a MESMA função que decide a
+trava — uma definição só de "a fase começou". As condições baratas
+(`status='FINISHED'`, `match_date <= now()`) vêm primeiro para o `OR` curto-
+circuitar e a função só ser chamada nas partidas que ainda não começaram.
+
+Verificado com dois usuários reais não-admin, simulando `auth.uid()` e o papel
+`authenticated`:
+
+```
+ANTES da fase começar:  jogo que abre = 0   jogo futuro = 0   (tudo oculto) ✓
+DEPOIS do 1º jogo:      jogo que abre = 1   jogo futuro = 1   (tudo visível) ✓
+```
+
+Jogo com resultado lançado sai da transparência e vai para "Encerradas" — isso já
+funcionava, pelo filtro de status, e continua.
+
+### 7. O que NÃO mudei, de propósito
+
+**O pódio segue com a regra dele** (revelado no 1º jogo da COMPETIÇÃO, não da
+fase). Faz sentido: palpite de campeão fecha quando a competição começa, e é aí
+que deve aparecer.
+
+**Palpites de jogos já finalizados continuam públicos**, como sempre foram — a
+condição `status = 'FINISHED'` estava na política antiga e permanece.
 
 A alternativa seria revelar tudo de uma vez no 1º jogo, já que a partir dali nada
 pode mudar — o argumento a favor é que a transparência ("ninguém alterou depois
