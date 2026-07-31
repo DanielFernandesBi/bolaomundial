@@ -99,21 +99,53 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   // Predicado ÚNICO do "falta palpitar". Extraído de propósito: o total e o
   // detalhamento por competição têm de sair do mesmo critério, senão um dia as
   // duas contas divergem e a etiqueta passa a mentir.
+  //
+  // Usa lock_at, não match_date: o que conta é se o jogador AINDA PODE palpitar.
+  // Depois que a FASE fecha, o jogo sem palpite virou prejuízo consumado —
+  // continuar contando ele como pendência mandaria o jogador a uma tela onde não
+  // há nada a fazer.
   const semPalpite = (match: any) =>
     match.status !== 'FINISHED' &&
-    (!match.match_date || new Date(match.match_date) > now) &&
+    (!match.lock_at || new Date(match.lock_at) > now) &&
     !match.user_prediction;
+
+  // Declarado ANTES de tudo que o consome — arrays de dependência e expressões
+  // são avaliados na ordem do arquivo.
+  const temCompeticoesLista = matches.some((m: any) => m.competition);
 
   const missingMatches = matches.filter(semPalpite);
   const missingPredictionsCount = missingMatches.length;
 
-  // Próximo jogo a fechar os palpites (ignora os "a definir"). upcomingMatches vem ordenado por data.
-  const nextMatchDate =
-    upcomingMatches.find((m: any) => m.match_date)?.match_date ?? null;
+  // Próximo PRAZO a vencer — não o próximo jogo. Com a trava por fase, o que o
+  // jogador precisa saber é quando fecha a próxima fase, que pode ser bem antes
+  // do próximo jogo dela e bem depois de outro jogo já em andamento.
+  const prazosFuturos = matches
+    .map((m: any) => m.lock_at as string | null)
+    .filter((d: string | null): d is string => !!d && new Date(d) > now)
+    .sort();
+  const nextMatchDate = prazosFuturos[0] ?? null;
+
+  // Prazo VIGENTE de cada competição, para o banner. É o próximo prazo ainda por
+  // vencer — não o primeiro da lista: quando as oitavas fecharem e as quartas
+  // ganharem data, o que interessa é o prazo das quartas.
+  const prazoPorCompeticao = temCompeticoesLista
+    ? COMPETITIONS.filter((c) => matches.some((m: any) => m.competition === c.key)).map((c) => {
+        const locks = matches
+          .filter((m: any) => m.competition === c.key && m.lock_at)
+          .map((m: any) => m.lock_at as string);
+        const futuros = locks.filter((d) => new Date(d) > now).sort();
+        const passados = locks.sort();
+        return {
+          key: c.key,
+          short: c.short,
+          lockAt: (futuros[0] ?? passados[passados.length - 1] ?? null) as string | null,
+        };
+      })
+    : [];
 
   // Filtro por competição: só existe no bolão unificado, onde as três dividem a
   // mesma tela. Em torneio de competição única nada disso é renderizado.
-  const temCompeticoes = matches.some((m: any) => m.competition);
+  const temCompeticoes = temCompeticoesLista;
   const chipsDe = (lista: any[]) =>
     COMPETITIONS.filter((c) => matches.some((m: any) => m.competition === c.key)).map((c) => ({
       key: c.key,
@@ -187,6 +219,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
           nextMatchDate={nextMatchDate}
           missingPredictionsCount={missingPredictionsCount}
           missingByCompetition={missingByCompetition}
+          deadlinesByCompetition={prazoPorCompeticao}
         />
 
         <CompetitionFilterProvider>
