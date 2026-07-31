@@ -212,11 +212,63 @@ veria o número dançar e concluiria — corretamente — que o simulador não s
 
 ## 4. A API
 
-Não consegui alcançar `api-football.com` nem `v3.football.api-sports.io` deste
-ambiente (a política de rede do sandbox nega o CONNECT). Tudo abaixo vem de
-pesquisa e precisa ser confirmado com uma chave real antes do commit final.
+Este ambiente tem política de rede por lista de permissão: `api.github.com` e
+`pypi.org` respondem, `api.sportmonks.com`, `api-football.com` e
+`v3.football.api-sports.io` são negados no CONNECT. **Nenhuma chamada às APIs de
+futebol pôde ser feita daqui.** Tudo abaixo vem de pesquisa e do PDF de cobertura
+anexado, e o que depende de chave está marcado como pendente de confirmação.
 
-### 4.1. Os limites do plano gratuito, e por que o documento errou o cálculo
+### 4.0. Sportmonks (Enterprise) cobre 30 de 30 — e resolve o risco que sobrava
+
+O PDF `Football Enterprise plan leagues and features` foi conferido inteiro
+(29 páginas, 1.815 competições). Todas as competições que o modelo precisa estão
+lá, **inclusive os estaduais brasileiros**, que eram o risco em aberto da
+API-Football:
+
+| ID | Competição | features |
+|---:|---|---:|
+| 1122 | Copa Libertadores | 11 |
+| 1116 | Copa Sudamericana | 8 |
+| 654 | Copa do Brasil | 8 |
+| 648 / 651 | Brasil Série A / Série B | 11 / 11 |
+| 657 / 660 | Brasil Série C / Série D | 9 / 9 |
+| 636 / 645 / 642 | Argentina Superliga / Primera B Nacional / Copa Argentina | 11 / 10 / 7 |
+| 663 | Chile Primera División | 11 |
+| 672 | Colômbia Liga BetPlay | 10 |
+| 696 | Equador Liga Pro | 10 |
+| 764 | Peru Primera División | 11 |
+| 770 | Uruguai Primera División | 10 |
+| **755** | **Paraguai Division 1** | 10 |
+| 1098 | Bolívia Liga de Fútbol Prof | 10 |
+| 800 | Venezuela Primera División | 9 |
+| 1313 / 1296 / 1307 / 1302 | Paulista A1 / Carioca 1 / Mineiro 1 / Gaúcho 1 | 10 / 9 / 10 / 10 |
+| 1299 / 1300 / 1291 / 1316 | Catarinense / Cearense / Baiano / Pernambucano 1 | 9 / 9 / 9 / 9 |
+| 1311 / 1304 | Paranaense 1 / Goiano 1 | 9 / 9 |
+| 1294 / 1386 | Copa do Nordeste / Copa Verde | 7 / 6 |
+
+Atenção: `Division Intermedia` (761) é a **segunda** divisão paraguaia. O top
+paraguaio — onde jogam Cerro Porteño, Olimpia e Recoleta — é o **755**.
+
+Todas marcam `Historical data`, o que resolve o problema de origem dos dados de
+calibração (`beta`, `rho`, `mu_c` por competição), que na API-Football dependia
+do limite de temporadas do plano.
+
+**Pendente de confirmação:** o PDF descreve o plano **Enterprise**. Um token de
+plano gratuito da Sportmonks dá acesso só a Superliga dinamarquesa e Premiership
+escocesa. Antes de escrever qualquer integração é preciso conferir a que o token
+efetivamente dá direito:
+
+```bash
+curl -s "https://api.sportmonks.com/v3/my/enrollments?api_token=$SPORTMONKS_TOKEN" | jq
+curl -s "https://api.sportmonks.com/v3/football/leagues?api_token=$SPORTMONKS_TOKEN&per_page=50" | jq '.data[] | {id, name}'
+```
+
+Se as ligas da tabela aparecerem, **Sportmonks passa a ser a fonte** e as seções
+4.1–4.4 viram histórico. Vantagens sobre a API-Football neste caso: cobertura
+confirmada de ponta a ponta, histórico liberado, e xG disponível via
+`include=xGFixture` (que não usamos na v1, mas fica de graça).
+
+### 4.1. Alternativa: API-Football — os limites do plano gratuito
 
 Confirmado: **Free = 100 requisições/dia e 10 requisições/minuto.**
 
@@ -267,10 +319,19 @@ eles.
 
 ### 4.4. Veredito sobre a API
 
-**API-Football serve, no plano gratuito, se consultarmos por data.** Não vejo
-motivo para trocar de fornecedor no MVP. A Sportmonks só entraria se xG virasse
-requisito — e o item 2.3 mostra que nem Dixon-Coles se paga hoje, então xG está
-muito longe de se pagar.
+**Se o token Sportmonks for de plano com as ligas da tabela 4.0, é ele.** Cobre
+tudo, inclusive os estaduais, e libera o histórico de calibração. Não há decisão
+a tomar: é estritamente melhor para o nosso caso.
+
+**Se o token for de plano gratuito**, a API-Football serve no plano gratuito
+dela, desde que a consulta seja por data e não por time — com o risco residual
+de os estaduais não estarem cobertos, o que teria impacto pequeno (é a
+competição de menor peso e maior rotação de elenco).
+
+Em qualquer dos dois, a arquitetura do código é a mesma: um `provider` em
+`club_fixtures`, um cliente por fornecedor atrás da mesma interface, e o resto
+do sistema não sabe de onde veio o jogo. A troca de fornecedor não é um
+retrabalho.
 
 ### 4.5. Onde roda o cron
 
@@ -278,6 +339,17 @@ O plano Hobby da Vercel limita cron a execução diária. Duas sincronizações/
 exigem plano Pro **ou** `pg_cron` + `pg_net` no próprio Supabase. Recomendo o
 Supabase: já é nossa infraestrutura, não custa nada a mais, e mantém a chave
 fora da Vercel.
+
+### 4.6. A chave
+
+A chave **nunca** entra no repositório, em `.env` versionado, em migração, em
+comentário de código ou em documento. Vive só como variável de ambiente do
+Supabase (Vault/secrets) e, se necessário, da Vercel — e é lida apenas em
+código de servidor.
+
+Uma chave que já circulou por canal de texto deve ser considerada comprometida e
+**rotacionada** no painel do fornecedor. A rotação é gratuita e instantânea; a
+chave nova é que vai para o Vault.
 
 ---
 
@@ -364,9 +436,10 @@ Nada disso toca no app em produção. `has_simulator` do bolão de clubes contin
 
 | # | Entrega |
 |---|---|
-| 1.1 | Conferir cobertura das ligas e o limite de temporadas históricas do plano gratuito |
-| 1.2 | Descobrir e conferir manualmente os 40 `api_football_team_id` |
-| 1.3 | `club_fixtures` + cliente da API + sincronização **por data** |
+| 1.0 | Conferir a que ligas o token dá direito (`/v3/my/enrollments`) e fixar o fornecedor |
+| 1.1 | Guardar a chave **rotacionada** no Vault do Supabase |
+| 1.2 | Descobrir e conferir manualmente os 40 IDs de time do fornecedor |
+| 1.3 | `club_fixtures` + cliente atrás de interface + sincronização **por data** |
 | 1.4 | Backfill histórico para calibração (`beta`, `mu_c` por competição) |
 | 1.5 | Cron no Supabase (`pg_cron` + `pg_net`), 2×/dia, com log de sincronização |
 
@@ -416,6 +489,10 @@ incerteza          = lognormal, sigma = 0,35 / sqrt(kappa + soma dos pesos)
 
 ## 9. O que preciso de você
 
-Uma chave da API-Football (plano gratuito serve para começar) em
-`API_FOOTBALL_KEY`. Sem ela a Fase 1 não anda — mas a Fase 0 anda inteira, e é
-onde está o trabalho de fundação.
+1. Rodar os dois `curl` da seção 4.0 e me passar a saída — é o que fixa o
+   fornecedor. Não consigo rodar daqui: a política de rede deste ambiente nega
+   conexão às duas APIs de futebol.
+2. **Rotacionar a chave** no painel do fornecedor e guardar a nova no Vault do
+   Supabase, nunca em arquivo do repositório.
+
+A Fase 0 não depende de nada disso e já pode ser executada por inteiro.
