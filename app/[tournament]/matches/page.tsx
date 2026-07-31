@@ -158,7 +158,8 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   // única — ali a etiqueta única já basta e nada muda.
   const missingByCompetition = temCompeticoes ? chipsDe(missingMatches) : [];
 
-  // Transparência por partida (apostas encerradas, jogo ainda não finalizado)
+  // Transparência: palpites de todos, revelados quando a FASE começa (jogo com
+  // resultado lançado sai daqui e vai para "Encerradas")
   const { matches: inProgressMatches, error: auditError } = await getMatchesInProgressWithAllPredictions(tournamentSlug);
 
   // Pódio (só faz sentido em torneios de mata-mata)
@@ -319,9 +320,10 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
             ) : inProgressMatches.length === 0 ? (
               <div className="text-muted-foreground text-center py-12">
                 <Eye className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg mb-2">Nenhuma partida com apostas encerradas no momento.</p>
+                <p className="text-lg mb-2">Nenhuma fase começou ainda.</p>
                 <p className="text-sm">
-                  Assim que uma partida começa, as apostas dela são encerradas e os palpites de todos aparecem aqui.
+                  Assim que o primeiro jogo de uma fase começa, os palpites de todos, em todos os jogos daquela
+                  fase, aparecem aqui.
                 </p>
               </div>
             ) : (
@@ -330,10 +332,12 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                   <div className="flex items-start gap-3">
                     <Eye className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                     <div>
-                      <h3 className="text-primary font-semibold mb-1">Transparência — Apostas Encerradas</h3>
+                      <h3 className="text-primary font-semibold mb-1">Transparência — Palpites de Todos</h3>
                       <p className="text-card-foreground text-sm">
-                        Palpites de todos os participantes nas partidas cujas apostas já fecharam (a partir do
-                        horário de início de cada jogo). Garante que nenhum palpite foi alterado depois do início.
+                        Quando o primeiro jogo de uma fase começa, os palpites de todos os participantes daquela
+                        fase ficam visíveis — inclusive nos jogos que ainda vão acontecer, porque a essa altura
+                        ninguém mais pode alterá-los. Cada jogo sai daqui quando o resultado é lançado e passa
+                        para "Encerradas".
                       </p>
                     </div>
                   </div>

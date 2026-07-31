@@ -250,8 +250,20 @@ export async function savePrediction(
 }
 
 /**
- * Transparência por partida: jogos cujo horário de início já passou
- * (apostas encerradas) mas que ainda não foram finalizados pelo admin.
+ * Transparência: palpites de todos, revelados quando a FASE começa.
+ *
+ * Antes era partida a partida — cada jogo só mostrava os palpites no horário
+ * dele. Isso deixou de fazer sentido quando a trava passou a ser por fase: os
+ * palpites já estão congelados desde o primeiro jogo, então esconder os demais
+ * não protege nada, só adia a conferência.
+ *
+ * Agora, assim que o primeiro jogo de uma fase começa, TODOS os jogos daquela
+ * fase mostram os palpites de todo mundo — inclusive os que ainda nem têm data.
+ * Jogo com resultado lançado SAI daqui e vai para "Encerradas" (o filtro de
+ * status abaixo é o que garante isso).
+ *
+ * A revelação de verdade é controlada pela RLS de `predictions` no banco
+ * (migração 20260731000001); esta consulta apenas escolhe o que exibir.
  */
 export async function getMatchesInProgressWithAllPredictions(tournamentSlug: string) {
   const supabase = await createServerSupabaseClient();
@@ -268,19 +280,40 @@ export async function getMatchesInProgressWithAllPredictions(tournamentSlug: str
 
   const now = new Date();
 
+  // Precisa de TODAS as partidas do torneio, não só as já iniciadas: é o
+  // conjunto da FASE que decide a revelação, e um jogo ainda sem data pode
+  // pertencer a uma fase que já começou.
   const { data: matches, error } = await supabase
     .from('matches')
     .select('*')
-    .eq('tournament_id', tournament.id)
-    .eq('status', 'SCHEDULED')
-    .lte('match_date', now.toISOString())
-    .order('match_date', { ascending: true });
+    .eq('tournament_id', tournament.id);
 
   if (error) {
     return { matches: [], error: error.message };
   }
 
-  const inProgressMatches = matches || [];
+  const { data: ties } = await supabase
+    .from('ties')
+    .select('id, round')
+    .eq('tournament_id', tournament.id);
+  const roundByTie = new Map<number, string>((ties as any[])?.map((t: any) => [t.id, t.round]) ?? []);
+  const fasesIniciadas = buildPhaseClosedAt((matches as any[]) || [], roundByTie, now);
+
+  const inProgressMatches = ((matches as any[]) || [])
+    .filter((m: any) => {
+      // Resultado lançado sai da transparência e vai para "Encerradas".
+      if (m.status === 'FINISHED') return false;
+      const chave = chaveDoPrazo(m, roundByTie);
+      // Sem competição/fase (Mundial, grupos): regra antiga, o próprio jogo.
+      if (!chave) return !!m.match_date && new Date(m.match_date) <= now;
+      return fasesIniciadas.has(chave);
+    })
+    // Do mais próximo para o mais distante; sem data vai para o fim.
+    .sort((a: any, b: any) => {
+      const da = a.match_date ? new Date(a.match_date).getTime() : Number.POSITIVE_INFINITY;
+      const db = b.match_date ? new Date(b.match_date).getTime() : Number.POSITIVE_INFINITY;
+      return da - db;
+    });
   if (inProgressMatches.length === 0) {
     return { matches: [], error: null };
   }
