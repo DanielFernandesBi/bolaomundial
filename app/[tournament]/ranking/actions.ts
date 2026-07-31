@@ -2,7 +2,34 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase';
 
-export async function getDailyRanking(tournamentSlug: string) {
+// ============================================================================
+// Forma recente — os últimos N jogos
+// ============================================================================
+// SUBSTITUI o antigo "ranking do dia", que era temporal e tinha três problemas:
+//
+//   1. `new Date(m.match_date)` com data NULA não dá erro em JavaScript: dá
+//      1970-01-01, que em Brasília é 31/12/1969. Como todos os jogos com data
+//      estavam no futuro, esse dia fantasma virava o "dia de hoje" e a aba
+//      exibia "31/12" com um ranking de zeros. Estava acontecendo em produção.
+//   2. O dia virava à MEIA-NOITE. Num calendário de dias consecutivos (a Copa
+//      joga 01 a 06/08), o ranking de um jogo das 21h só existia entre o
+//      lançamento do placar e as 23:59 — e sumia para sempre se o placar fosse
+//      lançado depois da meia-noite.
+//   3. Antes de os placares saírem, o "ranking do dia" listava todo mundo com
+//      zero ponto.
+//
+// A pergunta que o jogador faz é "estou indo bem nos últimos jogos?" — que é
+// forma recente, não calendário. Então o recorte passa a ser os N últimos jogos
+// FINALIZADOS do bolão, os MESMOS para todo mundo (senão as colunas não seriam
+// comparáveis), misturando as competições.
+//
+// Nenhuma data é interpretada aqui, e jogo sem data nunca entra: o filtro é
+// status = FINISHED. O bug do 31/12 não tem como voltar.
+// ============================================================================
+
+export const RECENT_FORM_SIZE = 5;
+
+export async function getRecentFormRanking(tournamentSlug: string, size: number = RECENT_FORM_SIZE) {
   const supabase = await createServerSupabaseClient();
 
   const { data: tournament } = await supabase
@@ -12,127 +39,108 @@ export async function getDailyRanking(tournamentSlug: string) {
     .single();
 
   if (!tournament) {
-    return { entries: [], error: 'Torneio não encontrado', hasMatchesToday: false, matchDayLabel: '' };
+    return { matches: [], entries: [], error: 'Torneio não encontrado' };
   }
 
-  const now = new Date();
-
-  // Retorna a data no fuso de São Paulo no formato YYYY-MM-DD
-  function getBRTDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Sao_Paulo',
-    }).format(date);
-  }
-
-  const todayBRT = getBRTDate(now);
-
-  // Busca todas as partidas do torneio para determinar o dia mais relevante
-  const { data: allMatches } = await supabase
+  // Últimos jogos finalizados. `nullsFirst: false` importa: em ordem
+  // decrescente o Postgres põe NULL na frente, e um jogo finalizado sem data
+  // apareceria como o "mais recente".
+  const { data: ultimos, error: erroJogos } = await supabase
     .from('matches')
-    .select('id, match_date')
+    .select('id, team_home, team_away, home_iso, away_iso, match_date, competition, score_home, score_away')
     .eq('tournament_id', tournament.id)
-    .order('match_date', { ascending: false });
+    .eq('status', 'FINISHED')
+    .order('match_date', { ascending: false, nullsFirst: false })
+    .order('id', { ascending: false })
+    .limit(size);
 
-  if (!allMatches || allMatches.length === 0) {
-    return { entries: [], error: null, hasMatchesToday: false, matchDayLabel: '' };
+  if (erroJogos) {
+    return { matches: [], entries: [], error: erroJogos.message };
   }
 
-  // Agrupa IDs de partidas por data BRT
-  const matchesByDate = new Map<string, number[]>();
-  for (const m of allMatches as any[]) {
-    const d = getBRTDate(new Date(m.match_date));
-    if (!matchesByDate.has(d)) matchesByDate.set(d, []);
-    matchesByDate.get(d)!.push(m.id);
+  const jogos = ((ultimos as any[]) || []).map((m) => ({
+    id: m.id as number,
+    team_home: m.team_home as string,
+    team_away: m.team_away as string,
+    home_iso: (m.home_iso ?? null) as string | null,
+    away_iso: (m.away_iso ?? null) as string | null,
+    match_date: (m.match_date ?? null) as string | null,
+    competition: (m.competition ?? null) as string | null,
+    score_home: (m.score_home ?? null) as number | null,
+    score_away: (m.score_away ?? null) as number | null,
+  }));
+
+  if (jogos.length === 0) {
+    return { matches: [], entries: [], error: null };
   }
 
-  // Determina o dia mais relevante:
-  // 1. Hoje (BRT) se tiver partidas
-  // 2. Senão, o dia mais recente passado com partidas
-  // Isso garante que resultados lançados após a meia-noite ainda aparecem no dia correto
-  const sortedPastDates = Array.from(matchesByDate.keys())
-    .filter(d => d <= todayBRT)
-    .sort()
-    .reverse();
+  // A ordem de exibição é do mais ANTIGO para o mais recente, como se lê uma
+  // sequência de resultados. A consulta veio ao contrário, para pegar os N
+  // últimos.
+  jogos.reverse();
 
-  if (sortedPastDates.length === 0) {
-    return { entries: [], error: null, hasMatchesToday: false, matchDayLabel: '' };
-  }
-
-  const targetDate = sortedPastDates[0]; // hoje se tiver jogos, senão o mais recente
-  const matchIds   = matchesByDate.get(targetDate) || [];
-
-  // Monta o label da aba
-  const yesterdayBRT = getBRTDate(new Date(now.getTime() - 24 * 60 * 60 * 1000));
-  const [y, mo, d]   = targetDate.split('-');
-  const dateFormatted = `${d}/${mo}`;
-  const matchDayLabel =
-    targetDate === todayBRT    ? `Hoje (${dateFormatted})`   :
-    targetDate === yesterdayBRT ? `Ontem (${dateFormatted})` :
-    dateFormatted;
-
-  // Palpites das partidas do dia alvo
+  const ids = jogos.map((m) => m.id);
   const { data: predictions, error } = await supabase
     .from('predictions')
-    .select(`
-      user_id,
-      points_earned,
-      points_regular,
-      profiles:user_id (
-        id,
-        username,
-        avatar_url
-      )
-    `)
-    .in('match_id', matchIds);
+    .select('user_id, match_id, points_earned, points_regular, profiles:user_id ( id, username, avatar_url )')
+    .in('match_id', ids);
 
   if (error) {
-    return { entries: [], error: error.message, hasMatchesToday: true, matchDayLabel };
+    return { matches: jogos, entries: [], error: error.message };
   }
 
-  if (!predictions || predictions.length === 0) {
-    return { entries: [], error: null, hasMatchesToday: true, matchDayLabel };
-  }
+  const porUsuario = new Map<
+    string,
+    {
+      user_id: string;
+      username: string;
+      avatar_url: string | null;
+      // null = não palpitou naquele jogo; 0 = palpitou e não pontuou. A
+      // distinção importa: "não jogou" e "jogou mal" não são a mesma coisa.
+      points: (number | null)[];
+      total: number;
+      exact: number;
+    }
+  >();
 
-  // Agrega pontos por usuário
-  const userMap = new Map<string, {
-    username: string;
-    avatar_url: string | null;
-    daily_points: number;
-    daily_exact: number;
-  }>();
+  const indicePorJogo = new Map<number, number>(jogos.map((m, idx) => [m.id, idx]));
 
-  for (const pred of predictions as any[]) {
+  for (const pred of (predictions as any[]) || []) {
     const profile = Array.isArray(pred.profiles) ? pred.profiles[0] : pred.profiles;
     if (!profile) continue;
 
-    const pts     = pred.points_earned ?? 0;
-    // Cravada = placar exato do tempo normal (30 pts em points_regular),
-    // não pela soma points_earned (que pode passar de 20 com pênaltis/prorrogação).
-    const isExact = (pred.points_regular ?? 0) === 30;
-    const entry   = userMap.get(pred.user_id);
-
-    if (entry) {
-      entry.daily_points += pts;
-      if (isExact) entry.daily_exact++;
-    } else {
-      userMap.set(pred.user_id, {
-        username: profile.username,
-        avatar_url: profile.avatar_url,
-        daily_points: pts,
-        daily_exact: isExact ? 1 : 0,
-      });
+    let entrada = porUsuario.get(pred.user_id);
+    if (!entrada) {
+      entrada = {
+        user_id: pred.user_id,
+        username: profile.username || 'Usuário',
+        avatar_url: profile.avatar_url || null,
+        points: new Array(jogos.length).fill(null),
+        total: 0,
+        exact: 0,
+      };
+      porUsuario.set(pred.user_id, entrada);
     }
+
+    const idx = indicePorJogo.get(pred.match_id);
+    if (idx === undefined) continue;
+
+    const pts = pred.points_earned ?? 0;
+    entrada.points[idx] = pts;
+    entrada.total += pts;
+    // Cravada = placar exato do tempo normal (30 em points_regular), não pela
+    // soma points_earned, que pode passar disso com prorrogação/pênaltis.
+    if ((pred.points_regular ?? 0) === 30) entrada.exact += 1;
   }
 
-  const entries = Array.from(userMap.entries())
-    .map(([user_id, data]) => ({ user_id, ...data }))
-    .sort((a, b) =>
-      b.daily_points !== a.daily_points
-        ? b.daily_points - a.daily_points
-        : b.daily_exact - a.daily_exact
-    );
+  const entries = Array.from(porUsuario.values()).sort(
+    (a, b) =>
+      b.total - a.total ||
+      b.exact - a.exact ||
+      a.username.localeCompare(b.username, 'pt-BR')
+  );
 
-  return { entries, error: null, hasMatchesToday: true, matchDayLabel };
+  return { matches: jogos, entries, error: null };
 }
 
 export async function getRanking(tournamentSlug: string) {

@@ -138,6 +138,34 @@ bloco 11 (filtro por competição) como sem bug bate com o que eu havia verifica
 
 ## Fase 6 — pendências, por origem
 
+### Aba "Hoje" → "Últimos 5" (forma recente)
+
+A aba do ranking diário foi substituída por **forma recente**: os N últimos jogos
+FINALIZADOS do bolão, os mesmos para todo mundo, misturando as três competições.
+Cada jogador vê a pontuação em cada jogo e o total.
+
+Motivo: a pergunta real é "estou indo bem nos últimos jogos?", que é forma, não
+calendário. E o recorte temporal tinha três defeitos, todos confirmados:
+
+1. 🔴 **"31/12" em produção.** `new Date(m.match_date)` com data NULA não dá erro
+   em JS: dá 1970-01-01, que em Brasília é 31/12/1969. Como todos os jogos com
+   data estavam no futuro, esse dia fantasma virava o "dia alvo" e a aba exibia
+   `Hoje (31/12)` com 6 jogadores empatados em 0 ponto (80 palpites da Sula, que
+   não tem data).
+2. **Rótulo duplicado.** A aba montava `Hoje ({rótulo})` e o rótulo já vinha com
+   "Hoje" — em dia de jogo leria `Hoje (Hoje (01/08))`.
+3. **O dia virava à meia-noite.** Com dias consecutivos (Copa joga 01–06/08), o
+   ranking de um jogo das 21h existia só entre o lançamento do placar e as 23:59,
+   e sumia para sempre se o placar entrasse depois da meia-noite.
+
+O novo recorte não interpreta data nenhuma — filtra por `status = 'FINISHED'` —,
+então o bug do 31/12 não tem como voltar. `nullsFirst: false` na ordenação impede
+que um jogo finalizado sem data seja tomado como o mais recente.
+
+Casa vazia (`—`) para quem não palpitou naquele jogo, distinta do `0` de quem
+palpitou e não pontuou. Não é preciosismo: nos dados reais do Paulistão o líder
+dos últimos 5 tinha palpitado em só 4 deles.
+
 ### ⚠️ Erro cometido: telas `[userId]` esquecidas (corrigido depois)
 
 O redesign tratou as telas do PRÓPRIO usuário e deixou para trás as telas
