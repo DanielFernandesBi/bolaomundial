@@ -49,8 +49,11 @@ function TeamChip({
       ? 'bg-primary/15 text-primary border-primary/30'
       : 'bg-surface-sunken text-card-foreground border-border';
   return (
+    // `flex w-full` e não `inline-flex`: empilhados, os chips ficam com a mesma
+    // largura e as bordas alinhadas. Com largura própria cada um parava num
+    // ponto diferente e a coluna ficava serrilhada.
     <span
-      className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold ${tone}`}
+      className={`flex w-full min-w-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold ${tone}`}
     >
       {iso ? (
         iso.trim().toLowerCase().startsWith('http') ? (
@@ -119,7 +122,7 @@ export function PodiumTransparency({ tournamentSlug, competitions, currentUserId
                     </Avatar>
                     <Link
                       href={`/${tournamentSlug}/desempenho/${p.user_id}`}
-                      className="min-w-0 flex-shrink truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                      className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
                     >
                       {p.username}
                     </Link>
@@ -128,7 +131,15 @@ export function PodiumTransparency({ tournamentSlug, competitions, currentUserId
                         Você
                       </span>
                     )}
-                    <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+                    {/* Coluna de largura FIXA, sempre empilhada.
+                        Antes era `flex-wrap`, e aí a forma do card dependia do
+                        tamanho do nome: "Pires" deixava campeão e vice lado a
+                        lado, "Marcelo Graci…" empurrava para duas linhas. Dois
+                        desenhos diferentes na mesma lista, por acaso.
+                        Empilhado sempre: cabe o nome inteiro do clube (nada de
+                        "Palme…"), funciona igual com o terceiro lugar dos
+                        torneios antigos, e todos os cards têm a mesma altura. */}
+                    <div className="ml-auto flex w-[46%] max-w-[210px] flex-shrink-0 flex-col gap-1">
                       <TeamChip team={p.championTeam} iso={p.championIso} variant="champion" />
                       <TeamChip team={p.viceTeam} iso={p.viceIso} variant="other" />
                       {comp.hasThird && <TeamChip team={p.thirdTeam} iso={p.thirdIso} variant="other" />}
