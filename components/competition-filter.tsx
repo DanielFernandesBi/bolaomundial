@@ -50,20 +50,19 @@ export function CompetitionSection({
   return <>{children}</>;
 }
 
-// Escudo de cada competição. Não existe logo de competição no banco (`logo_url`
-// é do torneio, e as três vivem dentro de um só), então as URLs ficam aqui.
+// Escudo de cada competição, na mesma fonte dos escudos dos clubes: a
+// API-Football, que manda `league.logo` em toda resposta de /fixtures. O ID da
+// liga é a chave — 13 Libertadores, 11 Sul-Americana, 73 Copa do Brasil — e
+// está cadastrado em club_competition_weights, de onde estes valores saíram.
 //
-// ATENÇÃO: duas delas são miniaturas do cache do Google Imagens
-// (encrypted-tbn0.gstatic.com). Esse tipo de link EXPIRA — não é endereço
-// permanente de arquivo. Quando quebrar, o botão volta sozinho para o ícone
-// (ver `falhou` abaixo), então a tela nunca fica com imagem quebrada; mas o
-// certo é hospedar os três PNGs em `public/` e apontar para cá.
+// Antes daqui saíam duas miniaturas do cache do Google Imagens
+// (encrypted-tbn0.gstatic.com), que são links temporários e expiram. Estes são
+// endereços de arquivo do CDN que já serve todos os outros escudos do app. Se
+// algum falhar, o botão volta sozinho para o ícone (ver `falhou` abaixo).
 const ESCUDOS: Record<string, string | undefined> = {
-  libertadores:
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRaDa_b38ehAoDOkbT1LwKd7_CetLMZ9956bRg0MG1qvk5jZflDGBJcf_U&s=10',
-  sudamericana:
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWeKWaqQr75JreJhQ8OnJegND7boAeLS6Yby27RUf9RrY3FJIxZx4g_Gg&s=10',
-  copa_do_brasil: 'https://logospng.org/wp-content/uploads/copa-do-brasil.png',
+  libertadores: 'https://media.api-sports.io/football/leagues/13.png',
+  sudamericana: 'https://media.api-sports.io/football/leagues/11.png',
+  copa_do_brasil: 'https://media.api-sports.io/football/leagues/73.png',
 };
 
 // Reserva para quando não há escudo — ou quando ele falha ao carregar.

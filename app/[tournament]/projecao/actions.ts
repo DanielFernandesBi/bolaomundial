@@ -81,15 +81,19 @@ interface Ajuste {
   strengths: Map<string, ClubStrength>;
   baselines: Map<string, CompetitionBaseline>;
   resolver: (nome: string | null) => string | null;
+  /** Escudo por chave, vindo da API-Football. */
+  escudoDaApi: Map<string, string>;
   matchesUsed: number;
   clubsFitted: number;
 }
 
 async function ajustarForcas(supabase: any): Promise<Ajuste> {
-  const [{ data: ratingsRaw }, { data: matchesRaw }, { data: apelidosRaw }] = await Promise.all([
+  const [{ data: ratingsRaw }, { data: matchesRaw }, { data: apelidosRaw }, { data: escudosRaw }] =
+    await Promise.all([
     supabase.rpc('club_model_ratings'),
     supabase.rpc('club_model_matches'),
     supabase.from('club_aliases').select('alias, team_key'),
+    supabase.from('club_source_ids').select('team_key, crest_url').not('crest_url', 'is', null),
   ]);
 
   const priors: ClubPrior[] = ((ratingsRaw ?? []) as any[]).map((r) => ({
@@ -129,6 +133,11 @@ async function ajustarForcas(supabase: any): Promise<Ajuste> {
   for (const a of (apelidosRaw ?? []) as any[]) apelidos.set(a.alias, a.team_key);
   const chaves = new Set(priors.map((p) => p.teamKey));
 
+  // Escudo que a própria API-Football manda. Chega sozinho para todo clube que
+  // entra em campo — não depende de ninguém cadastrar.
+  const escudoDaApi = new Map<string, string>();
+  for (const e of (escudosRaw ?? []) as any[]) escudoDaApi.set(e.team_key, e.crest_url);
+
   return {
     strengths: fit.strengths,
     baselines,
@@ -137,6 +146,7 @@ async function ajustarForcas(supabase: any): Promise<Ajuste> {
       const n = normalizar(nome);
       return apelidos.get(n) ?? (chaves.has(n) ? n : null);
     },
+    escudoDaApi,
     matchesUsed: observados.length,
     clubsFitted: fit.strengths.size,
   };
@@ -203,9 +213,13 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
     registrarEscudo(m.team_home, m.home_iso);
     registrarEscudo(m.team_away, m.away_iso);
   }
+  // A API vem primeiro: ela cobre qualquer clube que já entrou em campo. O
+  // cadastro do admin em `matches` é a reserva, para os clubes do bolão que
+  // ainda não jogaram desde 31/07.
   const escudoDe = (nome: string | null): string | null => {
     const chave = ajuste.resolver(nome);
-    return chave ? escudoPorChave.get(chave) ?? null : null;
+    if (!chave) return null;
+    return ajuste.escudoDaApi.get(chave) ?? escudoPorChave.get(chave) ?? null;
   };
 
   const ties: PoolTie[] = ((tiesRaw ?? []) as any[]).map((t) => ({

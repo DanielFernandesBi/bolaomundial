@@ -22,6 +22,9 @@ export interface ClubFixture {
   away_team_key: string | null;
   home_team_name: string;
   away_team_name: string;
+  /** Escudo que a API mandou nesta partida. */
+  home_crest_url: string | null;
+  away_crest_url: string | null;
   goals_home_90: number | null;
   goals_away_90: number | null;
   goals_home_extra: number | null;
@@ -64,6 +67,7 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
         .select(
           'id, kickoff_at, status, league_id, league_name, round_name, ' +
             'home_team_key, away_team_key, home_team_name, away_team_name, ' +
+            'home_crest_url, away_crest_url, ' +
             'goals_home_90, goals_away_90, goals_home_extra, goals_away_extra, ' +
             'penalties_home, penalties_away, venue_name'
         )
@@ -74,7 +78,7 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
       // Luqueno"). Tendo a forma canônica, o adversário aparece escrito certo.
       supabase
         .from('club_source_ids')
-        .select('team_key, canonical_name, is_bolao_team')
+        .select('team_key, canonical_name, is_bolao_team, crest_url')
         .order('canonical_name'),
       supabase
         .from('club_sync_log')
@@ -99,9 +103,14 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
   // quem entra no filtro e ganha destaque.
   const nomeCanonico = new Map<string, string>();
   const bolao = new Map<string, string>();
+  // Escudo que a própria API-Football manda, capturado na sincronização. Vale
+  // para QUALQUER clube que já apareceu, não só para os 40 do bolão — é o que
+  // acaba com o escudo genérico do adversário.
+  const escudoDaApi = new Map<string, string>();
   for (const c of (clubesRaw ?? []) as any[]) {
     nomeCanonico.set(c.team_key, c.canonical_name);
     if (c.is_bolao_team) bolao.set(c.team_key, c.canonical_name);
+    if (c.crest_url) escudoDaApi.set(c.team_key, c.crest_url);
   }
 
   // Espelha club_resolve(): apelido primeiro, depois a própria chave. Sem isto
@@ -128,12 +137,20 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
     registrarEscudo(m.team_away, m.away_iso);
   }
 
+  // Ordem de preferência do escudo:
+  //   1. o da própria partida (a API manda um por time, em toda resposta);
+  //   2. o canônico do clube, para quando aquela partida veio sem;
+  //   3. o que o admin cadastrou em `matches` — cobre os clubes do bolão que
+  //      ainda não jogaram desde 31/07 e por isso nunca apareceram na API.
+  const escudoDe = (key: string | null, daPartida: string | null): string | null =>
+    daPartida ?? (key ? escudoDaApi.get(key) ?? escudoPorChave.get(key) ?? null : null);
+
   const fixtures: ClubFixture[] = ((fixturesRaw ?? []) as any[]).map((f) => ({
     ...f,
     home_display: f.home_team_key ? nomeCanonico.get(f.home_team_key) ?? f.home_team_name : f.home_team_name,
     away_display: f.away_team_key ? nomeCanonico.get(f.away_team_key) ?? f.away_team_name : f.away_team_name,
-    home_crest: f.home_team_key ? escudoPorChave.get(f.home_team_key) ?? null : null,
-    away_crest: f.away_team_key ? escudoPorChave.get(f.away_team_key) ?? null : null,
+    home_crest: escudoDe(f.home_team_key, f.home_crest_url),
+    away_crest: escudoDe(f.away_team_key, f.away_crest_url),
     home_is_bolao: !!f.home_team_key && bolao.has(f.home_team_key),
     away_is_bolao: !!f.away_team_key && bolao.has(f.away_team_key),
   }));
@@ -141,7 +158,7 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
   return {
     fixtures,
     clubes: [...bolao.entries()]
-      .map(([teamKey, nome]) => ({ teamKey, nome, crest: escudoPorChave.get(teamKey) ?? null }))
+      .map(([teamKey, nome]) => ({ teamKey, nome, crest: escudoDe(teamKey, null) }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     ultimaSincronizacao: (logRaw?.[0] as any)?.finished_at ?? null,
     ligasDasCopas: LIGAS_DAS_COPAS,
