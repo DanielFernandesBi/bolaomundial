@@ -8,6 +8,7 @@ import {
   getResultadosSugeridos,
 } from './actions';
 import { AdminMatchesTable } from './admin-matches-table';
+import { AdminTabs } from './admin-tabs';
 import { ResultadosSugeridos } from './resultados-sugeridos';
 import { AdminBracket } from './admin-bracket';
 import { CreateMatchDialog } from './create-match-dialog';
@@ -80,17 +81,19 @@ export default async function AdminPage({ params }: AdminPageProps) {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="container mx-auto px-4 py-8 pb-28 md:pb-8 max-w-full">
-        {/* Cabeçalho */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">
-              Painel do Administrador - Resultados
+        {/* Cabeçalho. Empilha no celular: em linha, o título de três palavras
+            longas espremia os botões para fora da tela — eles não tinham como
+            quebrar porque o container não era flex-wrap. */}
+        <div className="mb-6 flex flex-col gap-4 md:mb-8 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <h1 className="mb-1 break-words text-2xl font-bold text-foreground sm:text-3xl md:text-4xl">
+              Painel do Administrador
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Gerencie os resultados dos jogos do {tournament.name}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2 md:flex-shrink-0">
             {!info.error && (
               <EditTournamentDialog
                 tournamentSlug={tournamentSlug}
@@ -107,53 +110,91 @@ export default async function AdminPage({ params }: AdminPageProps) {
           </div>
         </div>
 
-        {!info.error && (
-          <PrizeEntry
-            tournamentSlug={tournamentSlug}
-            current={{
-              first: Number(info.tournament.prize_first) || 0,
-              second: Number(info.tournament.prize_second) || 0,
-              third: Number(info.tournament.prize_third) || 0,
-            }}
-          />
-        )}
-
-        {hasCompetitions && !sugeridos.error && (
-          <ResultadosSugeridos
-            sugestoes={sugeridos.sugestoes}
-            ultimaSincronizacao={sugeridos.ultimaSincronizacao}
-            tournamentSlug={tournamentSlug}
-          />
-        )}
-
-        {bracketCompetitions.length > 0 && (
-          <AdminBracket
-            tournamentSlug={tournamentSlug}
-            tournamentId={(bracket as any).tournamentId}
-            competitions={bracketCompetitions as any}
-          />
-        )}
-
-        {hasCompetitions && (
-          <CompetitionResultsEntry tournamentSlug={tournamentSlug} competitions={competitions} />
-        )}
-
-        {showPodium && !info.error && (
-          <PodiumEntry
-            tournamentSlug={tournamentSlug}
-            teams={info.teams}
-            current={{
-              champion_team: info.tournament.champion_team,
-              champion_iso: info.tournament.champion_iso,
-              runner_up_team: info.tournament.runner_up_team,
-              runner_up_iso: info.tournament.runner_up_iso,
-              third_place_team: info.tournament.third_place_team,
-              third_place_iso: info.tournament.third_place_iso,
-            }}
-          />
-        )}
-
-        <AdminMatchesTable initialMatches={matches} tournamentSlug={tournamentSlug} />
+        <AdminTabs
+          abas={[
+            {
+              key: 'jogos',
+              label: 'Jogos',
+              content: (
+                <>
+                  {hasCompetitions && !sugeridos.error && (
+                    <ResultadosSugeridos
+                      sugestoes={sugeridos.sugestoes}
+                      ultimaSincronizacao={sugeridos.ultimaSincronizacao}
+                      tournamentSlug={tournamentSlug}
+                    />
+                  )}
+                  <AdminMatchesTable initialMatches={matches} tournamentSlug={tournamentSlug} />
+                </>
+              ),
+            },
+            ...(bracketCompetitions.length > 0
+              ? [
+                  {
+                    key: 'chaveamento',
+                    label: 'Chaveamento',
+                    content: (
+                      <AdminBracket
+                        tournamentSlug={tournamentSlug}
+                        tournamentId={(bracket as any).tournamentId}
+                        competitions={bracketCompetitions as any}
+                      />
+                    ),
+                  },
+                ]
+              : []),
+            ...(hasCompetitions || (showPodium && !info.error)
+              ? [
+                  {
+                    key: 'podio',
+                    label: 'Pódio',
+                    content: (
+                      <>
+                        {hasCompetitions && (
+                          <CompetitionResultsEntry
+                            tournamentSlug={tournamentSlug}
+                            competitions={competitions}
+                          />
+                        )}
+                        {showPodium && !info.error && (
+                          <PodiumEntry
+                            tournamentSlug={tournamentSlug}
+                            teams={info.teams}
+                            current={{
+                              champion_team: info.tournament.champion_team,
+                              champion_iso: info.tournament.champion_iso,
+                              runner_up_team: info.tournament.runner_up_team,
+                              runner_up_iso: info.tournament.runner_up_iso,
+                              third_place_team: info.tournament.third_place_team,
+                              third_place_iso: info.tournament.third_place_iso,
+                            }}
+                          />
+                        )}
+                      </>
+                    ),
+                  },
+                ]
+              : []),
+            ...(!info.error
+              ? [
+                  {
+                    key: 'torneio',
+                    label: 'Premiação',
+                    content: (
+                      <PrizeEntry
+                        tournamentSlug={tournamentSlug}
+                        current={{
+                          first: Number(info.tournament.prize_first) || 0,
+                          second: Number(info.tournament.prize_second) || 0,
+                          third: Number(info.tournament.prize_third) || 0,
+                        }}
+                      />
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
       </div>
     </div>
   );

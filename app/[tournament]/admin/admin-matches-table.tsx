@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Save, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CalendarDays, CheckCircle2, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -60,6 +61,24 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
   const [saving, setSaving] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Jogo lançado sai da fila de trabalho. Sem isso, achar o próximo a lançar
+  // virava caçada num scroll que só cresce a cada torneio.
+  const [aba, setAba] = useState<'proximos' | 'lancados'>('proximos');
+
+  const proximos = useMemo(
+    () => matches.filter((m) => m.status !== 'FINISHED'),
+    [matches]
+  );
+  // Do mais recente para o mais antigo: o que acabou de ser lançado fica no
+  // topo, que é onde se confere se saiu certo.
+  const lancados = useMemo(
+    () =>
+      matches
+        .filter((m) => m.status === 'FINISHED')
+        .sort((a, b) => (b.match_date ?? '').localeCompare(a.match_date ?? '')),
+    [matches]
+  );
+  const visiveis = aba === 'lancados' ? lancados : proximos;
 
   async function handleSave(matchId: number) {
     const match = matches.find((m) => m.id === matchId);
@@ -98,9 +117,13 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
     }
 
     const msg = result.bracketInfo
-      ? `Jogo atualizado! ${result.bracketInfo}`
-      : 'Jogo atualizado com sucesso!';
+      ? `Jogo lançado! ${result.bracketInfo}`
+      : 'Jogo lançado — foi para a aba "Lançados".';
     setToast({ message: msg, type: 'success' });
+
+    // Vai junto com o jogo. É onde se confere se o placar saiu certo, e a
+    // fila de "Próximos" já está uma linha menor quando o admin voltar.
+    if (match.status === 'FINISHED') setAba('lancados');
 
     setSaving(null);
     setTimeout(() => setToast(null), result.bracketInfo ? 5000 : 3000);
@@ -238,9 +261,39 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
         <Toast message={toast.message} tone={toast.type === 'success' ? 'success' : 'error'} />
       )}
 
+      {/* Mesmo padrão de Partidas e Ranking. */}
+      <Tabs value={aba} onValueChange={(v) => setAba(v as 'proximos' | 'lancados')} className="mb-4 w-full">
+        <TabsList className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+          <TabsTrigger
+            value="proximos"
+            className="flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+            <span className="truncate">A lançar ({proximos.length})</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="lancados"
+            className="flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+            <span className="truncate">Lançados ({lancados.length})</span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {visiveis.length === 0 && (
+        <div className="rounded-[12px] border border-border bg-card px-4 py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            {aba === 'lancados'
+              ? 'Nenhum resultado lançado ainda.'
+              : 'Todos os jogos já foram lançados.'}
+          </p>
+        </div>
+      )}
+
       {/* Cards Mobile (md:hidden) */}
       <div className="md:hidden space-y-4">
-        {matches.map((match) => {
+        {visiveis.map((match) => {
           const isFinished = match.status === 'FINISHED';
           return (
             <Card
@@ -383,7 +436,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
       </div>
 
       {/* Tabela Desktop (hidden md:block) */}
-      <Card className="bg-card border-border hidden md:block">
+      <Card className={`bg-card border-border hidden ${visiveis.length > 0 ? 'md:block' : ''}`}>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -398,7 +451,7 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {matches.map((match) => {
+                {visiveis.map((match) => {
                   const isFinished = match.status === 'FINISHED';
                   return (
                     <TableRow
@@ -531,8 +584,8 @@ export function AdminMatchesTable({ initialMatches, tournamentSlug }: AdminMatch
       {/* Legenda */}
       <div className="mt-4 text-muted-foreground text-sm">
         <p>
-          💡 <strong>Dica:</strong> Jogos finalizados aparecem destacados em verde. 
-          Ao alterar o status para 'FINISHED', os pontos serão calculados automaticamente.
+          💡 <strong>Dica:</strong> ao mudar o status para FINISHED e salvar, os pontos são
+          calculados na hora e o jogo passa para a aba <strong>Lançados</strong>.
         </p>
       </div>
     </>
