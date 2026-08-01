@@ -15,3 +15,4 @@ export * from './constants';
 export * from './types';
 export * from './strength';
 export * from './poisson';
+export * from './knockout';

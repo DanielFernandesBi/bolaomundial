@@ -24,7 +24,7 @@ export default async function ResultadosPage({ params }: ResultadosPageProps) {
 
   if (!tournament) notFound();
 
-  const dados = await getResultados();
+  const dados = await getResultados((tournament as any).id);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">

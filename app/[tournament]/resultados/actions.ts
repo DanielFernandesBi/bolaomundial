@@ -49,7 +49,7 @@ export interface ResultadosData {
 /** IDs das três competições do bolão na API-Football. */
 const LIGAS_DAS_COPAS = [13, 11, 73];
 
-export async function getResultados(): Promise<ResultadosData> {
+export async function getResultados(tournamentId: number): Promise<ResultadosData> {
   const supabase = await createServerSupabaseClient();
 
   const [
@@ -69,10 +69,12 @@ export async function getResultados(): Promise<ResultadosData> {
         )
         .order('kickoff_at', { ascending: false, nullsFirst: false })
         .limit(400),
+      // TODOS os clubes, não só os do bolão: o nome que a API devolve vem sem
+      // acento e abreviado ("Rubio NU", "Tecnico Universitario", "Sportivo
+      // Luqueno"). Tendo a forma canônica, o adversário aparece escrito certo.
       supabase
         .from('club_source_ids')
         .select('team_key, canonical_name, is_bolao_team')
-        .eq('is_bolao_team', true)
         .order('canonical_name'),
       supabase
         .from('club_sync_log')
@@ -83,12 +85,24 @@ export async function getResultados(): Promise<ResultadosData> {
       // Os escudos já existem em `matches` (o admin cadastrou ao montar a
       // chave). Reaproveitar evita uma segunda fonte de imagem para o mesmo
       // clube — e uma segunda chance de elas divergirem.
-      supabase.from('matches').select('team_home, home_iso, team_away, away_iso'),
+      // Restrito a ESTE torneio: `matches` guarda também os torneios antigos de
+      // seleções, onde `iso` era código de país ("br") e não URL. Sem o filtro,
+      // o Palmeiras herdava o "br" da Copa do Mundo e ficava sem escudo.
+      supabase
+        .from('matches')
+        .select('team_home, home_iso, team_away, away_iso')
+        .eq('tournament_id', tournamentId),
       supabase.from('club_aliases').select('alias, team_key'),
     ]);
 
+  // Nome de exibição de qualquer clube conhecido; is_bolao_team só distingue
+  // quem entra no filtro e ganha destaque.
+  const nomeCanonico = new Map<string, string>();
   const bolao = new Map<string, string>();
-  for (const c of (clubesRaw ?? []) as any[]) bolao.set(c.team_key, c.canonical_name);
+  for (const c of (clubesRaw ?? []) as any[]) {
+    nomeCanonico.set(c.team_key, c.canonical_name);
+    if (c.is_bolao_team) bolao.set(c.team_key, c.canonical_name);
+  }
 
   // Espelha club_resolve(): apelido primeiro, depois a própria chave. Sem isto
   // o escudo do Vasco se perderia — `matches` grava "Vasco" na Copa do Brasil
@@ -97,12 +111,15 @@ export async function getResultados(): Promise<ResultadosData> {
   for (const a of (apelidosRaw ?? []) as any[]) apelidos.set(a.alias, a.team_key);
   const resolver = (nome: string): string | null => {
     const n = normalizar(nome);
-    return apelidos.get(n) ?? (bolao.has(n) ? n : null);
+    return apelidos.get(n) ?? (nomeCanonico.has(n) ? n : null);
   };
 
   const escudoPorChave = new Map<string, string>();
   const registrarEscudo = (nome?: string | null, url?: string | null) => {
-    if (!nome || !url) return;
+    // `iso` só é escudo quando é URL. Nos torneios de seleções a mesma coluna
+    // guardava código de país de duas letras — aceitar isso renderia
+    // <img src="br">, que falha e cai no placeholder.
+    if (!nome || !url || !url.startsWith('http')) return;
     const chave = resolver(nome);
     if (chave && !escudoPorChave.has(chave)) escudoPorChave.set(chave, url);
   };
@@ -113,8 +130,8 @@ export async function getResultados(): Promise<ResultadosData> {
 
   const fixtures: ClubFixture[] = ((fixturesRaw ?? []) as any[]).map((f) => ({
     ...f,
-    home_display: f.home_team_key ? bolao.get(f.home_team_key) ?? f.home_team_name : f.home_team_name,
-    away_display: f.away_team_key ? bolao.get(f.away_team_key) ?? f.away_team_name : f.away_team_name,
+    home_display: f.home_team_key ? nomeCanonico.get(f.home_team_key) ?? f.home_team_name : f.home_team_name,
+    away_display: f.away_team_key ? nomeCanonico.get(f.away_team_key) ?? f.away_team_name : f.away_team_name,
     home_crest: f.home_team_key ? escudoPorChave.get(f.home_team_key) ?? null : null,
     away_crest: f.away_team_key ? escudoPorChave.get(f.away_team_key) ?? null : null,
     home_is_bolao: !!f.home_team_key && bolao.has(f.home_team_key),
