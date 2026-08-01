@@ -72,7 +72,12 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
             'penalties_home, penalties_away, venue_name'
         )
         .order('kickoff_at', { ascending: false, nullsFirst: false })
-        .limit(400),
+        // O retrospecto por clube é calculado no cliente, sobre esta lista.
+        // Enquanto o histórico couber aqui, ele é exato; quando o teto começar
+        // a cortar, o número vira "dos últimos N jogos carregados" sem avisar.
+        // O sinal para migrar a conta para SQL é esta contagem encostar no
+        // limite — hoje são 94 linhas.
+        .limit(1000),
       // TODOS os clubes, não só os do bolão: o nome que a API devolve vem sem
       // acento e abreviado ("Rubio NU", "Tecnico Universitario", "Sportivo
       // Luqueno"). Tendo a forma canônica, o adversário aparece escrito certo.

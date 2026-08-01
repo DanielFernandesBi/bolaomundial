@@ -255,6 +255,180 @@ function LinhaJogo({ f }: { f: ClubFixture }) {
   );
 }
 
+// ── Retrospecto de um clube ─────────────────────────────────────────────────
+//
+// Tudo aqui sai de club_fixtures, que é o que a sincronização já traz. Nenhuma
+// chamada nova à API.
+//
+// Convenção de vitória: vale o placar do tempo normal mais a prorrogação. Jogo
+// decidido nos PÊNALTIS conta como EMPATE — é a convenção da FIFA e da CBF, e
+// o contrário inflaria a vitória de quem só ganhou na loteria. Quem quiser
+// saber quem passou de fase tem a etiqueta na linha do jogo.
+interface Retrospecto {
+  jogos: number;
+  v: number;
+  e: number;
+  d: number;
+  golsPro: number;
+  golsContra: number;
+  semSofrer: number;
+  casa: { v: number; e: number; d: number };
+  fora: { v: number; e: number; d: number };
+  /** Do mais recente para o mais antigo, no máximo 5. */
+  ultimos: { r: 'V' | 'E' | 'D'; rotulo: string }[];
+}
+
+function calcularRetrospecto(fixtures: ClubFixture[], teamKey: string): Retrospecto | null {
+  const jogos = fixtures
+    .filter(
+      (f) =>
+        ENCERRADOS.has(f.status) &&
+        f.goals_home_90 !== null &&
+        f.goals_away_90 !== null &&
+        (f.home_team_key === teamKey || f.away_team_key === teamKey)
+    )
+    .sort((a, b) => b.kickoff_at.localeCompare(a.kickoff_at));
+
+  if (jogos.length === 0) return null;
+
+  const r: Retrospecto = {
+    jogos: jogos.length,
+    v: 0,
+    e: 0,
+    d: 0,
+    golsPro: 0,
+    golsContra: 0,
+    semSofrer: 0,
+    casa: { v: 0, e: 0, d: 0 },
+    fora: { v: 0, e: 0, d: 0 },
+    ultimos: [],
+  };
+
+  for (const f of jogos) {
+    const emCasa = f.home_team_key === teamKey;
+    const meus = (emCasa ? f.goals_home_90 : f.goals_away_90) ?? 0;
+    const deles = (emCasa ? f.goals_away_90 : f.goals_home_90) ?? 0;
+    const meusExtra = (emCasa ? f.goals_home_extra : f.goals_away_extra) ?? 0;
+    const delesExtra = (emCasa ? f.goals_away_extra : f.goals_home_extra) ?? 0;
+
+    const total = meus + meusExtra;
+    const totalDeles = deles + delesExtra;
+    const res: 'V' | 'E' | 'D' = total > totalDeles ? 'V' : total < totalDeles ? 'D' : 'E';
+
+    r[res === 'V' ? 'v' : res === 'E' ? 'e' : 'd']++;
+    (emCasa ? r.casa : r.fora)[res === 'V' ? 'v' : res === 'E' ? 'e' : 'd']++;
+    r.golsPro += total;
+    r.golsContra += totalDeles;
+    if (totalDeles === 0) r.semSofrer++;
+
+    if (r.ultimos.length < 5) {
+      const adv = emCasa ? f.away_display : f.home_display;
+      r.ultimos.push({ r: res, rotulo: `${emCasa ? '' : 'fora · '}${adv} ${total}–${totalDeles}` });
+    }
+  }
+  return r;
+}
+
+const TOM_RESULTADO = {
+  V: 'bg-state-open/15 text-state-open',
+  E: 'bg-surface-sunken text-muted-foreground',
+  D: 'bg-destructive/15 text-destructive',
+} as const;
+
+function Numero({ valor, rotulo }: { valor: string; rotulo: string }) {
+  return (
+    <div>
+      <p className="font-mono text-lg font-bold tabular-nums text-foreground">{valor}</p>
+      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[hsl(var(--faint))]">
+        {rotulo}
+      </p>
+    </div>
+  );
+}
+
+function PainelClube({
+  nome,
+  escudo,
+  r,
+}: {
+  nome: string;
+  escudo: string | null;
+  r: Retrospecto | null;
+}) {
+  if (!r) {
+    return (
+      <div className="mb-4 flex items-center gap-3 rounded-[12px] border border-border bg-card px-3.5 py-3">
+        <Escudo url={escudo} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">{nome}</p>
+          <p className="text-xs text-muted-foreground">
+            Nenhum jogo encerrado ainda. O histórico começa em 31/07/2026.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const media = (n: number) => (n / r.jogos).toFixed(2).replace('.', ',');
+  const saldo = r.golsPro - r.golsContra;
+  // Aproveitamento: pontos conquistados sobre pontos disputados. É a métrica
+  // que o torcedor brasileiro lê sem precisar de legenda.
+  const aproveitamento = Math.round(((r.v * 3 + r.e) / (r.jogos * 3)) * 100);
+
+  return (
+    <div className="mb-4 overflow-hidden rounded-[12px] border border-border bg-card">
+      <div className="flex items-center justify-between gap-3 border-b border-hairline px-3.5 py-3">
+        <span className="flex min-w-0 items-center gap-2.5">
+          <Escudo url={escudo} />
+          <span className="truncate text-sm font-semibold text-foreground">{nome}</span>
+        </span>
+        <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+          {r.jogos} {r.jogos === 1 ? 'jogo' : 'jogos'} desde 31/07
+        </span>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 px-3.5 py-3">
+        <Numero valor={String(r.v)} rotulo="vitórias" />
+        <Numero valor={String(r.e)} rotulo="empates" />
+        <Numero valor={String(r.d)} rotulo="derrotas" />
+        <Numero valor={`${aproveitamento}%`} rotulo="aproveit." />
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 border-t border-hairline px-3.5 py-3">
+        <Numero valor={String(r.golsPro)} rotulo="gols pró" />
+        <Numero valor={String(r.golsContra)} rotulo="gols contra" />
+        <Numero valor={`${saldo > 0 ? '+' : ''}${saldo}`} rotulo="saldo" />
+        <Numero valor={String(r.semSofrer)} rotulo="sem sofrer" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 border-t border-hairline px-3.5 py-3">
+        <Numero valor={media(r.golsPro)} rotulo="gols pró / jogo" />
+        <Numero valor={media(r.golsContra)} rotulo="gols contra / jogo" />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline px-3.5 py-3">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[hsl(var(--faint))]">
+          casa {r.casa.v}-{r.casa.e}-{r.casa.d} · fora {r.fora.v}-{r.fora.e}-{r.fora.d}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[hsl(var(--faint))]">
+            últimos
+          </span>
+          {r.ultimos.map((u, i) => (
+            <span
+              key={i}
+              title={u.rotulo}
+              className={`flex h-5 w-5 items-center justify-center rounded-full font-mono text-[10px] font-bold ${TOM_RESULTADO[u.r]}`}
+            >
+              {u.r}
+            </span>
+          ))}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function ResultadosContent({ fixtures, clubes, ultimaSincronizacao, ligasDasCopas }: ResultadosData) {
   const [clube, setClube] = useState<string>('');
   const [soCopas, setSoCopas] = useState(false);
@@ -307,6 +481,15 @@ export function ResultadosContent({ fixtures, clubes, ultimaSincronizacao, ligas
   }, [filtrados, dias]);
 
   const primeiroFuturo = grupos.find((g) => g.futuro)?.dia;
+
+  // Retrospecto do clube escolhido. Sai de TODOS os jogos dele, e não de
+  // `filtrados` — o filtro "só as copas" muda o que a lista mostra, não o que
+  // o clube fez.
+  const selecionado = clubes.find((c) => c.teamKey === clube);
+  const retrospecto = useMemo(
+    () => (clube ? calcularRetrospecto(fixtures, clube) : null),
+    [fixtures, clube]
+  );
 
   return (
     <div>
@@ -362,6 +545,11 @@ export function ResultadosContent({ fixtures, clubes, ultimaSincronizacao, ligas
           />
         </span>
       </label>
+
+      {/* ── Retrospecto do clube escolhido ─────────────────────────────── */}
+      {selecionado && (
+        <PainelClube nome={selecionado.nome} escudo={selecionado.crest} r={retrospecto} />
+      )}
 
       {/* ── Lista ──────────────────────────────────────────────────────── */}
       {grupos.length === 0 ? (
