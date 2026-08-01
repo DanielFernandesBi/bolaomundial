@@ -1,6 +1,6 @@
 'use client';
 
-import { Info } from 'lucide-react';
+import { Info, Trophy } from 'lucide-react';
 import { COMPETITIONS, competitionName } from '@/lib/competitions';
 import type { ProjecaoData, TieProjecao } from './actions';
 
@@ -75,7 +75,73 @@ function Confronto({ t }: { t: TieProjecao }) {
   );
 }
 
-export function ProjecaoContent({ ties, matchesUsed, clubsFitted, modelVersion }: ProjecaoData) {
+
+function Ranking({ r, palpitesEmAberto, palpitesDePodio }: {
+  r: NonNullable<ProjecaoData['ranking']>;
+  palpitesEmAberto: number;
+  palpitesDePodio: number;
+}) {
+  const maior = Math.max(...r.players.map((p) => p.p95), 1);
+  return (
+    <section className="mb-6">
+      <h2 className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
+        <Trophy className="h-3 w-3" aria-hidden="true" />
+        Como o bolão pode terminar
+      </h2>
+      <div className="overflow-hidden rounded-[12px] border border-border bg-card">
+        {r.players.map((p, i) => (
+          <div key={p.userId} className="border-t border-hairline px-3 py-2.5 first:border-t-0">
+            <div className="flex items-baseline gap-2">
+              <span className="w-4 flex-shrink-0 font-mono text-[10px] tabular-nums text-[hsl(var(--faint))]">
+                {i + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-card-foreground">
+                {p.username}
+              </span>
+              <span className="flex-shrink-0 font-mono text-sm font-bold tabular-nums text-card-foreground">
+                {Math.round(p.titleChance * 100)}%
+              </span>
+            </div>
+
+            {/* Faixa de pontos: o trecho claro e o intervalo de 90%, o traco e
+                a media. Hoje o ponto de partida (basePoints) domina, porque so
+                3 jogos foram encerrados. */}
+            <div className="relative mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
+              <div
+                className="absolute h-full rounded-full bg-primary/25"
+                style={{ left: `${(p.p5 / maior) * 100}%`, width: `${Math.max(1, ((p.p95 - p.p5) / maior) * 100)}%` }}
+              />
+              <div
+                className="absolute h-full w-[3px] rounded-full bg-primary"
+                style={{ left: `calc(${(p.meanPoints / maior) * 100}% - 1.5px)` }}
+              />
+            </div>
+            <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-[hsl(var(--faint))]">
+              {p.basePoints} pts hoje · projeção {Math.round(p.p5)}–{Math.round(p.p95)} · pódio{' '}
+              {Math.round(p.top3Chance * 100)}%
+            </p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-[hsl(var(--faint))]">
+        {r.scenarios.toLocaleString('pt-BR')} cenários · {palpitesEmAberto} palpites em aberto ·{' '}
+        {palpitesDePodio} palpites de pódio
+      </p>
+    </section>
+  );
+}
+
+export function ProjecaoContent({
+  ties,
+  ranking,
+  matchesUsed,
+  clubsFitted,
+  modelVersion,
+  jogosEncerrados,
+  jogosEmAberto,
+  palpitesEmAberto,
+  palpitesDePodio,
+}: ProjecaoData) {
   const porCompeticao = COMPETITIONS.map((c) => ({
     ...c,
     itens: ties.filter((t) => t.competition === c.key),
@@ -97,12 +163,20 @@ export function ProjecaoContent({ ties, matchesUsed, clubsFitted, modelVersion }
           fica perto de 50%. Isso não é o modelo se omitindo: é o que os dados dizem sobre um
           mata-mata entre clubes de nível semelhante.
           <span className="mt-1.5 block font-mono text-[10px] text-[hsl(var(--faint))]">
-            {matchesUsed} {matchesUsed === 1 ? 'jogo' : 'jogos'} desde 31/07 · {clubsFitted} clubes ·{' '}
-            {modelVersion}
+            {matchesUsed} {matchesUsed === 1 ? 'jogo oficial' : 'jogos oficiais'} desde 31/07 ·{' '}
+            {clubsFitted} clubes · {jogosEncerrados} de {jogosEncerrados + jogosEmAberto} jogos do bolão
+            encerrados · {modelVersion}
           </span>
         </div>
       </div>
 
+      {ranking && (
+        <Ranking r={ranking} palpitesEmAberto={palpitesEmAberto} palpitesDePodio={palpitesDePodio} />
+      )}
+
+      <h2 className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
+        Chance de classificação
+      </h2>
       <div className="space-y-5">
         {porCompeticao.map((g) => (
           <section key={g.key}>

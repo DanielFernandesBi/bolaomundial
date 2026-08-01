@@ -1,15 +1,17 @@
 'use server';
 
 // ============================================================================
-// Projeção dos confrontos do bolão de clubes.
+// Projeção do bolão de clubes: confrontos e ranking.
 //
-// Roda o motor de lib/club-model sobre os dados reais: prior Opta congelado em
-// 31/07/2026 + jogos oficiais posteriores coletados da API-Football.
+// Roda o motor de lib/club-model sobre os dados reais — prior Opta congelado
+// em 31/07/2026 mais os jogos oficiais posteriores coletados da API-Football.
 //
 // O ajuste acontece AQUI, em TypeScript, e não em plpgsql no cron. Manter a
 // matemática num lugar só evita a divergência silenciosa entre duas
-// implementações da mesma fórmula — que é o defeito mais caro que este tipo de
-// sistema costuma acumular.
+// implementações da mesma fórmula.
+//
+// ATENÇÃO: arquivo 'use server'. Todo export precisa ser função async — um
+// `export const` invalida o módulo inteiro e derruba o build.
 // ============================================================================
 
 import { createServerSupabaseClient } from '@/lib/supabase';
@@ -21,53 +23,68 @@ import {
   estimateBaselines,
   fitStrengths,
   projectTie,
+  runPoolSimulation,
 } from '@/lib/club-model';
-import type { ClubPrior, CompetitionBaseline, ModelMatch } from '@/lib/club-model';
+import type {
+  ClubPrior,
+  ClubStrength,
+  CompetitionBaseline,
+  ModelMatch,
+  PoolPlayer,
+  PoolPodiumPick,
+  PoolResult,
+  PoolTie,
+} from '@/lib/club-model';
 
 export interface TieProjecao {
   tieId: number;
   competition: string;
   round: string | null;
-  /** Mandante da IDA. */
   homeName: string;
   awayName: string;
-  homeKey: string | null;
-  awayKey: string | null;
   advance: number;
   low: number;
   high: number;
   decided: boolean;
-  /** Jogos equivalentes de evidência pós-T0 por trás da estimativa. */
-  evidence: number;
   idaScore: string | null;
   voltaScore: string | null;
 }
 
 export interface ProjecaoData {
   ties: TieProjecao[];
+  ranking: PoolResult | null;
   modelVersion: string;
-  /** Partidas pós-T0 que efetivamente entraram no ajuste. */
   matchesUsed: number;
   clubsFitted: number;
-  calculatedAt: string;
+  jogosEncerrados: number;
+  jogosEmAberto: number;
+  palpitesEmAberto: number;
+  palpitesDePodio: number;
 }
 
-export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData> {
-  const supabase = await createServerSupabaseClient();
+const ROUND_ORDER = ['oitavas', 'quartas', 'semi', 'final'];
 
-  const [{ data: ratingsRaw }, { data: matchesRaw }, { data: tourn }] = await Promise.all([
+// ── Ajuste, compartilhado pelas duas projeções ──────────────────────────────
+interface Ajuste {
+  strengths: Map<string, ClubStrength>;
+  baselines: Map<string, CompetitionBaseline>;
+  resolver: (nome: string | null) => string | null;
+  matchesUsed: number;
+  clubsFitted: number;
+}
+
+async function ajustarForcas(supabase: any): Promise<Ajuste> {
+  const [{ data: ratingsRaw }, { data: matchesRaw }, { data: apelidosRaw }] = await Promise.all([
     supabase.rpc('club_model_ratings'),
     supabase.rpc('club_model_matches'),
-    supabase.from('tournaments').select('id').eq('slug', tournamentSlug).single(),
+    supabase.from('club_aliases').select('alias, team_key'),
   ]);
 
   const priors: ClubPrior[] = ((ratingsRaw ?? []) as any[]).map((r) => ({
     teamKey: r.team_key,
     rating: Number(r.rating),
   }));
-  const anchorKeys = ((ratingsRaw ?? []) as any[])
-    .filter((r) => r.is_bolao_team)
-    .map((r) => r.team_key);
+  const anchorKeys = ((ratingsRaw ?? []) as any[]).filter((r) => r.is_bolao_team).map((r) => r.team_key);
 
   const observados: ModelMatch[] = ((matchesRaw ?? []) as any[]).map((m) => ({
     homeKey: m.home_key,
@@ -81,83 +98,129 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
   const pesos = new Map<string, number>();
   for (const m of (matchesRaw ?? []) as any[]) pesos.set(m.competition, Number(m.weight));
 
-  // Baseline inicial calibrada no Paulistão (§1.3 do plano). Assim que houver
-  // amostra própria, estimateBaselines a substitui pela da competição.
-  let baselines = new Map<string, CompetitionBaseline>();
+  const baselines = new Map<string, CompetitionBaseline>();
   for (const [comp, weight] of pesos) {
     baselines.set(comp, { muHome: DEFAULT_MU_HOME, muAway: DEFAULT_MU_AWAY, weight });
   }
 
   let fit = fitStrengths(priors, observados, baselines, { anchorKeys, kappa: KAPPA });
-  // Alterna força e baseline algumas rodadas: é o que impede o viés por
-  // competição descrito em §2.1 do plano. Com pouquíssimos jogos as baselines
-  // mal se movem, e o encolhimento de estimateBaselines segura o exagero.
+  // Alterna força e baseline: é o que impede o viés por competição descrito em
+  // §2.1 do plano. Só vale a pena com amostra — abaixo disso o encolhimento de
+  // estimateBaselines devolveria praticamente a média global.
   for (let i = 0; i < 3 && observados.length >= 20; i++) {
     const novas = estimateBaselines(observados, fit.strengths, { weights: pesos });
     for (const [k, v] of novas) baselines.set(k, v);
     fit = fitStrengths(priors, observados, baselines, { anchorKeys, kappa: KAPPA });
   }
 
-  // ── Confrontos do bolão ───────────────────────────────────────────────────
-  const { data: partidas } = await supabase
-    .from('matches')
-    .select('tie_id, leg, competition, team_home, team_away, score_home, score_away, status, ties(round)')
-    .eq('tournament_id', (tourn as any)?.id ?? -1)
-    .not('tie_id', 'is', null);
-
-  const { data: apelidosRaw } = await supabase.from('club_aliases').select('alias, team_key');
   const apelidos = new Map<string, string>();
   for (const a of (apelidosRaw ?? []) as any[]) apelidos.set(a.alias, a.team_key);
   const chaves = new Set(priors.map((p) => p.teamKey));
-  const resolver = (nome: string): string | null => {
-    const n = normalizar(nome);
-    return apelidos.get(n) ?? (chaves.has(n) ? n : null);
-  };
 
-  const porTie = new Map<number, any[]>();
-  for (const m of (partidas ?? []) as any[]) {
-    if (!porTie.has(m.tie_id)) porTie.set(m.tie_id, []);
-    porTie.get(m.tie_id)!.push(m);
+  return {
+    strengths: fit.strengths,
+    baselines,
+    resolver: (nome: string | null) => {
+      if (!nome) return null;
+      const n = normalizar(nome);
+      return apelidos.get(n) ?? (chaves.has(n) ? n : null);
+    },
+    matchesUsed: observados.length,
+    clubsFitted: fit.strengths.size,
+  };
+}
+
+// ── Projeção pública ────────────────────────────────────────────────────────
+export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData> {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tourn } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+  const tid = (tourn as any)?.id as number | undefined;
+
+  const ajuste = await ajustarForcas(supabase);
+
+  const [{ data: tiesRaw }, { data: matchesRaw }, { data: predsRaw }, { data: podiosRaw }, { data: rankingRaw }] =
+    await Promise.all([
+      supabase
+        .from('ties')
+        .select(
+          'id, competition, round, slot, team_a, team_b, series_type, match_has_extra_time, ' +
+            'next_tie_id, next_slot_side, ida_match_id, volta_match_id, winner_team'
+        )
+        .eq('tournament_id', tid ?? -1),
+      supabase.from('matches').select('id, status, score_home, score_away').eq('tournament_id', tid ?? -1),
+      supabase
+        .from('predictions')
+        .select('user_id, match_id, pred_home, pred_away, pred_pen_winner, matches!inner(tournament_id)')
+        .eq('matches.tournament_id', tid ?? -1),
+      supabase
+        .from('podium_predictions')
+        .select('user_id, competition, champion_team, runner_up_team')
+        .eq('tournament_id', tid ?? -1),
+      supabase
+        .from('tournament_rankings')
+        .select('user_id, total_points, profiles(username, avatar_url)')
+        .eq('tournament_id', tid ?? -1),
+    ]);
+
+  const placar = new Map<number, { home: number; away: number } | null>();
+  let jogosEncerrados = 0;
+  for (const m of (matchesRaw ?? []) as any[]) {
+    const ok = m.status === 'FINISHED' && m.score_home !== null && m.score_away !== null;
+    placar.set(m.id, ok ? { home: m.score_home, away: m.score_away } : null);
+    if (ok) jogosEncerrados++;
   }
 
-  const media = { muHome: DEFAULT_MU_HOME, muAway: DEFAULT_MU_AWAY, weight: 1 };
-  const ties: TieProjecao[] = [];
+  const ties: PoolTie[] = ((tiesRaw ?? []) as any[]).map((t) => ({
+    tieId: t.id,
+    competition: t.competition,
+    round: t.round,
+    slot: t.slot,
+    teamA: t.team_a,
+    teamB: t.team_b,
+    keyA: ajuste.resolver(t.team_a),
+    keyB: ajuste.resolver(t.team_b),
+    seriesType: t.series_type === 'single' ? 'single' : 'two_leg',
+    hasExtraTime: !!t.match_has_extra_time,
+    nextTieId: t.next_tie_id ?? null,
+    nextSlotSide: t.next_slot_side === 'a' || t.next_slot_side === 'b' ? t.next_slot_side : null,
+    idaMatchId: t.ida_match_id ?? null,
+    voltaMatchId: t.volta_match_id ?? null,
+    idaPlayed: t.ida_match_id ? placar.get(t.ida_match_id) ?? null : null,
+    voltaPlayed: t.volta_match_id ? placar.get(t.volta_match_id) ?? null : null,
+    winnerTeam: t.winner_team ?? null,
+  }));
 
-  for (const [tieId, jogos] of porTie) {
-    const ida = jogos.find((j) => j.leg === 'ida');
-    const volta = jogos.find((j) => j.leg === 'volta');
-    if (!ida) continue;
+  // ── Confronto a confronto ────────────────────────────────────────────────
+  const projecoes: TieProjecao[] = [];
+  for (const t of ties) {
+    // Só as fases já sorteadas têm participantes; as futuras entram no Monte
+    // Carlo do ranking, mas não têm o que exibir aqui.
+    if (!t.teamA || !t.teamB) continue;
 
-    const hk = resolver(ida.team_home);
-    const ak = resolver(ida.team_away);
-    const A = hk ? fit.strengths.get(hk) : undefined;
-    const B = ak ? fit.strengths.get(ak) : undefined;
-
-    const placar = (j: any) =>
-      j && j.status === 'FINISHED' && j.score_home !== null && j.score_away !== null
-        ? { home: j.score_home as number, away: j.score_away as number }
-        : undefined;
-
+    const A = t.keyA ? ajuste.strengths.get(t.keyA) : undefined;
+    const B = t.keyB ? ajuste.strengths.get(t.keyB) : undefined;
     const base: TieProjecao = {
-      tieId,
-      competition: ida.competition,
-      round: (ida.ties as any)?.round ?? null,
-      homeName: ida.team_home,
-      awayName: ida.team_away,
-      homeKey: hk,
-      awayKey: ak,
+      tieId: t.tieId,
+      competition: t.competition,
+      round: t.round,
+      homeName: t.teamA,
+      awayName: t.teamB,
       advance: 0.5,
       low: 0.5,
       high: 0.5,
       decided: false,
-      evidence: 0,
-      idaScore: placar(ida) ? `${ida.score_home}–${ida.score_away}` : null,
-      voltaScore: placar(volta) ? `${volta.score_home}–${volta.score_away}` : null,
+      idaScore: t.idaPlayed ? `${t.idaPlayed.home}–${t.idaPlayed.away}` : null,
+      voltaScore: t.voltaPlayed ? `${t.voltaPlayed.home}–${t.voltaPlayed.away}` : null,
     };
 
     // Clube sem prior não recebe projeção inventada: fica em 50/50 declarado.
     if (!A || !B) {
-      ties.push(base);
+      projecoes.push(base);
       continue;
     }
 
@@ -165,33 +228,86 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
       {
         homeFirstLeg: A,
         awayFirstLeg: B,
-        baseline: baselines.get(ida.competition) ?? media,
-        firstLegPlayed: placar(ida),
-        secondLegPlayed: placar(volta),
+        baseline: ajuste.baselines.get(t.competition) ?? {
+          muHome: DEFAULT_MU_HOME,
+          muAway: DEFAULT_MU_AWAY,
+          weight: 1,
+        },
+        firstLegPlayed: t.idaPlayed ?? undefined,
+        secondLegPlayed: t.voltaPlayed ?? undefined,
       },
       2000,
-      // Semente derivada do confronto: a mesma chave dá sempre o mesmo número,
+      // Semente derivada do confronto: o mesmo dado dá sempre o mesmo número,
       // então a página não "pisca" valores diferentes a cada carregamento.
-      1_000_003 + tieId * 7919
+      1_000_003 + t.tieId * 7919
     );
-
-    ties.push({ ...base, advance: p.advance, low: p.low, high: p.high, decided: p.decided, evidence: p.evidence });
+    projecoes.push({ ...base, advance: p.advance, low: p.low, high: p.high, decided: p.decided });
   }
 
-  ties.sort(
+  projecoes.sort(
     (a, b) => a.competition.localeCompare(b.competition) || a.homeName.localeCompare(b.homeName, 'pt-BR')
   );
 
+  // ── Ranking do bolão ─────────────────────────────────────────────────────
+  const players: PoolPlayer[] = ((rankingRaw ?? []) as any[]).map((r) => ({
+    userId: r.user_id,
+    username: (r.profiles as any)?.username ?? 'jogador',
+    avatarUrl: (r.profiles as any)?.avatar_url ?? null,
+    // Pontos já consolidados. NÃO são ressimulados: o passado não pode mudar a
+    // cada carregamento da página.
+    basePoints: Number(r.total_points) || 0,
+  }));
+
+  const predictions = ((predsRaw ?? []) as any[]).map((p) => ({
+    userId: p.user_id,
+    matchId: p.match_id,
+    predHome: p.pred_home,
+    predAway: p.pred_away,
+    predPenWinner: (p.pred_pen_winner as 'home' | 'away' | null) ?? null,
+  }));
+
+  const podiumPicks: PoolPodiumPick[] = ((podiosRaw ?? []) as any[]).map((p) => ({
+    userId: p.user_id,
+    competition: p.competition,
+    champion: p.champion_team,
+    runnerUp: p.runner_up_team,
+  }));
+
+  const emAberto = new Set<number>();
+  for (const t of ties) {
+    if (t.idaMatchId && !t.idaPlayed) emAberto.add(t.idaMatchId);
+    if (t.voltaMatchId && !t.voltaPlayed) emAberto.add(t.voltaMatchId);
+  }
+
+  const ranking =
+    players.length > 0
+      ? runPoolSimulation({
+          players,
+          ties,
+          predictions,
+          podiumPicks,
+          strengths: ajuste.strengths,
+          baselines: ajuste.baselines,
+          roundOrder: ROUND_ORDER,
+          scenarios: 4000,
+          seed: 20260801,
+        })
+      : null;
+
   return {
-    ties,
+    ties: projecoes,
+    ranking,
     modelVersion: MODEL_VERSION,
-    matchesUsed: observados.length,
-    clubsFitted: fit.strengths.size,
-    calculatedAt: new Date().toISOString(),
+    matchesUsed: ajuste.matchesUsed,
+    clubsFitted: ajuste.clubsFitted,
+    jogosEncerrados,
+    jogosEmAberto: emAberto.size,
+    palpitesEmAberto: predictions.filter((p) => emAberto.has(p.matchId)).length,
+    palpitesDePodio: podiumPicks.length,
   };
 }
 
-/** Espelha club_key_normalize() do banco. */
+/** Espelha club_key_normalize() do banco. Se um mudar, o outro tem de mudar. */
 function normalizar(s: string): string {
   return s
     .toLowerCase()

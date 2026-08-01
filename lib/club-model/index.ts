@@ -16,3 +16,4 @@ export * from './types';
 export * from './strength';
 export * from './poisson';
 export * from './knockout';
+export * from './pool';
