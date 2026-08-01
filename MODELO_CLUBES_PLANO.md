@@ -334,6 +334,43 @@ bolão.
 interface. Trocar de fornecedor depois é trocar um arquivo, não refazer o
 sistema.
 
+---
+
+## 4.7. O que o plano gratuito da API-Football realmente permite (medido)
+
+Conferido em 01/08/2026 com chave real, chamando a API de dentro do banco.
+A conta responde `{"plan":"Free","limit_day":100}`.
+
+**Duas travas que a documentação não deixa óbvias:**
+
+1. **Temporada.** Qualquer consulta com `?season=` responde
+   `"Free plans do not have access to this season, try from 2022 to 2024"`.
+   Isso derruba `/teams?league=13&season=2026` e `/fixtures?league=73&season=2026`
+   — ou seja, todo o caminho "descobrir os times da competição" e "puxar a
+   tabela da competição".
+2. **Data.** `/fixtures?date=` funciona **sem** trava de temporada, mas só
+   dentro de uma janela de ~3 dias: `"try from 2026-07-31 to 2026-08-02"`.
+
+**Consequência prática:** consultar por data não era só a opção mais econômica
+— é a **única que funciona** no plano gratuito. E a arquitetura fica assim:
+
+| | |
+|---|---|
+| custo por sincronização | 1 chamada (o dia inteiro do mundo, ~500–1.000 jogos) |
+| rotina | 2×/dia, sempre reprocessando ontem = 4 chamadas/dia |
+| folga | 96 chamadas/dia sobrando |
+| backfill | **não existe** — dia fora da janela está perdido para sempre |
+
+**O que os US$ 19/mês do plano Pro comprariam**, se um dia se justificar:
+
+- histórico de verdade, para recalibrar `beta`, `rho` e `mu_c` sobre Libertadores
+  e Copa do Brasil em vez do Paulistão (que tem lookahead e rotação de elenco);
+- jogos futuros, para a página de resultados também mostrar a agenda;
+- resiliência: hoje, dois dias de cron parado significam dados perdidos que não
+  se recuperam.
+
+Nenhum dos três é bloqueante agora. O primeiro é o que mais valeria.
+
 ### 4.5. Onde roda o cron
 
 O plano Hobby da Vercel limita cron a execução diária. Duas sincronizações/dia
@@ -463,16 +500,21 @@ Nada disso toca no app em produção. `has_simulator` do bolão de clubes contin
    prior, o ótimo verdadeiro deve ser menor. **`kappa = 12` fica como meio-termo
    defensável, para recalibrar na Fase 1.**
 
-### Fase 1 — coleta (precisa da chave)
+### Fase 1 — coleta — **CONCLUÍDA**
 
-| # | Entrega |
-|---|---|
-| 1.0 | Conferir a que ligas o token dá direito (`/v3/my/enrollments`) e fixar o fornecedor |
-| 1.1 | Guardar a chave **rotacionada** no Vault do Supabase |
-| 1.2 | Descobrir e conferir manualmente os 40 IDs de time do fornecedor |
-| 1.3 | `club_fixtures` + cliente atrás de interface + sincronização **por data** |
-| 1.4 | Backfill histórico para calibração (`beta`, `mu_c` por competição) |
-| 1.5 | Cron no Supabase (`pg_cron` + `pg_net`), 2×/dia, com log de sincronização |
+| # | Entrega | Estado |
+|---|---|---|
+| 1.0 | Fornecedor fixado: API-Football (Sportmonks recusada por cobertura) | feito |
+| 1.1 | Chave no Vault do Supabase, cifrada, fora do repositório | feito |
+| 1.2 | Cobertura conferida: Libertadores 13, Sul-Americana 11, Copa do Brasil 73, todas as primeiras divisões e **todos os estaduais** | feito |
+| 1.3 | `club_fixtures` + `api_football_get()` + `sync_club_fixtures(data)` | feito |
+| 1.4 | Backfill histórico | **impossível no plano gratuito** — ver 4.7 |
+| 1.5 | Cron 2×/dia via `pg_cron`, com log e tolerância a dia recusado | feito |
+| 1.6 | Mapa de clubes ampliado de 50 para 384, sem chutar nomes ambíguos | feito |
+
+O risco que estava em aberto — estaduais possivelmente não cobertos — **não se
+confirmou**: Paulista A1, Carioca, Mineiro, Gaúcho, Catarinense, Paranaense,
+Baiano, Pernambucano, Cearense e Goiano estão todos lá, temporada 2026.
 
 ### Fase 2 — página de resultados (valor para o usuário)
 
