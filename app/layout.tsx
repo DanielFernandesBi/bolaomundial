@@ -10,6 +10,7 @@ const dmMono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '
 import { Navbar } from '@/components/navbar';
 import { BottomNav } from '@/components/bottom-nav';
 import { MobileHeader } from '@/components/mobile-header';
+import { Telemetria } from '@/components/telemetria';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 export const metadata: Metadata = {
@@ -100,6 +101,9 @@ export default async function RootLayout({
         )}
         {children}
         {user && <BottomNav isAdmin={isAdmin} />}
+        {/* Coleta de uso. Só para quem está logado — visitante não tem linha
+            para gravar, e a RLS exigiria uma. Não renderiza nada. */}
+        <Telemetria userId={user?.id ?? null} />
       </body>
     </html>
   );

@@ -7,6 +7,7 @@ import {
   getAdminBracket,
   getResultadosSugeridos,
   getApelidosSugeridos,
+  getUso,
 } from './actions';
 import { AdminMatchesTable } from './admin-matches-table';
 import { AdminTabs } from './admin-tabs';
@@ -19,6 +20,7 @@ import { EditTournamentDialog } from './edit-tournament-dialog';
 import { PodiumEntry } from './podium-entry';
 import { CompetitionResultsEntry } from './competition-results-entry';
 import { PrizeEntry } from './prize-entry';
+import { PainelUso } from './painel-uso';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 interface AdminPageProps {
@@ -68,6 +70,9 @@ export default async function AdminPage({ params }: AdminPageProps) {
   const apelidos = hasCompetitions
     ? await getApelidosSugeridos()
     : { apelidos: [], error: undefined };
+  // Telemetria de uso. Dado global do app, não do torneio — a aba aparece em
+  // qualquer bolão porque o painel é o mesmo.
+  const uso = await getUso(30);
   // Chaveamento (ties) para a seção de administração do bracket
   const bracket = await getAdminBracket(tournamentSlug);
   const bracketCompetitions = !bracket.error ? bracket.competitions : [];
@@ -216,6 +221,11 @@ export default async function AdminPage({ params }: AdminPageProps) {
                   },
                 ]
               : []),
+            {
+              key: 'uso',
+              label: 'Uso',
+              content: <PainelUso inicial={uso} />,
+            },
           ]}
         />
       </div>

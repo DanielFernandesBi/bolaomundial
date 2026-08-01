@@ -1202,3 +1202,116 @@ export async function ignorarApelido(nome: string, motivo: string, tournamentSlu
   revalidatePath(`/${tournamentSlug}/admin`);
   return { success: true };
 }
+
+// ============================================================================
+// Telemetria de uso.
+//
+// Tudo agregado no banco (funções uso_*), não aqui: são seis consultas que
+// varrem a tabela de visualizações inteira, e trazê-las cruas para o Node só
+// para somar seria pagar rede por conta que o Postgres faz de graça.
+//
+// A checagem de admin acontece duas vezes: aqui, para dar erro legível, e
+// dentro de cada função do banco, que é quem realmente garante.
+// ============================================================================
+
+export interface UsoResumo {
+  sessoes: number;
+  visualizacoes: number;
+  usuarios: number;
+  duracao_media_seg: number;
+  tempo_total_seg: number;
+  telas_por_sessao: number | null;
+  ativos_hoje: number;
+  ativos_7d: number;
+  ativos_30d: number;
+}
+
+export interface UsoDia {
+  dia: string;
+  sessoes: number;
+  visualizacoes: number;
+  usuarios: number;
+  tempo_total_seg: number;
+}
+
+export interface UsoArea {
+  area: string;
+  visualizacoes: number;
+  usuarios: number;
+  tempo_total_seg: number;
+  tempo_medio_seg: number;
+}
+
+export interface UsoUsuario {
+  user_id: string;
+  username: string | null;
+  avatar_url: string | null;
+  sessoes: number;
+  visualizacoes: number;
+  tempo_total_seg: number;
+  ultima_visita: string | null;
+  dias_ativos: number;
+  area_favorita: string | null;
+}
+
+export interface UsoHora {
+  dia_semana: number;
+  hora: number;
+  visualizacoes: number;
+}
+
+export interface UsoDispositivo {
+  dispositivo: string;
+  instalado: boolean;
+  sessoes: number;
+  usuarios: number;
+}
+
+export interface UsoDados {
+  dias: number;
+  resumo: UsoResumo | null;
+  porDia: UsoDia[];
+  porArea: UsoArea[];
+  porUsuario: UsoUsuario[];
+  porHora: UsoHora[];
+  dispositivos: UsoDispositivo[];
+  error?: string;
+}
+
+const USO_VAZIO = { resumo: null, porDia: [], porArea: [], porUsuario: [], porHora: [], dispositivos: [] };
+
+export async function getUso(dias: number = 30): Promise<UsoDados> {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { dias, ...USO_VAZIO, error: accessCheck.error || 'Acesso negado' };
+  }
+
+  // Janela limitada a valores conhecidos: o número vem de um botão da tela,
+  // mas nada impede uma chamada direta à server action com 100000.
+  const p_dias = [7, 30, 90, 365].includes(dias) ? dias : 30;
+
+  const supabase = await createServerSupabaseClient();
+  const [resumo, porDia, porArea, porUsuario, porHora, dispositivos] = await Promise.all([
+    supabase.rpc('uso_resumo', { p_dias } as any),
+    supabase.rpc('uso_por_dia', { p_dias } as any),
+    supabase.rpc('uso_por_area', { p_dias } as any),
+    supabase.rpc('uso_por_usuario', { p_dias } as any),
+    supabase.rpc('uso_por_hora', { p_dias } as any),
+    supabase.rpc('uso_dispositivos', { p_dias } as any),
+  ]);
+
+  const erro = [resumo, porDia, porArea, porUsuario, porHora, dispositivos].find((r) => r.error);
+  if (erro) return { dias: p_dias, ...USO_VAZIO, error: (erro as any).error.message };
+
+  return {
+    dias: p_dias,
+    // `as any` e não `as any[]`: os tipos gerados do Supabase resolvem estas
+    // RPCs para `null`, e o TS recusa a conversão direta de null para array.
+    resumo: (((resumo.data as any) ?? []) as UsoResumo[])[0] ?? null,
+    porDia: ((porDia.data as any) ?? []) as UsoDia[],
+    porArea: ((porArea.data as any) ?? []) as UsoArea[],
+    porUsuario: ((porUsuario.data as any) ?? []) as UsoUsuario[],
+    porHora: ((porHora.data as any) ?? []) as UsoHora[],
+    dispositivos: ((dispositivos.data as any) ?? []) as UsoDispositivo[],
+  };
+}

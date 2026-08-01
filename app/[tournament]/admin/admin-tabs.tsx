@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarDays, Gift, GitBranch, Tags, Trophy } from 'lucide-react';
+import { BarChart3, CalendarDays, Gift, GitBranch, Tags, Trophy } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // ============================================================================
@@ -26,6 +26,7 @@ const ICONES: Record<string, typeof Trophy> = {
   podio: Trophy,
   apelidos: Tags,
   torneio: Gift,
+  uso: BarChart3,
 };
 
 export interface AbaAdmin {
