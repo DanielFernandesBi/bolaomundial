@@ -1,17 +1,38 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, Filter, RefreshCw, Shield } from 'lucide-react';
-import type { ClubFixture, ResultadosData } from './actions';
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  Filter,
+  RefreshCw,
+  Search,
+  Shield,
+  Trophy,
+  X,
+} from 'lucide-react';
+import type { ClubeStats, ClubFixture, LigaStats, ResultadosData } from './actions';
 
 // ============================================================================
-// Últimos resultados dos clubes do bolão.
+// Resultados: jogos, times e ligas.
 //
-// Escopo desta primeira versão, deliberadamente enxuto: lista por dia, filtro
-// por clube e filtro "só as três copas". Os filtros de país e de janela de
-// 7/15/30/60 dias que a especificação sugeria ficam para quando houver volume
-// que os justifique — hoje o histórico começa em 31/07/2026 (o T0 do snapshot)
-// e não existe backfill.
+// A tela nasceu para uma coisa só — os últimos jogos dos 40 clubes do bolão.
+// A coleta cresceu (74 ligas capturadas, centenas de clubes descobertos) e a
+// tela precisou crescer junto, em três recortes:
+//
+//   Jogos — o que aconteceu e o que vem, por dia
+//   Times — quem joga bem, ordenável, com retrospecto
+//   Ligas — o que estamos guardando, e desde quando
+//
+// As três compartilham a mesma lista de partidas; o que muda é o recorte.
+// Escolher um clube ou uma liga nas outras abas leva de volta para Jogos com o
+// recorte aplicado — em vez de abrir uma quarta tela, que teria de repetir
+// tudo.
+//
+// As estatísticas vêm agregadas do banco (estatisticas_clubes,
+// estatisticas_ligas) e não do que está carregado aqui: conta feita sobre a
+// página é exata só enquanto tudo cabe na página.
 // ============================================================================
 
 const ENCERRADOS = new Set(['FT', 'AET', 'PEN']);
@@ -255,79 +276,7 @@ function LinhaJogo({ f }: { f: ClubFixture }) {
   );
 }
 
-// ── Retrospecto de um clube ─────────────────────────────────────────────────
-//
-// Tudo aqui sai de club_fixtures, que é o que a sincronização já traz. Nenhuma
-// chamada nova à API.
-//
-// Convenção de vitória: vale o placar do tempo normal mais a prorrogação. Jogo
-// decidido nos PÊNALTIS conta como EMPATE — é a convenção da FIFA e da CBF, e
-// o contrário inflaria a vitória de quem só ganhou na loteria. Quem quiser
-// saber quem passou de fase tem a etiqueta na linha do jogo.
-interface Retrospecto {
-  jogos: number;
-  v: number;
-  e: number;
-  d: number;
-  golsPro: number;
-  golsContra: number;
-  semSofrer: number;
-  casa: { v: number; e: number; d: number };
-  fora: { v: number; e: number; d: number };
-  /** Do mais recente para o mais antigo, no máximo 5. */
-  ultimos: { r: 'V' | 'E' | 'D'; rotulo: string }[];
-}
-
-function calcularRetrospecto(fixtures: ClubFixture[], teamKey: string): Retrospecto | null {
-  const jogos = fixtures
-    .filter(
-      (f) =>
-        ENCERRADOS.has(f.status) &&
-        f.goals_home_90 !== null &&
-        f.goals_away_90 !== null &&
-        (f.home_team_key === teamKey || f.away_team_key === teamKey)
-    )
-    .sort((a, b) => b.kickoff_at.localeCompare(a.kickoff_at));
-
-  if (jogos.length === 0) return null;
-
-  const r: Retrospecto = {
-    jogos: jogos.length,
-    v: 0,
-    e: 0,
-    d: 0,
-    golsPro: 0,
-    golsContra: 0,
-    semSofrer: 0,
-    casa: { v: 0, e: 0, d: 0 },
-    fora: { v: 0, e: 0, d: 0 },
-    ultimos: [],
-  };
-
-  for (const f of jogos) {
-    const emCasa = f.home_team_key === teamKey;
-    const meus = (emCasa ? f.goals_home_90 : f.goals_away_90) ?? 0;
-    const deles = (emCasa ? f.goals_away_90 : f.goals_home_90) ?? 0;
-    const meusExtra = (emCasa ? f.goals_home_extra : f.goals_away_extra) ?? 0;
-    const delesExtra = (emCasa ? f.goals_away_extra : f.goals_home_extra) ?? 0;
-
-    const total = meus + meusExtra;
-    const totalDeles = deles + delesExtra;
-    const res: 'V' | 'E' | 'D' = total > totalDeles ? 'V' : total < totalDeles ? 'D' : 'E';
-
-    r[res === 'V' ? 'v' : res === 'E' ? 'e' : 'd']++;
-    (emCasa ? r.casa : r.fora)[res === 'V' ? 'v' : res === 'E' ? 'e' : 'd']++;
-    r.golsPro += total;
-    r.golsContra += totalDeles;
-    if (totalDeles === 0) r.semSofrer++;
-
-    if (r.ultimos.length < 5) {
-      const adv = emCasa ? f.away_display : f.home_display;
-      r.ultimos.push({ r: res, rotulo: `${emCasa ? '' : 'fora · '}${adv} ${total}–${totalDeles}` });
-    }
-  }
-  return r;
-}
+// ── Peças de estatística ────────────────────────────────────────────────────
 
 const TOM_RESULTADO = {
   V: 'bg-state-open/15 text-state-open',
@@ -335,32 +284,59 @@ const TOM_RESULTADO = {
   D: 'bg-destructive/15 text-destructive',
 } as const;
 
-function Numero({ valor, rotulo }: { valor: string; rotulo: string }) {
+/** Os últimos resultados, do mais recente para o mais antigo. */
+function Forma({ ultimos, tamanho = 'md' }: { ultimos: string; tamanho?: 'sm' | 'md' }) {
+  if (!ultimos) return <span className="font-mono text-[10px] text-[hsl(var(--faint))]">—</span>;
+  const cls = tamanho === 'sm' ? 'h-4 w-4 text-[9px]' : 'h-5 w-5 text-[10px]';
   return (
-    <div>
-      <p className="font-mono text-lg font-bold tabular-nums text-foreground">{valor}</p>
-      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[hsl(var(--faint))]">
+    <span className="flex items-center gap-1">
+      {[...ultimos].map((r, i) => (
+        <span
+          key={i}
+          className={`flex items-center justify-center rounded-full font-mono font-bold ${cls} ${
+            TOM_RESULTADO[r as 'V' | 'E' | 'D']
+          }`}
+        >
+          {r}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Linha de estatística: rótulo à esquerda, valor à direita.
+ *
+ * Linha e não célula de grade. A versão anterior era uma grade 4×3 de números
+ * centralizados, todos do mesmo tamanho — dava um paredão sem hierarquia, em
+ * que "1 vitória" e "0,00 gols contra por jogo" competiam pela mesma atenção.
+ * Em lista, o olho percorre rótulos e para no que interessa.
+ */
+function Stat({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode; nota?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-t border-hairline px-3.5 py-2.5 first:border-t-0">
+      <span className="min-w-0 text-[13px] text-muted-foreground">
         {rotulo}
-      </p>
+        {nota && <span className="ml-1.5 text-[11px] text-[hsl(var(--faint))]">{nota}</span>}
+      </span>
+      <span className="flex-shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground">
+        {valor}
+      </span>
     </div>
   );
 }
 
-function PainelClube({
-  nome,
-  escudo,
-  r,
-}: {
-  nome: string;
-  escudo: string | null;
-  r: Retrospecto | null;
-}) {
-  if (!r) {
+function n2(x: number): string {
+  return x.toFixed(2).replace('.', ',');
+}
+
+function PainelClube({ s }: { s: ClubeStats }) {
+  if (s.jogos === 0) {
     return (
       <div className="mb-4 flex items-center gap-3 rounded-[12px] border border-border bg-card px-3.5 py-3">
-        <Escudo url={escudo} />
+        <Escudo url={s.crest_url} />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">{nome}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{s.nome}</p>
           <p className="text-xs text-muted-foreground">
             Nenhum jogo encerrado ainda. O histórico começa em 31/07/2026.
           </p>
@@ -369,83 +345,310 @@ function PainelClube({
     );
   }
 
-  const media = (n: number) => (n / r.jogos).toFixed(2).replace('.', ',');
-  const saldo = r.golsPro - r.golsContra;
-  // Aproveitamento: pontos conquistados sobre pontos disputados. É a métrica
-  // que o torcedor brasileiro lê sem precisar de legenda.
-  const aproveitamento = Math.round(((r.v * 3 + r.e) / (r.jogos * 3)) * 100);
+  const aproveitamento = Math.round(((s.v * 3 + s.e) / (s.jogos * 3)) * 100);
+  const saldo = s.gols_pro - s.gols_contra;
+  const temHt = s.ht_pro + s.ht_contra > 0 || s.virou + s.entregou > 0;
 
   return (
     <div className="mb-4 overflow-hidden rounded-[12px] border border-border bg-card">
       <div className="flex items-center justify-between gap-3 border-b border-hairline px-3.5 py-3">
         <span className="flex min-w-0 items-center gap-2.5">
-          <Escudo url={escudo} />
-          <span className="truncate text-sm font-semibold text-foreground">{nome}</span>
+          <Escudo url={s.crest_url} />
+          <span className="truncate text-sm font-semibold text-foreground">{s.nome}</span>
         </span>
         <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
-          {r.jogos} {r.jogos === 1 ? 'jogo' : 'jogos'} desde 31/07
+          {s.jogos} {s.jogos === 1 ? 'jogo' : 'jogos'}
         </span>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 px-3.5 py-3">
-        <Numero valor={String(r.v)} rotulo="vitórias" />
-        <Numero valor={String(r.e)} rotulo="empates" />
-        <Numero valor={String(r.d)} rotulo="derrotas" />
-        <Numero valor={`${aproveitamento}%`} rotulo="aproveit." />
+      {/* Uma linha de destaque, com o número que resume e a forma. O resto vem
+          em lista abaixo — hierarquia, e não doze números do mesmo tamanho. */}
+      <div className="flex items-end justify-between gap-4 border-b border-hairline px-3.5 py-3.5">
+        <div>
+          <p className="font-mono text-3xl font-bold leading-none tabular-nums text-foreground">
+            {aproveitamento}%
+          </p>
+          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[hsl(var(--faint))]">
+            aproveitamento
+          </p>
+        </div>
+        <div className="text-right">
+          <Forma ultimos={s.ultimos} />
+          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[hsl(var(--faint))]">
+            últimos jogos
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 border-t border-hairline px-3.5 py-3">
-        <Numero valor={String(r.golsPro)} rotulo="gols pró" />
-        <Numero valor={String(r.golsContra)} rotulo="gols contra" />
-        <Numero valor={`${saldo > 0 ? '+' : ''}${saldo}`} rotulo="saldo" />
-        <Numero valor={String(r.semSofrer)} rotulo="sem sofrer" />
+      <Stat rotulo="Vitórias · empates · derrotas" valor={`${s.v}-${s.e}-${s.d}`} />
+      <Stat rotulo="Em casa" valor={`${s.casa_v}-${s.casa_e}-${s.casa_d}`} />
+      <Stat rotulo="Fora" valor={`${s.fora_v}-${s.fora_e}-${s.fora_d}`} />
+      <Stat rotulo="Gols pró · contra" valor={`${s.gols_pro} · ${s.gols_contra}`} />
+      <Stat rotulo="Saldo de gols" valor={`${saldo > 0 ? '+' : ''}${saldo}`} />
+      <Stat
+        rotulo="Média por jogo"
+        nota="pró · contra"
+        valor={`${n2(s.gols_pro / s.jogos)} · ${n2(s.gols_contra / s.jogos)}`}
+      />
+      <Stat rotulo="Jogos sem sofrer gol" valor={s.sem_sofrer} />
+      <Stat rotulo="Jogos sem marcar" valor={s.nao_marcou} />
+      {temHt && (
+        <>
+          {/* Estes dois só existem porque a resposta da API traz o placar do
+              INTERVALO — que a gente vinha descartando. */}
+          <Stat rotulo="Gols no 1º tempo" nota="pró · contra" valor={`${s.ht_pro} · ${s.ht_contra}`} />
+          <Stat
+            rotulo="Viradas · vantagens entregues"
+            nota="a partir do intervalo"
+            valor={`${s.virou} · ${s.entregou}`}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Aba Times ───────────────────────────────────────────────────────────────
+
+type Ordem = 'jogos' | 'aproveitamento' | 'gols_pro' | 'gols_contra' | 'nome';
+
+const ORDENS: { key: Ordem; rotulo: string }[] = [
+  { key: 'jogos', rotulo: 'Jogos' },
+  { key: 'aproveitamento', rotulo: 'Aproveit.' },
+  { key: 'gols_pro', rotulo: 'Ataque' },
+  { key: 'gols_contra', rotulo: 'Defesa' },
+  { key: 'nome', rotulo: 'A–Z' },
+];
+
+function aproveitamentoDe(s: ClubeStats): number {
+  return s.jogos === 0 ? -1 : (s.v * 3 + s.e) / (s.jogos * 3);
+}
+
+function AbaTimes({
+  stats,
+  aoEscolher,
+}: {
+  stats: ClubeStats[];
+  aoEscolher: (teamKey: string) => void;
+}) {
+  const [ordem, setOrdem] = useState<Ordem>('jogos');
+  const [soBolao, setSoBolao] = useState(true);
+  const [busca, setBusca] = useState('');
+
+  const lista = useMemo(() => {
+    const alvo = busca.trim().toLowerCase();
+    const f = stats.filter(
+      (s) => (!soBolao || s.is_bolao) && (!alvo || s.nome.toLowerCase().includes(alvo))
+    );
+    const ordenado = [...f];
+    ordenado.sort((a, b) => {
+      switch (ordem) {
+        case 'nome':
+          return a.nome.localeCompare(b.nome, 'pt-BR');
+        case 'aproveitamento':
+          return aproveitamentoDe(b) - aproveitamentoDe(a) || b.jogos - a.jogos;
+        case 'gols_pro':
+          // Por MÉDIA, não por total: com amostras de tamanhos diferentes o
+          // total premia quem jogou mais, não quem ataca melhor.
+          return (
+            (b.jogos ? b.gols_pro / b.jogos : -1) - (a.jogos ? a.gols_pro / a.jogos : -1) ||
+            b.jogos - a.jogos
+          );
+        case 'gols_contra':
+          return (
+            (a.jogos ? a.gols_contra / a.jogos : 99) - (b.jogos ? b.gols_contra / b.jogos : 99) ||
+            b.jogos - a.jogos
+          );
+        default:
+          return b.jogos - a.jogos || a.nome.localeCompare(b.nome, 'pt-BR');
+      }
+    });
+    return ordenado;
+  }, [stats, ordem, soBolao, busca]);
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2 rounded-[12px] border border-border bg-card px-3 py-2.5">
+        <Search className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar clube"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-[hsl(var(--faint))] focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => setSoBolao((v) => !v)}
+          aria-pressed={soBolao}
+          className={`flex-shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+            soBolao
+              ? 'border-primary/40 bg-primary/10 text-primary'
+              : 'border-border text-muted-foreground'
+          }`}
+        >
+          só bolão
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 border-t border-hairline px-3.5 py-3">
-        <Numero valor={media(r.golsPro)} rotulo="gols pró / jogo" />
-        <Numero valor={media(r.golsContra)} rotulo="gols contra / jogo" />
+      <div className="mb-3 grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+        {ORDENS.map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => setOrdem(o.key)}
+            aria-pressed={ordem === o.key}
+            className={`flex h-8 min-w-0 items-center justify-center rounded-[9px] px-1 text-[11px] font-semibold transition-colors ${
+              ordem === o.key
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <span className="truncate">{o.rotulo}</span>
+          </button>
+        ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline px-3.5 py-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[hsl(var(--faint))]">
-          casa {r.casa.v}-{r.casa.e}-{r.casa.d} · fora {r.fora.v}-{r.fora.e}-{r.fora.d}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[hsl(var(--faint))]">
-            últimos
-          </span>
-          {r.ultimos.map((u, i) => (
-            <span
-              key={i}
-              title={u.rotulo}
-              className={`flex h-5 w-5 items-center justify-center rounded-full font-mono text-[10px] font-bold ${TOM_RESULTADO[u.r]}`}
+      {lista.length === 0 ? (
+        <div className="rounded-[12px] border border-border bg-card px-4 py-10 text-center">
+          <p className="text-sm text-muted-foreground">Nenhum clube com esses filtros.</p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-[12px] border border-border bg-card">
+          {lista.map((s) => (
+            <button
+              key={s.team_key}
+              type="button"
+              onClick={() => aoEscolher(s.team_key)}
+              className="flex w-full items-center gap-2.5 border-t border-hairline px-3.5 py-2.5 text-left transition-colors first:border-t-0 hover:bg-accent/40"
             >
-              {u.r}
-            </span>
+              <Escudo url={s.crest_url} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-foreground">{s.nome}</span>
+                <span className="block font-mono text-[10px] uppercase tracking-wider text-[hsl(var(--faint))]">
+                  {s.jogos === 0
+                    ? 'sem jogos ainda'
+                    : `${s.jogos}j · ${s.v}-${s.e}-${s.d} · ${s.gols_pro}:${s.gols_contra}`}
+                </span>
+              </span>
+              {s.jogos > 0 && (
+                <span className="flex flex-shrink-0 items-center gap-2.5">
+                  <Forma ultimos={s.ultimos} tamanho="sm" />
+                  <span className="w-9 text-right font-mono text-sm font-bold tabular-nums text-foreground">
+                    {Math.round(aproveitamentoDe(s) * 100)}%
+                  </span>
+                </span>
+              )}
+              <ChevronRight className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />
+            </button>
           ))}
-        </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Aba Ligas ───────────────────────────────────────────────────────────────
+
+function AbaLigas({ ligas, aoEscolher }: { ligas: LigaStats[]; aoEscolher: (id: number) => void }) {
+  const [comJogos, setComJogos] = useState(true);
+  const visiveis = comJogos ? ligas.filter((l) => l.jogos > 0) : ligas;
+  const totalJogos = ligas.reduce((s, l) => s + l.jogos, 0);
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-border bg-card px-3.5 py-3">
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">{ligas.length} competições</strong> na lista de
+          captura, <strong className="text-foreground">{totalJogos} jogos</strong> guardados. Só
+          acumulamos daqui para a frente — o plano da API não permite buscar data passada.
+        </p>
+        <button
+          type="button"
+          onClick={() => setComJogos((v) => !v)}
+          aria-pressed={comJogos}
+          className={`flex-shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+            comJogos
+              ? 'border-primary/40 bg-primary/10 text-primary'
+              : 'border-border text-muted-foreground'
+          }`}
+        >
+          {comJogos ? 'com jogos' : 'todas'}
+        </button>
+      </div>
+
+      <div className="overflow-hidden rounded-[12px] border border-border bg-card">
+        {visiveis.map((l) => (
+          <button
+            key={l.league_id}
+            type="button"
+            onClick={() => aoEscolher(l.league_id)}
+            disabled={l.jogos === 0}
+            className="flex w-full items-center gap-2.5 border-t border-hairline px-3.5 py-2.5 text-left transition-colors first:border-t-0 hover:bg-accent/40 disabled:cursor-default disabled:opacity-60"
+          >
+            <Escudo url={l.logo_url} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-foreground">{l.nome}</span>
+              <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-[hsl(var(--faint))]">
+                {l.pais ?? '—'}
+                {l.jogos > 0 && ` · ${l.jogos}j · ${l.clubes} clubes`}
+                {l.media_gols !== null && ` · ${n2(l.media_gols)} gols/jogo`}
+              </span>
+            </span>
+            {/* Peso zero não é desprezo: é a ausência de rating Opta para a
+                região. Vale dizer na tela, senão parece liga de segunda. */}
+            {l.model_weight === 0 && (
+              <span className="flex-shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[hsl(var(--faint))]">
+                só histórico
+              </span>
+            )}
+            {l.jogos > 0 && (
+              <ChevronRight className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />
+            )}
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
-export function ResultadosContent({ fixtures, clubes, ultimaSincronizacao, ligasDasCopas }: ResultadosData) {
+// ── Tela ────────────────────────────────────────────────────────────────────
+
+type Aba = 'jogos' | 'times' | 'ligas';
+
+const ABAS: { key: Aba; rotulo: string; icone: typeof CalendarDays }[] = [
+  { key: 'jogos', rotulo: 'Jogos', icone: CalendarDays },
+  { key: 'times', rotulo: 'Times', icone: Shield },
+  { key: 'ligas', rotulo: 'Ligas', icone: Trophy },
+];
+
+export function ResultadosContent({
+  fixtures,
+  clubes,
+  stats,
+  ligas,
+  ultimaSincronizacao,
+  ligasDasCopas,
+}: ResultadosData) {
+  const [aba, setAba] = useState<Aba>('jogos');
   const [clube, setClube] = useState<string>('');
+  const [liga, setLiga] = useState<number | null>(null);
   const [soCopas, setSoCopas] = useState(false);
 
   const copas = useMemo(() => new Set(ligasDasCopas), [ligasDasCopas]);
 
   const filtrados = useMemo(() => {
     return fixtures.filter((f) => {
-      // Por padrão só interessam jogos de quem está no bolão. O banco guarda
-      // também jogos de adversários entre si, que servem ao modelo mas não ao
-      // jogador.
+      // Com um filtro explícito ligado, ele manda. Sem nenhum, a tela volta ao
+      // recorte original: só jogos de quem está no bolão. O banco guarda
+      // também as ligas capturadas inteiras, que servem à aba Ligas e ao
+      // histórico, mas encheriam esta lista de jogo que ninguém pediu.
+      if (liga !== null) return f.league_id === liga;
+      if (clube) return f.home_team_key === clube || f.away_team_key === clube;
       if (!f.home_is_bolao && !f.away_is_bolao) return false;
-      if (clube && f.home_team_key !== clube && f.away_team_key !== clube) return false;
       if (soCopas && !(f.league_id !== null && copas.has(f.league_id))) return false;
       return true;
     });
-  }, [fixtures, clube, soCopas, copas]);
+  }, [fixtures, clube, liga, soCopas, copas]);
 
   // Hoje/amanhã/ontem também em Brasília, pelo mesmo motivo dos rótulos.
   const dias = useMemo<[string, string, string]>(() => {
@@ -481,123 +684,202 @@ export function ResultadosContent({ fixtures, clubes, ultimaSincronizacao, ligas
   }, [filtrados, dias]);
 
   const primeiroFuturo = grupos.find((g) => g.futuro)?.dia;
+  const statsDoClube = clube ? stats.find((s) => s.team_key === clube) : undefined;
+  const ligaAberta = liga !== null ? ligas.find((l) => l.league_id === liga) : undefined;
 
-  // Retrospecto do clube escolhido. Sai de TODOS os jogos dele, e não de
-  // `filtrados` — o filtro "só as copas" muda o que a lista mostra, não o que
-  // o clube fez.
-  const selecionado = clubes.find((c) => c.teamKey === clube);
-  const retrospecto = useMemo(
-    () => (clube ? calcularRetrospecto(fixtures, clube) : null),
-    [fixtures, clube]
-  );
+  /** Escolher na aba Times/Ligas leva para os jogos daquele recorte. */
+  function abrirClube(teamKey: string) {
+    setClube(teamKey);
+    setLiga(null);
+    setAba('jogos');
+  }
+  function abrirLiga(id: number) {
+    setLiga(id);
+    setClube('');
+    setAba('jogos');
+  }
+  function limparRecorte() {
+    setClube('');
+    setLiga(null);
+  }
 
   return (
     <div>
-      {/* ── Filtros ────────────────────────────────────────────────────── */}
-      {/* Segmentado como o resto do app (Partidas, Ranking, Admin): faixa em
-          grid, uma coluna por opção, ativa em `primary`. O botão de largura
-          inteira que ficava aqui não existia em nenhuma outra tela. */}
-      <div className="mb-3 grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
-        {[
-          { valor: false, rotulo: 'Todas as competições' },
-          { valor: true, rotulo: 'Só as três copas' },
-        ].map((op) => (
+      {/* Abas, no padrão de Partidas e Ranking. */}
+      <div className="mb-4 grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+        {ABAS.map(({ key, rotulo, icone: Icone }) => (
           <button
-            key={String(op.valor)}
+            key={key}
             type="button"
-            onClick={() => setSoCopas(op.valor)}
-            aria-pressed={soCopas === op.valor}
-            className={`flex h-9 min-w-0 items-center justify-center rounded-[9px] px-2 text-xs font-semibold transition-colors ${
-              soCopas === op.valor
+            onClick={() => setAba(key)}
+            aria-pressed={aba === key}
+            className={`flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-xs font-semibold transition-colors ${
+              aba === key
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <span className="truncate">{op.rotulo}</span>
+            <Icone className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+            <span className="truncate">{rotulo}</span>
           </button>
         ))}
       </div>
 
-      {/* São 40 clubes: chip para cada um não cabe, e o `select` nativo é o
-          controle certo. O que faltava era ele PARECER parte do app —
-          `appearance-none` mais rótulo e seta desenhados por nós. */}
-      <label className="mb-4 flex items-center gap-3 rounded-[12px] border border-border bg-card px-3 py-2.5">
-        <Filter className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />
-        <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-[hsl(var(--faint))]">
-          Clube
-        </span>
-        <span className="relative min-w-0 flex-1">
-          <select
-            value={clube}
-            onChange={(e) => setClube(e.target.value)}
-            className="w-full cursor-pointer appearance-none truncate bg-transparent pr-6 text-right text-sm font-semibold text-foreground focus:outline-none"
-          >
-            <option value="">Todos do bolão</option>
-            {clubes.map((c) => (
-              <option key={c.teamKey} value={c.teamKey}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--faint))]"
-            aria-hidden="true"
-          />
-        </span>
-      </label>
+      {aba === 'times' && <AbaTimes stats={stats} aoEscolher={abrirClube} />}
+      {aba === 'ligas' && <AbaLigas ligas={ligas} aoEscolher={abrirLiga} />}
 
-      {/* ── Retrospecto do clube escolhido ─────────────────────────────── */}
-      {selecionado && (
-        <PainelClube nome={selecionado.nome} escudo={selecionado.crest} r={retrospecto} />
-      )}
+      {aba === 'jogos' && (
+        <>
+          {/* Recorte ativo, com saída à mão. Sem isto, quem chega pela aba
+              Times não entende por que a lista encolheu. */}
+          {(clube || liga !== null) && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-[12px] border border-primary/40 bg-primary/10 px-3.5 py-2.5">
+              <span className="min-w-0 truncate text-[13px] font-semibold text-foreground">
+                {ligaAberta ? ligaAberta.nome : (statsDoClube?.nome ?? clube)}
+              </span>
+              <button
+                type="button"
+                onClick={limparRecorte}
+                className="flex flex-shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-primary"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                limpar
+              </button>
+            </div>
+          )}
 
-      {/* ── Lista ──────────────────────────────────────────────────────── */}
-      {grupos.length === 0 ? (
-        <div className="rounded-[12px] border border-border bg-card px-4 py-10 text-center">
-          <p className="text-sm text-muted-foreground">Nenhum jogo com esses filtros.</p>
-          <p className="mt-1 text-xs text-[hsl(var(--faint))]">
-            O histórico começa em 31/07/2026 e cresce a cada dia.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {grupos.map(({ dia, itens }) => (
-            <section key={dia}>
-              {/* Marca onde o passado termina e a agenda começa. Sem isto, sair
-                  de "Ontem" direto para "Amanhã" parece erro de ordenação. */}
-              {dia === primeiroFuturo && (
-                <div className="mb-3 mt-1 flex items-center gap-2">
-                  <span className="h-px flex-1 bg-hairline" />
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[hsl(var(--faint))]">
-                    Próximos jogos
-                  </span>
-                  <span className="h-px flex-1 bg-hairline" />
-                </div>
-              )}
-              {/* Dia à esquerda, contagem à direita — o mesmo cabeçalho de
-                  seção usado em Partidas ("COPA DO BRASIL · 16 jogos"). */}
-              <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                <h2 className="font-mono text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
-                  {diaLegivel(itens[0].kickoff_at, dias[0], dias[1], dias[2])}
-                </h2>
-                <span className="font-mono text-[10px] tabular-nums text-[hsl(var(--faint))]">
-                  {itens.length} {itens.length === 1 ? 'jogo' : 'jogos'}
-                </span>
-              </div>
-              <div className="overflow-hidden rounded-[12px] border border-border bg-card">
-                {itens.map((f) => (
-                  <LinhaJogo key={f.id} f={f} />
+          {/* Os filtros gerais só fazem sentido sem recorte: com um clube ou
+              uma liga escolhida, eles brigariam com a escolha. */}
+          {!clube && liga === null && (
+            <>
+              <div className="mb-3 grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+                {[
+                  { valor: false, rotulo: 'Todas as competições' },
+                  { valor: true, rotulo: 'Só as três copas' },
+                ].map((op) => (
+                  <button
+                    key={String(op.valor)}
+                    type="button"
+                    onClick={() => setSoCopas(op.valor)}
+                    aria-pressed={soCopas === op.valor}
+                    className={`flex h-9 min-w-0 items-center justify-center rounded-[9px] px-2 text-xs font-semibold transition-colors ${
+                      soCopas === op.valor
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span className="truncate">{op.rotulo}</span>
+                  </button>
                 ))}
               </div>
-            </section>
-          ))}
-        </div>
+
+              {/* São 40 clubes: chip para cada um não cabe, e o `select` nativo
+                  é o controle certo. O que faltava era ele PARECER parte do
+                  app — appearance-none mais rótulo e seta desenhados. */}
+              <label className="mb-4 flex items-center gap-3 rounded-[12px] border border-border bg-card px-3 py-2.5">
+                <Filter className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />
+                <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-[hsl(var(--faint))]">
+                  Clube
+                </span>
+                <span className="relative min-w-0 flex-1">
+                  <select
+                    value={clube}
+                    onChange={(e) => setClube(e.target.value)}
+                    className="w-full cursor-pointer appearance-none truncate bg-transparent pr-6 text-right text-sm font-semibold text-foreground focus:outline-none"
+                  >
+                    <option value="">Todos do bolão</option>
+                    {clubes.map((c) => (
+                      <option key={c.teamKey} value={c.teamKey}>
+                        {c.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--faint))]"
+                    aria-hidden="true"
+                  />
+                </span>
+              </label>
+            </>
+          )}
+
+          {statsDoClube && <PainelClube s={statsDoClube} />}
+
+          {ligaAberta && (
+            <div className="mb-4 overflow-hidden rounded-[12px] border border-border bg-card">
+              <div className="flex items-center gap-2.5 border-b border-hairline px-3.5 py-3">
+                <Escudo url={ligaAberta.logo_url} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-foreground">
+                    {ligaAberta.nome}
+                  </span>
+                  <span className="block font-mono text-[10px] uppercase tracking-wider text-[hsl(var(--faint))]">
+                    {ligaAberta.pais ?? '—'} · {ligaAberta.clubes} clubes
+                  </span>
+                </span>
+              </div>
+              <Stat rotulo="Jogos guardados" nota="encerrados · agendados" valor={`${ligaAberta.encerrados} · ${ligaAberta.agendados}`} />
+              {ligaAberta.media_gols !== null && (
+                <Stat rotulo="Gols por jogo" valor={n2(ligaAberta.media_gols)} />
+              )}
+              {ligaAberta.encerrados > 0 && (
+                <Stat
+                  rotulo="Casa · empate · fora"
+                  nota="quem venceu"
+                  valor={`${ligaAberta.vitorias_casa} · ${ligaAberta.empates} · ${ligaAberta.vitorias_fora}`}
+                />
+              )}
+            </div>
+          )}
+
+          {grupos.length === 0 ? (
+            <div className="rounded-[12px] border border-border bg-card px-4 py-10 text-center">
+              <p className="text-sm text-muted-foreground">Nenhum jogo com esses filtros.</p>
+              <p className="mt-1 text-xs text-[hsl(var(--faint))]">
+                O histórico começa em 31/07/2026 e cresce a cada dia.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {grupos.map(({ dia, itens }) => (
+                <section key={dia}>
+                  {/* Marca onde o passado termina e a agenda começa. Sem isto,
+                      sair de "Ontem" direto para "Amanhã" parece erro. */}
+                  {dia === primeiroFuturo && (
+                    <div className="mb-3 mt-1 flex items-center gap-2">
+                      <span className="h-px flex-1 bg-hairline" />
+                      <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[hsl(var(--faint))]">
+                        Próximos jogos
+                      </span>
+                      <span className="h-px flex-1 bg-hairline" />
+                    </div>
+                  )}
+                  <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                    <h2 className="font-mono text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
+                      {diaLegivel(itens[0].kickoff_at, dias[0], dias[1], dias[2])}
+                    </h2>
+                    <span className="font-mono text-[10px] tabular-nums text-[hsl(var(--faint))]">
+                      {itens.length} {itens.length === 1 ? 'jogo' : 'jogos'}
+                    </span>
+                  </div>
+                  <div className="overflow-hidden rounded-[12px] border border-border bg-card">
+                    {itens.map((f) => (
+                      <LinhaJogo key={f.id} f={f} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {ultimaSincronizacao && (
         <p className="mt-6 flex items-center justify-center gap-1.5 font-mono text-[10px] text-[hsl(var(--faint))]">
           <RefreshCw className="h-3 w-3" aria-hidden="true" />
-          Atualizado em {new Date(ultimaSincronizacao).toLocaleString('pt-BR', {
+          Atualizado em{' '}
+          {new Date(ultimaSincronizacao).toLocaleString('pt-BR', {
+            timeZone: FUSO,
             day: '2-digit',
             month: '2-digit',
             hour: '2-digit',

@@ -27,11 +27,17 @@ export interface ClubFixture {
   away_crest_url: string | null;
   goals_home_90: number | null;
   goals_away_90: number | null;
+  goals_home_ht: number | null;
+  goals_away_ht: number | null;
   goals_home_extra: number | null;
   goals_away_extra: number | null;
   penalties_home: number | null;
   penalties_away: number | null;
   venue_name: string | null;
+  venue_city: string | null;
+  referee: string | null;
+  league_country: string | null;
+  round_name_display?: string | null;
   /** Nome como o bolão exibe (com acento e grafia nossa), quando o clube é conhecido. */
   home_display: string;
   away_display: string;
@@ -41,9 +47,58 @@ export interface ClubFixture {
   away_is_bolao: boolean;
 }
 
+/** Uma linha de estatisticas_clubes(). Agregado em SQL, não no cliente. */
+export interface ClubeStats {
+  team_key: string;
+  nome: string;
+  crest_url: string | null;
+  is_bolao: boolean;
+  jogos: number;
+  v: number;
+  e: number;
+  d: number;
+  gols_pro: number;
+  gols_contra: number;
+  sem_sofrer: number;
+  nao_marcou: number;
+  casa_v: number; casa_e: number; casa_d: number;
+  fora_v: number; fora_e: number; fora_d: number;
+  ht_pro: number;
+  ht_contra: number;
+  /** Estava perdendo no intervalo e venceu. */
+  virou: number;
+  /** Estava vencendo no intervalo e não venceu. */
+  entregou: number;
+  /** Até 5 letras, do mais recente para o mais antigo. Ex.: "VEDVV". */
+  ultimos: string;
+  ultimo_jogo: string | null;
+}
+
+export interface LigaStats {
+  league_id: number;
+  nome: string;
+  pais: string | null;
+  logo_url: string | null;
+  flag_url: string | null;
+  categoria: string;
+  model_weight: number;
+  jogos: number;
+  encerrados: number;
+  agendados: number;
+  gols: number;
+  media_gols: number | null;
+  vitorias_casa: number;
+  empates: number;
+  vitorias_fora: number;
+  clubes: number;
+  ultimo_jogo: string | null;
+}
+
 export interface ResultadosData {
   fixtures: ClubFixture[];
   clubes: { teamKey: string; nome: string; crest: string | null }[];
+  stats: ClubeStats[];
+  ligas: LigaStats[];
   ultimaSincronizacao: string | null;
   /** Ligas das três copas do bolão, para o filtro "só as copas". */
   ligasDasCopas: number[];
@@ -61,15 +116,18 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
     { data: logRaw },
     { data: escudosRaw },
     { data: apelidosRaw },
+    { data: statsRaw },
+    { data: ligasRaw },
   ] = await Promise.all([
       supabase
         .from('club_fixtures')
         .select(
           'id, kickoff_at, status, league_id, league_name, round_name, ' +
             'home_team_key, away_team_key, home_team_name, away_team_name, ' +
-            'home_crest_url, away_crest_url, ' +
-            'goals_home_90, goals_away_90, goals_home_extra, goals_away_extra, ' +
-            'penalties_home, penalties_away, venue_name'
+            'home_crest_url, away_crest_url, league_country, ' +
+            'goals_home_90, goals_away_90, goals_home_ht, goals_away_ht, ' +
+            'goals_home_extra, goals_away_extra, ' +
+            'penalties_home, penalties_away, venue_name, venue_city, referee'
         )
         .order('kickoff_at', { ascending: false, nullsFirst: false })
         // O retrospecto por clube é calculado no cliente, sobre esta lista.
@@ -102,6 +160,11 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
         .select('team_home, home_iso, team_away, away_iso')
         .eq('tournament_id', tournamentId),
       supabase.from('club_aliases').select('alias, team_key'),
+      // Agregados em SQL. Estavam no cliente, sobre a lista já carregada — o
+      // que era exato com 94 partidas e vira "dos últimos N carregados" sem
+      // avisar assim que a captura por liga engordar a base.
+      supabase.rpc('estatisticas_clubes'),
+      supabase.rpc('estatisticas_ligas'),
     ]);
 
   // Nome de exibição de qualquer clube conhecido; is_bolao_team só distingue
@@ -165,6 +228,12 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
     clubes: [...bolao.entries()]
       .map(([teamKey, nome]) => ({ teamKey, nome, crest: escudoDe(teamKey, null) }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    stats: (statsRaw ?? []) as ClubeStats[],
+    ligas: ((ligasRaw ?? []) as any[]).map((l) => ({
+      ...l,
+      model_weight: Number(l.model_weight),
+      media_gols: l.media_gols === null ? null : Number(l.media_gols),
+    })) as LigaStats[],
     ultimaSincronizacao: (logRaw?.[0] as any)?.finished_at ?? null,
     ligasDasCopas: LIGAS_DAS_COPAS,
   };
