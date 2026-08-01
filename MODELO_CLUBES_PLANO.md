@@ -572,3 +572,82 @@ incerteza          = lognormal, sigma = 0,35 / sqrt(kappa + soma dos pesos)
    repositório.
 
 A Fase 0 está concluída e não dependia de nada disso.
+
+---
+
+## 10. Correções da v2 (`clubs-2026-v2`)
+
+Duas coisas que a v1 fazia errado, ambas encontradas por leitura crítica dos
+resultados, não por teste.
+
+### 10.1. A baseline do Paulistão engolia o rating Opta
+
+A v1 usava `mu_H = 1,468` e `mu_A = 0,819` para tudo — números vindos dos 72
+jogos do Paulistão 2026 (§1.3). Razão `mu_H/mu_A = 1,79`, ou seja, mando de
+campo valendo **+0,65 gol**.
+
+Em mata-mata isso produz um absurdo verificável. A razão entre as expectativas
+de gols de mandante e visitante é
+
+```
+lambda_casa / lambda_fora = (mu_H / mu_A) · exp(beta · dR)
+```
+
+Para o visitante ter expectativa maior é preciso `beta · dR > ln(1,79)`, isto é
+`dR > 16,2` pontos de Opta. **A amplitude inteira dos 40 clubes do bolão é de
+16,7 pontos.** Com a baseline do Paulistão, portanto, praticamente nenhum
+visitante podia ser favorito — o mando anulava o rating.
+
+O Paulistão não descreve estas competições: clube do interior recebendo grande,
+viagem longa, elenco misto. A v2 passa a usar, para as três copas:
+
+```
+KNOCKOUT_MU_HOME = 1,30      KNOCKOUT_MU_AWAY = 0,95      razão 1,37
+```
+
+Total de ~2,25 gols por jogo, compatível com mata-mata. **São PRIOR, não
+medição** — não temos histórico das copas, e o plano gratuito da API-Football
+não permite obtê-lo (§10.3). `estimateBaselines()` os substitui assim que
+houver 20 jogos das copas no banco.
+
+Efeito, nas oitavas da Copa do Brasil:
+
+| Jogo | v1 (casa/empate/fora) | v2 |
+|---|---|---|
+| Chapecoense × Cruzeiro | 41 / 30 / 29 | 34 / 30 / 37 |
+| Fortaleza × Palmeiras | 36 / 29 / 35 | 29 / 28 / 43 |
+| Juventude × Atlético-MG | 41 / 29 / 30 | 33 / 29 / 38 |
+
+A chance de **classificação** quase não muda (Cruzeiro 64% nas duas versões):
+num confronto de ida e volta cada clube manda uma vez e o efeito se cancela. O
+erro aparecia jogo a jogo, que é justamente onde o jogador palpita.
+
+### 10.2. Os 7 pontos são do pênalti, não da classificação
+
+`calc_pen_winner_points()` paga 7 por acertar **quem vence a disputa de
+pênaltis**. A régua na tela diz o mesmo: *"só conta quando o confronto vai aos
+pênaltis"*. O Monte Carlo do ranking pagava por acertar **quem se classifica**
+— o que acontece em todo confronto, e não em cerca de 1 a cada 5.
+
+Sobrepreço medido: 3,50 contra 0,64 ponto por confronto — **5,5×**. Inflava a
+projeção de pontos de todo mundo que palpitou pênalti. Corrigido em
+`pool.ts`, com teste de regressão (§5 de `testa-bolao.ts`) que isola a
+contribuição rodando a mesma simulação com e sem o palpite de pênalti.
+
+### 10.3. Não há como buscar histórico no plano gratuito
+
+Verificado contra a própria API:
+
+```
+GET /fixtures?date=2026-06-15
+{"errors":{"plan":"Free plans do not have access to this date,
+             try from 2026-07-31 to 2026-08-02."}}
+```
+
+Janela móvel de três dias, sem backfill. Consequência prática: o termo de gols
+feitos e sofridos do modelo (`fitStrengths`) existe e roda, mas para os clubes
+brasileiros ainda não tem o que ajustar — o histórico começou em 31/07/2026.
+Até acumular, a força deles é o prior Opta puro.
+
+Sair disso exige plano pago da API-Football (ou outra fonte com histórico).
+Decisão de custo, não de código.

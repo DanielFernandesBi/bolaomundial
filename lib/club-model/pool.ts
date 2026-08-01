@@ -130,8 +130,12 @@ export function scoreLine(ph: number, pa: number, sh: number, sa: number): numbe
   return ph === sh || pa === sa ? 3 : 0;
 }
 
-/** Espelha calc_pen_winner_points(): 7 por acertar quem se classifica. */
-export const PONTOS_CLASSIFICADO = 7;
+/**
+ * Espelha calc_pen_winner_points(): 7 por acertar quem VENCE A DISPUTA DE
+ * PÊNALTIS. Não é por acertar quem se classifica — se o confronto se decidir
+ * nos 180 minutos, este palpite não paga nada.
+ */
+export const PONTOS_PENALTIS = 7;
 
 /** Espelha calc_podium_points_cv(): 40 campeão, 25 vice, 10 de consolação. */
 export function scorePodium(
@@ -337,8 +341,12 @@ export function runPoolSimulation(input: PoolInput): PoolResult {
               samplePoisson(Math.max(0.02, baseline.muAway * visitante.attack * mandante.defense), rng),
             ];
 
-            // Palpites de classificado só são pontuados depois que o confronto
-            // inteiro se decide — por isso ficam guardados até o fim.
+            // Palpite de PÊNALTIS. Só vale quando o confronto de fato vai aos
+            // pênaltis — é o que diz calc_pen_winner_points() e o que a régua
+            // na tela promete ("só conta quando o confronto vai aos pênaltis").
+            // Uma versão anterior pagava por acertar quem se classifica, o que
+            // inflava o ranking projetado: acontece sempre, e não em ~1 de
+            // cada 5 confrontos.
             const aguardando: { i: number; pred: 'home' | 'away' }[] = [];
             const pontuarPartida = (
               matchId: number | null,
@@ -392,25 +400,35 @@ export function runPoolSimulation(input: PoolInput): PoolResult {
             }
 
             let venceuA: boolean;
+            let foiNosPenaltis = false;
             if (golsA !== golsB) {
               venceuA = golsA > golsB;
             } else {
-              // Prorrogação só onde o regulamento prevê. Na Copa do Brasil o
-              // empate no agregado vai direto para os pênaltis.
+              // Prorrogação só onde o regulamento prevê. Neste bolão o empate
+              // no agregado vai direto para os pênaltis nas três competições.
               let ea = 0;
               let eb = 0;
               if (t.hasExtraTime) {
                 ea = samplePoisson(baseline.muHome * fa.attack * fb.defense * FATOR_PRORROGACAO, rng);
                 eb = samplePoisson(baseline.muAway * fb.attack * fa.defense * FATOR_PRORROGACAO, rng);
               }
-              venceuA = ea !== eb ? ea > eb : disputaPenaltis(rng);
+              if (ea !== eb) {
+                venceuA = ea > eb;
+              } else {
+                venceuA = disputaPenaltis(rng);
+                foiNosPenaltis = true;
+              }
             }
 
-            // O palpite é gravado na orientação do jogo de VOLTA, onde o
-            // mandante é B. Então "home" quer dizer que B se classifica.
-            const classificado: 'home' | 'away' = venceuA ? 'away' : 'home';
-            for (const a of aguardando) {
-              if (a.pred === classificado) pontos[a.i] += PONTOS_CLASSIFICADO;
+            // Os 7 pontos são do PÊNALTI, não da classificação: sem disputa,
+            // ninguém pontua, mesmo tendo apontado quem passou.
+            if (foiNosPenaltis) {
+              // O palpite é gravado na orientação do jogo de VOLTA, onde o
+              // mandante é B. Então "home" quer dizer que B vence a disputa.
+              const venceuPenaltis: 'home' | 'away' = venceuA ? 'away' : 'home';
+              for (const a of aguardando) {
+                if (a.pred === venceuPenaltis) pontos[a.i] += PONTOS_PENALTIS;
+              }
             }
 
             vencedor = venceuA ? A : B;

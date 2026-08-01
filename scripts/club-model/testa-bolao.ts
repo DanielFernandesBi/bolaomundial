@@ -226,5 +226,41 @@ console.log('\n4. PALPITES PONTUAM\n');
   checa('quem não palpitou pódio fica em zero', caio.meanPoints === 0);
 }
 
+{
+  // ── Os 7 pontos são do PÊNALTI, não da classificação ─────────────────────
+  // Regressão de um erro real: uma versão pagava por acertar quem passa de
+  // fase, o que acontece em TODO confronto. O certo é pagar só quando há
+  // disputa — cerca de 1 em cada 5 confrontos entre iguais.
+  //
+  // Com dois clubes idênticos, quem chuta um lado acerta metade das vezes. Se
+  // o pagamento fosse pela classificação, o esperado seria 7 × 0,5 = 3,5 por
+  // confronto. Pagando só no pênalti, cai para 7 × P(pênaltis) × 0,5.
+  console.log('\n5. PÊNALTIS SÓ PAGAM SE HOUVER PÊNALTIS\n');
+  // Duas rodadas idênticas, só mudando o palpite de pênalti. A semente é a
+  // mesma e o palpite não influencia o sorteio dos jogos, então a DIFERENÇA
+  // isola exatamente o que os pênaltis pagaram — sem depender de o palpite de
+  // placar valer zero (nenhum vale: até 9-9 casa com "empate seco", 15 pts).
+  const ties = chaveDe8('copa', true).filter((t) => t.round === 'oitavas');
+  const placar = ties.map((t) => ({
+    userId: 'u1', matchId: t.voltaMatchId!, predHome: 9, predAway: 4,
+  }));
+  const com = runPoolSimulation(base({
+    ties, predictions: placar.map((p) => ({ ...p, predPenWinner: 'home' as const })),
+  }));
+  const sem = runPoolSimulation(base({
+    ties, predictions: placar.map((p) => ({ ...p, predPenWinner: null })),
+  }));
+  const dos = (r: ReturnType<typeof runPoolSimulation>) =>
+    r.players.find((p) => p.username === 'Ana')!.meanPoints;
+  const porConfronto = (dos(com) - dos(sem)) / ties.length;
+  checa('palpite de pênalti paga bem menos que 3,5 por confronto', porConfronto < 2.5,
+    `${porConfronto.toFixed(2)} pts/confronto`);
+  checa('mas paga alguma coisa — pênaltis acontecem', porConfronto > 0.2,
+    `${porConfronto.toFixed(2)} pts/confronto`);
+  const frequencia = porConfronto / (7 * 0.5);
+  checa('frequência implícita de pênaltis é plausível (10%–40%)',
+    frequencia > 0.1 && frequencia < 0.4, `${(frequencia * 100).toFixed(0)}%`);
+}
+
 console.log(`\n${falhas === 0 ? 'TODAS AS VERIFICAÇÕES PASSARAM' : `${falhas} VERIFICAÇÃO(ÕES) FALHARAM`}\n`);
 process.exit(falhas === 0 ? 0 : 1);

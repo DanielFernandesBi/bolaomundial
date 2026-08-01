@@ -22,6 +22,7 @@ import {
   MODEL_VERSION,
   estimateBaselines,
   fitStrengths,
+  poolBaseline,
   projectTie,
   runPoolSimulation,
 } from '@/lib/club-model';
@@ -262,11 +263,9 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
       {
         homeFirstLeg: A,
         awayFirstLeg: B,
-        baseline: ajuste.baselines.get(t.competition) ?? {
-          muHome: DEFAULT_MU_HOME,
-          muAway: DEFAULT_MU_AWAY,
-          weight: 1,
-        },
+        // poolBaseline e não DEFAULT_*: a média do Paulistão dá mando de campo
+        // grande demais para mata-mata (ver constants.ts).
+        baseline: ajuste.baselines.get(t.competition) ?? poolBaseline(t.competition),
         firstLegPlayed: t.idaPlayed ?? undefined,
         secondLegPlayed: t.voltaPlayed ?? undefined,
       },
@@ -313,6 +312,14 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
     if (t.voltaMatchId && !t.voltaPlayed) emAberto.add(t.voltaMatchId);
   }
 
+  // O Monte Carlo procura a baseline pela chave da COMPETIÇÃO do confronto
+  // ('libertadores', …), e o ajuste indexa por CATEGORIA da liga
+  // ('continental', …). Sem estas entradas ele caía no default do Paulistão.
+  const baselinesDoBolao = new Map(ajuste.baselines);
+  for (const c of new Set(ties.map((t) => t.competition))) {
+    if (!baselinesDoBolao.has(c)) baselinesDoBolao.set(c, poolBaseline(c));
+  }
+
   const ranking =
     players.length > 0
       ? runPoolSimulation({
@@ -321,7 +328,7 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
           predictions,
           podiumPicks,
           strengths: ajuste.strengths,
-          baselines: ajuste.baselines,
+          baselines: baselinesDoBolao,
           roundOrder: ROUND_ORDER,
           scenarios: 4000,
           seed: 20260801,
