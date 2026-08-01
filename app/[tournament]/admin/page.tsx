@@ -1,6 +1,14 @@
 import { redirect, notFound } from 'next/navigation';
-import { checkAdminAccess, getAdminMatches, getAdminTournamentInfo, getAdminCompetitionResults, getAdminBracket } from './actions';
+import {
+  checkAdminAccess,
+  getAdminMatches,
+  getAdminTournamentInfo,
+  getAdminCompetitionResults,
+  getAdminBracket,
+  getResultadosSugeridos,
+} from './actions';
 import { AdminMatchesTable } from './admin-matches-table';
+import { ResultadosSugeridos } from './resultados-sugeridos';
 import { AdminBracket } from './admin-bracket';
 import { CreateMatchDialog } from './create-match-dialog';
 import { CreateTournamentDialog } from './create-tournament-dialog';
@@ -47,6 +55,11 @@ export default async function AdminPage({ params }: AdminPageProps) {
   const compResults = await getAdminCompetitionResults(tournamentSlug);
   const competitions = !compResults.error ? compResults.competitions : [];
   const hasCompetitions = competitions.length > 0;
+  // Placar que a API-Football já registrou para os jogos do bolão. Só aparece
+  // nos torneios que têm competições mapeadas — nos de seleções não há fonte.
+  const sugeridos = hasCompetitions
+    ? await getResultadosSugeridos(tournamentSlug)
+    : { sugestoes: [], ultimaSincronizacao: null, error: undefined };
   // Chaveamento (ties) para a seção de administração do bracket
   const bracket = await getAdminBracket(tournamentSlug);
   const bracketCompetitions = !bracket.error ? bracket.competitions : [];
@@ -102,6 +115,14 @@ export default async function AdminPage({ params }: AdminPageProps) {
               second: Number(info.tournament.prize_second) || 0,
               third: Number(info.tournament.prize_third) || 0,
             }}
+          />
+        )}
+
+        {hasCompetitions && !sugeridos.error && (
+          <ResultadosSugeridos
+            sugestoes={sugeridos.sugestoes}
+            ultimaSincronizacao={sugeridos.ultimaSincronizacao}
+            tournamentSlug={tournamentSlug}
           />
         )}
 

@@ -967,3 +967,154 @@ export async function deleteMatch(matchId: number, tournamentSlug: string) {
   return { success: true };
 }
 
+
+// ============================================================================
+// Resultado sugerido pela API-Football.
+//
+// A sincronização horária já guarda o placar oficial dos jogos das três copas
+// em `club_fixtures`. Estas funções cruzam com `matches` e devolvem o que o
+// admin teria de digitar — sem gravar nada.
+//
+// A gravação continua sendo um clique humano, e passa pelo MESMO caminho de
+// sempre (updateMatchScore -> pontuação -> progressão do chaveamento). Não é
+// medo de duplicar ponto: process_match_finished é idempotente. É que um
+// pareamento errado viraria pontuação sem ninguém olhar, e desfazer pontuação
+// é bem mais caro do que conferir um placar.
+//
+// ATENÇÃO: arquivo 'use server'. Todo export precisa ser função async.
+// ============================================================================
+
+export interface ResultadoSugerido {
+  match_id: number;
+  team_home: string;
+  team_away: string;
+  match_date: string;
+  competition: string;
+  leg: string | null;
+  status: string;
+  score_home: number | null;
+  score_away: number | null;
+  sug_home: number;
+  sug_away: number;
+  sug_pen_winner: 'home' | 'away' | null;
+  /** A API trouxe mandante e visitante invertidos em relação ao nosso cadastro. */
+  invertido: boolean;
+  /** A partida real teve prorrogação — que este bolão não pontua. */
+  teve_prorrogacao: boolean;
+  /** Jogo já lançado, com placar diferente do que a API registrou. */
+  divergente: boolean;
+  fonte_liga: string | null;
+  fonte_kickoff: string;
+  fonte_status: string;
+  provider_fixture_id: number;
+}
+
+async function lerSugestoes(tournamentSlug: string): Promise<{
+  sugestoes: ResultadoSugerido[];
+  ultimaSincronizacao: string | null;
+  error?: string;
+}> {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (!tournament) return { sugestoes: [], ultimaSincronizacao: null, error: 'Torneio não encontrado' };
+
+  const [{ data, error }, { data: log }] = await Promise.all([
+    supabase.rpc('resultados_sugeridos', { p_tournament_id: (tournament as any).id }),
+    supabase
+      .from('club_sync_log')
+      .select('finished_at')
+      .eq('status', 'ok')
+      .order('finished_at', { ascending: false, nullsFirst: false })
+      .limit(1),
+  ]);
+
+  if (error) return { sugestoes: [], ultimaSincronizacao: null, error: error.message };
+
+  return {
+    sugestoes: (data ?? []) as ResultadoSugerido[],
+    ultimaSincronizacao: (log?.[0] as any)?.finished_at ?? null,
+  };
+}
+
+export async function getResultadosSugeridos(tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) {
+    return { sugestoes: [], ultimaSincronizacao: null, error: accessCheck.error || 'Acesso negado' };
+  }
+  return lerSugestoes(tournamentSlug);
+}
+
+/**
+ * Lança UM resultado sugerido.
+ *
+ * O placar é relido do servidor, nunca aceito do cliente: o botão manda só o
+ * id da partida. Assim não existe caminho para alguém postar um placar
+ * arbitrário por esta porta.
+ */
+export async function aplicarResultadoSugerido(matchId: number, tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) return { error: accessCheck.error || 'Acesso negado' };
+
+  const { sugestoes, error } = await lerSugestoes(tournamentSlug);
+  if (error) return { error };
+
+  const s = sugestoes.find((x) => Number(x.match_id) === Number(matchId));
+  if (!s) return { error: 'A API não tem mais resultado para este jogo. Recarregue a página.' };
+
+  return updateMatchScore(matchId, s.sug_home, s.sug_away, 'FINISHED', tournamentSlug, {
+    extraTimeResult: null,
+    penHome: null,
+    penAway: null,
+    penWinner: s.sug_pen_winner,
+  });
+}
+
+/**
+ * Lança todos os sugeridos que ainda não foram lançados.
+ *
+ * Em ordem de data, e um a um pelo caminho normal — a progressão do
+ * chaveamento depende da ordem, e lançar a volta antes da ida daria
+ * classificado errado.
+ *
+ * Divergentes ficam de fora de propósito: jogo já lançado com placar
+ * diferente é conversa para o admin ter olhando, não em lote.
+ */
+export async function aplicarTodosResultadosSugeridos(tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) return { error: accessCheck.error || 'Acesso negado' };
+
+  const { sugestoes, error } = await lerSugestoes(tournamentSlug);
+  if (error) return { error };
+
+  const pendentes = sugestoes
+    .filter((s) => s.status !== 'FINISHED')
+    .sort((a, b) => a.match_date.localeCompare(b.match_date));
+
+  let aplicados = 0;
+  const avisos: string[] = [];
+
+  for (const s of pendentes) {
+    const r = await updateMatchScore(
+      Number(s.match_id),
+      s.sug_home,
+      s.sug_away,
+      'FINISHED',
+      tournamentSlug,
+      { extraTimeResult: null, penHome: null, penAway: null, penWinner: s.sug_pen_winner }
+    );
+    if ((r as any)?.error) {
+      avisos.push(`${s.team_home} x ${s.team_away}: ${(r as any).error}`);
+      continue;
+    }
+    aplicados++;
+    if ((r as any)?.bracketWarning) avisos.push((r as any).bracketWarning);
+  }
+
+  return { success: true, aplicados, total: pendentes.length, avisos };
+}
