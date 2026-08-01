@@ -22,6 +22,8 @@ export interface ClubFixture {
   away_team_key: string | null;
   home_team_name: string;
   away_team_name: string;
+  home_provider_id: number | null;
+  away_provider_id: number | null;
   /** Escudo que a API mandou nesta partida. */
   home_crest_url: string | null;
   away_crest_url: string | null;
@@ -49,7 +51,12 @@ export interface ClubFixture {
 
 /** Uma linha de estatisticas_clubes(). Agregado em SQL, não no cliente. */
 export interface ClubeStats {
-  team_key: string;
+  /** Identidade: a chave do mapa quando existe, senão '#<id da API>'. */
+  id: string;
+  team_key: string | null;
+  provider_id: number | null;
+  /** false = time descoberto pela captura, ainda sem chave no nosso mapa. */
+  mapeado: boolean;
   nome: string;
   crest_url: string | null;
   is_bolao: boolean;
@@ -125,6 +132,7 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
           'id, kickoff_at, status, league_id, league_name, round_name, ' +
             'home_team_key, away_team_key, home_team_name, away_team_name, ' +
             'home_crest_url, away_crest_url, league_country, ' +
+            'home_provider_id, away_provider_id, ' +
             'goals_home_90, goals_away_90, goals_home_ht, goals_away_ht, ' +
             'goals_home_extra, goals_away_extra, ' +
             'penalties_home, penalties_away, venue_name, venue_city, referee'

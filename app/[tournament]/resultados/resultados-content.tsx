@@ -429,7 +429,7 @@ function AbaTimes({
   aoEscolher,
 }: {
   stats: ClubeStats[];
-  aoEscolher: (teamKey: string) => void;
+  aoEscolher: (id: string) => void;
 }) {
   const [ordem, setOrdem] = useState<Ordem>('jogos');
   const [soBolao, setSoBolao] = useState(true);
@@ -480,13 +480,18 @@ function AbaTimes({
           type="button"
           onClick={() => setSoBolao((v) => !v)}
           aria-pressed={soBolao}
+          title={
+            soBolao
+              ? 'Mostrando só os 40 clubes do bolão'
+              : 'Mostrando todo clube que já entrou em campo nas ligas capturadas'
+          }
           className={`flex-shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
             soBolao
               ? 'border-primary/40 bg-primary/10 text-primary'
               : 'border-border text-muted-foreground'
           }`}
         >
-          só bolão
+          {soBolao ? 'só bolão' : 'todos'}
         </button>
       </div>
 
@@ -516,18 +521,21 @@ function AbaTimes({
         <div className="overflow-hidden rounded-[12px] border border-border bg-card">
           {lista.map((s) => (
             <button
-              key={s.team_key}
+              key={s.id}
               type="button"
-              onClick={() => aoEscolher(s.team_key)}
+              onClick={() => aoEscolher(s.id)}
               className="flex w-full items-center gap-2.5 border-t border-hairline px-3.5 py-2.5 text-left transition-colors first:border-t-0 hover:bg-accent/40"
             >
               <Escudo url={s.crest_url} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-foreground">{s.nome}</span>
-                <span className="block font-mono text-[10px] uppercase tracking-wider text-[hsl(var(--faint))]">
+                <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-[hsl(var(--faint))]">
                   {s.jogos === 0
                     ? 'sem jogos ainda'
                     : `${s.jogos}j · ${s.v}-${s.e}-${s.d} · ${s.gols_pro}:${s.gols_contra}`}
+                  {/* Sem rating Opta, o clube tem ficha mas não entra no
+                      modelo. Dizer isso evita a pergunta óbvia. */}
+                  {!s.mapeado && ' · fora do modelo'}
                 </span>
               </span>
               {s.jogos > 0 && (
@@ -643,12 +651,20 @@ export function ResultadosContent({
       // também as ligas capturadas inteiras, que servem à aba Ligas e ao
       // histórico, mas encheriam esta lista de jogo que ninguém pediu.
       if (liga !== null) return f.league_id === liga;
-      if (clube) return f.home_team_key === clube || f.away_team_key === clube;
+      if (clube) {
+        // Time do mapa casa pela chave; time descoberto pela captura só tem o
+        // ID da API, então é por ele que a partida é encontrada.
+        const s = stats.find((x) => x.id === clube);
+        if (!s) return false;
+        return s.team_key
+          ? f.home_team_key === s.team_key || f.away_team_key === s.team_key
+          : f.home_provider_id === s.provider_id || f.away_provider_id === s.provider_id;
+      }
       if (!f.home_is_bolao && !f.away_is_bolao) return false;
       if (soCopas && !(f.league_id !== null && copas.has(f.league_id))) return false;
       return true;
     });
-  }, [fixtures, clube, liga, soCopas, copas]);
+  }, [fixtures, clube, liga, soCopas, copas, stats]);
 
   // Hoje/amanhã/ontem também em Brasília, pelo mesmo motivo dos rótulos.
   const dias = useMemo<[string, string, string]>(() => {
@@ -684,12 +700,12 @@ export function ResultadosContent({
   }, [filtrados, dias]);
 
   const primeiroFuturo = grupos.find((g) => g.futuro)?.dia;
-  const statsDoClube = clube ? stats.find((s) => s.team_key === clube) : undefined;
+  const statsDoClube = clube ? stats.find((s) => s.id === clube) : undefined;
   const ligaAberta = liga !== null ? ligas.find((l) => l.league_id === liga) : undefined;
 
   /** Escolher na aba Times/Ligas leva para os jogos daquele recorte. */
-  function abrirClube(teamKey: string) {
-    setClube(teamKey);
+  function abrirClube(id: string) {
+    setClube(id);
     setLiga(null);
     setAba('jogos');
   }
