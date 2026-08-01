@@ -1,0 +1,43 @@
+import { notFound } from 'next/navigation';
+import { createServerSupabaseClient } from '@/lib/supabase';
+import { getResultados } from './actions';
+import { ResultadosContent } from './resultados-content';
+
+interface ResultadosPageProps {
+  params: Promise<{ tournament: string }>;
+}
+
+// Cache curto: o cron sincroniza 2×/dia, então nada muda de minuto a minuto —
+// mas durante uma rodada o placar entra na sincronização seguinte, e cinco
+// minutos é o suficiente para não servir uma página velha demais.
+export const revalidate = 300;
+
+export default async function ResultadosPage({ params }: ResultadosPageProps) {
+  const { tournament: tournamentSlug } = await params;
+
+  const supabase = await createServerSupabaseClient();
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('id, name, slug')
+    .eq('slug', tournamentSlug)
+    .single();
+
+  if (!tournament) notFound();
+
+  const dados = await getResultados();
+
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-background">
+      <div className="container mx-auto max-w-full px-4 py-8 pb-28 md:pb-8">
+        <div className="mb-6">
+          <h1 className="mb-2 text-4xl font-bold text-foreground">Resultados</h1>
+          <p className="text-muted-foreground">
+            Últimos jogos dos clubes do {(tournament as any).name}, em todas as competições
+          </p>
+        </div>
+
+        <ResultadosContent {...dados} />
+      </div>
+    </div>
+  );
+}

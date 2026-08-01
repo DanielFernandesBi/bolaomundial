@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Calendar, Clock, Eye, Trophy } from 'lucide-react';
+import { Activity, Calendar, ChevronRight, Clock, Eye, Trophy } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MatchCard } from '@/components/match-card';
 import { PodiumCard } from '@/components/podium-card';
@@ -222,6 +222,30 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
           missingByCompetition={missingByCompetition}
           deadlinesByCompetition={prazoPorCompeticao}
         />
+
+        {/* Porta de entrada dos resultados dos clubes. Fica aqui, e não na
+            barra inferior: a nav foi reduzida de propósito a cinco destinos
+            com rótulo, e um sexto desfaria essa decisão. Aqui é onde o jogador
+            já está quando pensa "como esse time vem jogando?". */}
+        {temCompeticoes && (
+          <Link
+            href={`/${tournamentSlug}/resultados`}
+            className="mb-6 flex items-center gap-3 rounded-[12px] border border-border bg-card px-3 py-3 transition-colors hover:border-primary/40"
+          >
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-surface-sunken">
+              <Activity className="h-4 w-4 text-primary" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-card-foreground">
+                Como os clubes vêm jogando
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Últimos resultados em todas as competições
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />
+          </Link>
+        )}
 
         <CompetitionFilterProvider>
         <Tabs defaultValue="upcoming" className="w-full">
