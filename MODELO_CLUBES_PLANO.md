@@ -419,18 +419,48 @@ criar `lib/club-model/` separado — o motor de seleções continua intocado.
 Ordem escolhida: **valor primeiro, motor depois**, e nada que dependa de chave de
 API bloqueia o que não depende.
 
-### Fase 0 — sem dependência externa (pode começar agora)
+### Fase 0 — sem dependência externa — **CONCLUÍDA**
 
-| # | Entrega | Observação |
+| # | Entrega | Estado |
 |---|---|---|
-| 0.1 | `opta_snapshots` + `opta_club_ratings` + import dos 13.789 clubes | RLS: leitura pública, escrita só service role |
-| 0.2 | `club_source_ids` com os 40 clubes → Opta, mapeados e conferidos | `api_football_team_id` fica nulo |
-| 0.3 | `club_aliases` — "Vasco"/"Vasco da Gama", "Bragantino"/"Red Bull Bragantino" | resolve 5.2 |
-| 0.4 | `lib/club-model/` : prior, decaimento, pesos, ajuste conjunto iterado, Poisson | testável offline |
-| 0.5 | Backtest contra os 72 jogos do Paulistão que já temos | trava `beta`, `mu_H`, `mu_A` |
+| 0.1 | `opta_snapshots` + `opta_club_ratings`, com RLS fechada | feito (50 clubes semeados; o resto pelo script 0.6) |
+| 0.2 | `club_source_ids`: 50 clubes, 40 do bolão, mapeados ao Opta um a um | feito |
+| 0.3 | `club_aliases` + `club_key_normalize()` + `club_resolve()` | feito — 58 apelidos, 0 colisões |
+| 0.4 | `lib/club-model/`: prior, decaimento, pesos, ajuste conjunto, Poisson, Dixon-Coles | feito |
+| 0.5 | Backtest e invariâncias contra os 72 jogos do Paulistão | feito — 18 verificações passando |
+| 0.6 | `scripts/club-model/import-opta-snapshot.ts` (import completo, idempotente) | feito — falta rodar com a service role key |
 
 Nada disso toca no app em produção. `has_simulator` do bolão de clubes continua
-`false`, então nada aparece para o usuário até estar pronto.
+`false`, e as quatro tabelas novas não são lidas por nenhuma tela.
+
+**Verificações que passaram a valer como teste de regressão:**
+
+- todo nome que existe em `matches` resolve para um clube canônico — 41 nomes do
+  bolão de clubes e 17 do Paulistão, **0 sem correspondência**;
+- os 41 nomes do bolão viram **40 clubes**: a duplicata Vasco/Vasco da Gama
+  deixou de existir;
+- clube que joga exatamente conforme o prior não muda de força (pega erro de
+  sinal, de escala e de normalização de uma vez);
+- clube sem jogos mantém o prior exato; clube na média tem ataque e defesa 1,0;
+- matriz de placares soma 1 mesmo com `rho` absurdo (grampeado à faixa válida);
+- o parser do CSV do Opta lê as 13.789 linhas com 20 colunas cada, **inclusive
+  as 28 com vírgula dentro de aspas** — um `split(',')` teria corrompido essas
+  linhas em silêncio.
+
+**Duas correções ao que estava escrito aqui antes:**
+
+1. `beta` reajustado em TypeScript, independente do ajuste em Python: **0,0370**,
+   IC95% [0,0160 ; 0,0585]. A constante do código (0,0361) está dentro do
+   intervalo, e as duas implementações concordam.
+2. O backtest **não consegue medir o valor do ajuste dinâmico**, e isso não tem
+   conserto com o dado que temos: o snapshot é de 31/07 e o Paulistão foi em
+   janeiro–março, então o rating já incorpora aqueles jogos. Somá-los de novo é
+   a dupla contagem que o §2.1 da especificação manda evitar. O que o backtest
+   mede, e isso vale: `kappa` baixo degrada rápido (de 20 para 2 são 3 pontos
+   percentuais de log-verossimilhança), e o motor não diverge com dado real. O
+   ótimo nesta amostra é `kappa = 20`; como o viés de lookahead infla o valor do
+   prior, o ótimo verdadeiro deve ser menor. **`kappa = 12` fica como meio-termo
+   defensável, para recalibrar na Fase 1.**
 
 ### Fase 1 — coleta (precisa da chave)
 

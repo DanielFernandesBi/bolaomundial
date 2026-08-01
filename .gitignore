@@ -34,3 +34,6 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# build do backtest do modelo de clubes
+scripts/club-model/dist/
