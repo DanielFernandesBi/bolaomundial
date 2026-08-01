@@ -12,6 +12,7 @@ import { shareAsImage } from '@/lib/shareUtils';
 import { Toast } from '@/components/toast';
 import { scoreTier } from '@/lib/scoring-ui';
 import { SimuladorContent } from '@/app/[tournament]/simulador/simulador-content';
+import { ProjecaoClient } from '@/app/[tournament]/projecao/projecao-client';
 import { RankingGeralContent } from '@/app/ranking-geral/ranking-geral-content';
 import type { GeneralRankingProfile } from '@/app/ranking-geral/load';
 
@@ -50,15 +51,22 @@ interface RankingContentProps {
   generalProfiles?: GeneralRankingProfile[];
   tournamentName?: string;
   tournamentSlug?: string;
-  /** Só com simulador a aba "Projeção" existe — ele é específico do modelo de
-      seleções (ranking FIFA, grupos, disputa de 3º). Default false: quem não
-      passar a prop não ganha a aba. */
+  /** Simulador de SELEÇÕES na aba "Projeção" — ranking FIFA, chave fixa de 32,
+      grupos, disputa de 3º. Default false: quem não passar a prop não ganha a
+      aba. */
   hasSimulator?: boolean;
+  /** Projeção de CLUBES na mesma aba — prior Opta, ida e volta, três
+      competições. Os dois motores não são intercambiáveis; quando ambos vierem
+      ligados, o de clubes é o que renderiza. */
+  hasClubProjection?: boolean;
   recentMatches?: RecentMatch[];
   recentEntries?: RecentEntry[];
 }
 
-export function RankingContent({ profiles, currentUserId, generalProfiles = [], tournamentName, tournamentSlug, hasSimulator = false, recentMatches = [], recentEntries = [] }: RankingContentProps) {
+export function RankingContent({ profiles, currentUserId, generalProfiles = [], tournamentName, tournamentSlug, hasSimulator = false, hasClubProjection = false, recentMatches = [], recentEntries = [] }: RankingContentProps) {
+  // Uma aba, dois motores possíveis. Tudo que antes perguntava `hasSimulator`
+  // para saber se a aba existe passa a perguntar isto.
+  const temProjecao = hasSimulator || hasClubProjection;
   const [activeTab, setActiveTab] = useState<'general' | 'cravadas' | 'recentes' | 'projecao'>('general');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [sharingFullRanking, setSharingFullRanking] = useState(false);
@@ -271,7 +279,7 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
               <CalendarDays className="h-3.5 w-3.5" />
               Últimos {recentMatches.length || 5}
             </TabsTrigger>
-            {hasSimulator && (
+            {temProjecao && (
               <TabsTrigger
                 value="projecao"
                 className="flex h-9 items-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -303,12 +311,18 @@ export function RankingContent({ profiles, currentUserId, generalProfiles = [], 
       </div>
       )}
 
-      {/* Aba Projeção: o simulador passa a morar aqui. A rota
-          /[tournament]/simulador continua existindo e funcionando — só o
-          caminho de navegação mudou. O componente carrega os próprios dados,
-          e o Radix só o monta quando a aba é aberta. */}
-      {hasSimulator && escopo === 'torneio' && activeTab === 'projecao' && (
-        <SimuladorContent tournamentSlug={tournamentSlug ?? ''} tournamentName={tournamentName ?? ''} />
+      {/* Aba Projeção: o conteúdo mora aqui, mas as rotas
+          /[tournament]/simulador e /[tournament]/projecao continuam existindo e
+          funcionando — só o caminho de navegação mudou. Os dois componentes
+          carregam os próprios dados e só montam quando a aba é aberta, então
+          nenhum dos dois Monte Carlo roda em quem abre o ranking e fica em
+          "Pontos". */}
+      {escopo === 'torneio' && activeTab === 'projecao' && (
+        hasClubProjection ? (
+          <ProjecaoClient tournamentSlug={tournamentSlug ?? ''} />
+        ) : hasSimulator ? (
+          <SimuladorContent tournamentSlug={tournamentSlug ?? ''} tournamentName={tournamentName ?? ''} />
+        ) : null
       )}
 
       {/* Lista única, responsiva. Antes eram DOIS blocos com o mesmo conteúdo:

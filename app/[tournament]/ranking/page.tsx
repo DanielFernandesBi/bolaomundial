@@ -19,10 +19,11 @@ export default async function RankingPage({ params }: RankingPageProps) {
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    // has_simulator decide se a aba "Projeção" existe. O simulador NÃO é
-    // genérico: fala de ranking FIFA, seleções, fase de grupos e disputa de 3º
-    // lugar. Sem esta coluna a aba aparecia em qualquer torneio.
-    .select('id, name, slug, has_simulator')
+    // Duas colunas decidem a aba "Projeção", e cada uma liga um motor
+    // diferente: has_simulator é o de seleções (ranking FIFA, grupos, disputa
+    // de 3º) e has_club_projection é o de clubes (prior Opta, ida e volta, três
+    // competições). Sem elas a aba aparecia em qualquer torneio.
+    .select('id, name, slug, has_simulator, has_club_projection')
     .eq('slug', tournamentSlug)
     .single();
 
@@ -69,6 +70,7 @@ export default async function RankingPage({ params }: RankingPageProps) {
           tournamentName={tournament.name}
           tournamentSlug={tournamentSlug}
           hasSimulator={!!(tournament as any).has_simulator}
+          hasClubProjection={!!(tournament as any).has_club_projection}
           recentMatches={recentMatches}
           recentEntries={recentEntries}
         />
