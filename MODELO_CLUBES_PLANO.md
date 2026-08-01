@@ -253,20 +253,21 @@ Todas marcam `Historical data`, o que resolve o problema de origem dos dados de
 calibração (`beta`, `rho`, `mu_c` por competição), que na API-Football dependia
 do limite de temporadas do plano.
 
-**Pendente de confirmação:** o PDF descreve o plano **Enterprise**. Um token de
-plano gratuito da Sportmonks dá acesso só a Superliga dinamarquesa e Premiership
-escocesa. Antes de escrever qualquer integração é preciso conferir a que o token
-efetivamente dá direito:
+**CONFERIDO — e a resposta é não.** O token existente é de **Football Free
+Plan**. `/v3/football/leagues` devolve exatamente quatro ligas:
 
-```bash
-curl -s "https://api.sportmonks.com/v3/my/enrollments?api_token=$SPORTMONKS_TOKEN" | jq
-curl -s "https://api.sportmonks.com/v3/football/leagues?api_token=$SPORTMONKS_TOKEN&per_page=50" | jq '.data[] | {id, name}'
+```
+271   Superliga (Dinamarca)          501   Premiership (Escócia)
+1659  Superliga Play-offs            513   Premiership Play-Offs
 ```
 
-Se as ligas da tabela aparecerem, **Sportmonks passa a ser a fonte** e as seções
-4.1–4.4 viram histórico. Vantagens sobre a API-Football neste caso: cobertura
-confirmada de ponta a ponta, histórico liberado, e xG disponível via
-`include=xGFixture` (que não usamos na v1, mas fica de graça).
+Nenhuma competição sul-americana. O PDF descreve o plano **Enterprise**, que é
+material comercial, não o que a conta enxerga. O limite de 3.000 req/hora é
+generoso, mas irrelevante sem as ligas.
+
+**Sportmonks fica fora**, a menos que se contrate o Enterprise — cotado sob
+consulta e de outra ordem de grandeza que os US$ 19/mês do plano Pro da
+API-Football. Para um bolão de sete pessoas, não se justifica.
 
 ### 4.1. Alternativa: API-Football — os limites do plano gratuito
 
@@ -317,21 +318,21 @@ Se faltarem os estaduais, o impacto é pequeno: são a competição de menor pes
 a de maior rotação de elenco — a que mais contamina a estimativa. Seguiríamos sem
 eles.
 
-### 4.4. Veredito sobre a API
+### 4.4. Veredito sobre a API — decidido
 
-**Se o token Sportmonks for de plano com as ligas da tabela 4.0, é ele.** Cobre
-tudo, inclusive os estaduais, e libera o histórico de calibração. Não há decisão
-a tomar: é estritamente melhor para o nosso caso.
+**API-Football, plano gratuito, consultando por data.** A Sportmonks saiu por
+falta de cobertura no plano que temos (4.0), e o plano dela que cobriria custa
+outra ordem de grandeza.
 
-**Se o token for de plano gratuito**, a API-Football serve no plano gratuito
-dela, desde que a consulta seja por data e não por time — com o risco residual
-de os estaduais não estarem cobertos, o que teria impacto pequeno (é a
-competição de menor peso e maior rotação de elenco).
+Risco residual assumido: não foi possível confirmar de fonte primária se a
+API-Football cobre os estaduais brasileiros. Se não cobrir, o impacto é pequeno
+— é a competição de menor peso (0,60) e a de maior rotação de elenco, ou seja, a
+que mais contamina a estimativa — e só afeta janeiro a abril, fora da janela do
+bolão.
 
-Em qualquer dos dois, a arquitetura do código é a mesma: um `provider` em
-`club_fixtures`, um cliente por fornecedor atrás da mesma interface, e o resto
-do sistema não sabe de onde veio o jogo. A troca de fornecedor não é um
-retrabalho.
+`club_fixtures` nasce com coluna `provider` e o cliente fica atrás de uma
+interface. Trocar de fornecedor depois é trocar um arquivo, não refazer o
+sistema.
 
 ### 4.5. Onde roda o cron
 
@@ -423,12 +424,12 @@ API bloqueia o que não depende.
 
 | # | Entrega | Estado |
 |---|---|---|
-| 0.1 | `opta_snapshots` + `opta_club_ratings`, com RLS fechada | feito (50 clubes semeados; o resto pelo script 0.6) |
+| 0.1 | `opta_snapshots` + `opta_club_ratings`, com RLS fechada | feito — **403 clubes**, conferidos por checksum contra o CSV |
 | 0.2 | `club_source_ids`: 50 clubes, 40 do bolão, mapeados ao Opta um a um | feito |
 | 0.3 | `club_aliases` + `club_key_normalize()` + `club_resolve()` | feito — 58 apelidos, 0 colisões |
 | 0.4 | `lib/club-model/`: prior, decaimento, pesos, ajuste conjunto, Poisson, Dixon-Coles | feito |
 | 0.5 | Backtest e invariâncias contra os 72 jogos do Paulistão | feito — 18 verificações passando |
-| 0.6 | `scripts/club-model/import-opta-snapshot.ts` (import completo, idempotente) | feito — falta rodar com a service role key |
+| 0.6 | `scripts/club-model/import-opta-snapshot.ts` (import completo, idempotente) | feito — para carregar o snapshot inteiro quando houver service role key |
 
 Nada disso toca no app em produção. `has_simulator` do bolão de clubes continua
 `false`, e as quatro tabelas novas não são lidas por nenhuma tela.
@@ -519,10 +520,13 @@ incerteza          = lognormal, sigma = 0,35 / sqrt(kappa + soma dos pesos)
 
 ## 9. O que preciso de você
 
-1. Rodar os dois `curl` da seção 4.0 e me passar a saída — é o que fixa o
-   fornecedor. Não consigo rodar daqui: a política de rede deste ambiente nega
-   conexão às duas APIs de futebol.
-2. **Rotacionar a chave** no painel do fornecedor e guardar a nova no Vault do
-   Supabase, nunca em arquivo do repositório.
+1. **Criar uma conta gratuita na API-Football** (dashboard.api-football.com) e
+   guardar a chave. É o único bloqueio da Fase 1 — não consigo criar conta em
+   seu nome, e a política de rede deste ambiente nega conexão às APIs de
+   futebol, então nem para testar a chave eu chego lá.
+2. **Rotacionar o token da Sportmonks**, que circulou por canal de texto. Ele
+   não serve mais para o projeto, mas continua sendo credencial da sua conta.
+3. A chave da API-Football vai para o Vault do Supabase, nunca para arquivo do
+   repositório.
 
-A Fase 0 não depende de nada disso e já pode ser executada por inteiro.
+A Fase 0 está concluída e não dependia de nada disso.
