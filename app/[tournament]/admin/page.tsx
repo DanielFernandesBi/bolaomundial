@@ -6,9 +6,11 @@ import {
   getAdminCompetitionResults,
   getAdminBracket,
   getResultadosSugeridos,
+  getApelidosSugeridos,
 } from './actions';
 import { AdminMatchesTable } from './admin-matches-table';
 import { AdminTabs } from './admin-tabs';
+import { ApelidosSugeridos } from './apelidos-sugeridos';
 import { ResultadosSugeridos } from './resultados-sugeridos';
 import { AdminBracket } from './admin-bracket';
 import { CreateMatchDialog } from './create-match-dialog';
@@ -61,6 +63,11 @@ export default async function AdminPage({ params }: AdminPageProps) {
   const sugeridos = hasCompetitions
     ? await getResultadosSugeridos(tournamentSlug)
     : { sugestoes: [], ultimaSincronizacao: null, error: undefined };
+  // Nomes que a API usa e o nosso mapa não conhece. Dado global, mas só faz
+  // sentido no bolão que consome a API.
+  const apelidos = hasCompetitions
+    ? await getApelidosSugeridos()
+    : { apelidos: [], error: undefined };
   // Chaveamento (ties) para a seção de administração do bracket
   const bracket = await getAdminBracket(tournamentSlug);
   const bracketCompetitions = !bracket.error ? bracket.competitions : [];
@@ -171,6 +178,22 @@ export default async function AdminPage({ params }: AdminPageProps) {
                           />
                         )}
                       </>
+                    ),
+                  },
+                ]
+              : []),
+            ...(hasCompetitions && !apelidos.error
+              ? [
+                  {
+                    key: 'apelidos',
+                    label: apelidos.apelidos.some((a) => a.jogos_perdidos > 0)
+                      ? `Apelidos (${apelidos.apelidos.filter((a) => a.jogos_perdidos > 0).length})`
+                      : 'Apelidos',
+                    content: (
+                      <ApelidosSugeridos
+                        apelidos={apelidos.apelidos}
+                        tournamentSlug={tournamentSlug}
+                      />
                     ),
                   },
                 ]

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarDays, Gift, GitBranch, Trophy } from 'lucide-react';
+import { CalendarDays, Gift, GitBranch, Tags, Trophy } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // ============================================================================
@@ -24,6 +24,7 @@ const ICONES: Record<string, typeof Trophy> = {
   jogos: CalendarDays,
   chaveamento: GitBranch,
   podio: Trophy,
+  apelidos: Tags,
   torneio: Gift,
 };
 

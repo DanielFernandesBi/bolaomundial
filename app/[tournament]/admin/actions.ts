@@ -1118,3 +1118,87 @@ export async function aplicarTodosResultadosSugeridos(tournamentSlug: string) {
 
   return { success: true, aplicados, total: pendentes.length, avisos };
 }
+
+// ============================================================================
+// Rodada de apelidos.
+//
+// A elegibilidade exige os DOIS lados mapeados, então um nome que a
+// API-Football escreve diferente do nosso cadastro descarta a partida inteira.
+// Doze dos 21 primeiros jogos encerrados sumiram assim.
+//
+// O trabalho é sempre o mesmo: olhar os nomes desconhecidos, reconhecer o
+// clube e cadastrar o apelido. O que muda aqui é que ele deixa de depender de
+// alguém lembrar — a lista se monta sozinha, ordenada pelo prejuízo real
+// (quantos jogos elegíveis o nome já custou).
+//
+// Nada é mapeado automaticamente. Nome não é chave: existem "Santos" no Brasil
+// e no Peru, "Fortaleza" no Brasil e na Colômbia, "Santa Fe" na Argentina e na
+// Colômbia. O banco marca o candidato como conflitante quando o ID dele na API
+// já é conhecido e é OUTRO — e a interface não deixa mapear esses.
+// ============================================================================
+
+export interface CandidatoApelido {
+  team_key: string;
+  nome: string;
+  similaridade: number;
+  id_conflitante: boolean;
+}
+
+export interface ApelidoSugerido {
+  nome_api: string;
+  provider_id: number | null;
+  ocorrencias: number;
+  jogos_perdidos: number;
+  ligas: string | null;
+  candidatos: CandidatoApelido[];
+}
+
+export async function getApelidosSugeridos() {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) return { apelidos: [], error: accessCheck.error || 'Acesso negado' };
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc('apelidos_sugeridos', { p_limite: 40 } as any);
+  if (error) return { apelidos: [], error: error.message };
+
+  return { apelidos: (data ?? []) as ApelidoSugerido[], error: null };
+}
+
+/**
+ * Cadastra o apelido e reprocessa as partidas antigas.
+ *
+ * A checagem de admin acontece duas vezes de propósito: aqui, para dar erro
+ * legível, e dentro da função do banco, que é quem realmente garante — a RPC
+ * é chamável por qualquer autenticado.
+ */
+export async function aplicarApelido(nome: string, teamKey: string, tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) return { error: accessCheck.error || 'Acesso negado' };
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc('aplicar_apelido', {
+    p_nome: nome,
+    p_team_key: teamKey,
+  } as any);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  revalidatePath(`/${tournamentSlug}/resultados`);
+  revalidatePath(`/${tournamentSlug}/projecao`);
+  return { success: true, reprocessadas: Number(data) || 0 };
+}
+
+export async function ignorarApelido(nome: string, motivo: string, tournamentSlug: string) {
+  const accessCheck = await checkAdminAccess();
+  if (!accessCheck.isAdmin) return { error: accessCheck.error || 'Acesso negado' };
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc('ignorar_apelido', {
+    p_nome: nome,
+    p_motivo: motivo || null,
+  } as any);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/${tournamentSlug}/admin`);
+  return { success: true };
+}
