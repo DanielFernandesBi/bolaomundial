@@ -195,21 +195,6 @@ export function ResultadosContent({ fixtures, clubes, ultimaSincronizacao, ligas
     });
   }, [fixtures, clube, soCopas, copas]);
 
-  const grupos = useMemo(() => {
-    const porDia = new Map<string, ClubFixture[]>();
-    for (const f of filtrados) {
-      const d = diaEmBrasilia(f.kickoff_at);
-      if (!porDia.has(d)) porDia.set(d, []);
-      porDia.get(d)!.push(f);
-    }
-    return [...porDia.entries()]
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([dia, itens]) => ({
-        dia,
-        itens: itens.sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at)),
-      }));
-  }, [filtrados]);
-
   // Hoje/amanhã/ontem também em Brasília, pelo mesmo motivo dos rótulos.
   const dias = useMemo<[string, string, string]>(() => {
     const desloca = (offset: number) => {
@@ -219,6 +204,31 @@ export function ResultadosContent({ fixtures, clubes, ultimaSincronizacao, ligas
     };
     return [desloca(0), desloca(1), desloca(-1)];
   }, []);
+
+  const grupos = useMemo(() => {
+    const porDia = new Map<string, ClubFixture[]>();
+    for (const f of filtrados) {
+      const d = diaEmBrasilia(f.kickoff_at);
+      if (!porDia.has(d)) porDia.set(d, []);
+      porDia.get(d)!.push(f);
+    }
+    const hoje = dias[0];
+    const todos = [...porDia.entries()].map(([dia, itens]) => ({
+      dia,
+      futuro: dia > hoje,
+      itens: itens.sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at)),
+    }));
+
+    // Quem abre esta tela quer saber o que JÁ aconteceu — por isso hoje e
+    // ontem vêm primeiro, do mais recente para o mais antigo, e só depois a
+    // agenda, do mais próximo para o mais distante. Uma ordenação única por
+    // data não dá isso: ou enterra o passado, ou inverte a agenda.
+    const passado = todos.filter((g) => !g.futuro).sort((a, b) => b.dia.localeCompare(a.dia));
+    const futuro = todos.filter((g) => g.futuro).sort((a, b) => a.dia.localeCompare(b.dia));
+    return [...passado, ...futuro];
+  }, [filtrados, dias]);
+
+  const primeiroFuturo = grupos.find((g) => g.futuro)?.dia;
 
   return (
     <div>
@@ -263,6 +273,17 @@ export function ResultadosContent({ fixtures, clubes, ultimaSincronizacao, ligas
         <div className="space-y-4">
           {grupos.map(({ dia, itens }) => (
             <section key={dia}>
+              {/* Marca onde o passado termina e a agenda começa. Sem isto, sair
+                  de "Ontem" direto para "Amanhã" parece erro de ordenação. */}
+              {dia === primeiroFuturo && (
+                <div className="mb-3 mt-1 flex items-center gap-2">
+                  <span className="h-px flex-1 bg-hairline" />
+                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[hsl(var(--faint))]">
+                    Próximos jogos
+                  </span>
+                  <span className="h-px flex-1 bg-hairline" />
+                </div>
+              )}
               <h2 className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
                 {diaLegivel(itens[0].kickoff_at, dias[0], dias[1], dias[2])}
               </h2>
