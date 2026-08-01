@@ -42,6 +42,8 @@ export interface TieProjecao {
   round: string | null;
   homeName: string;
   awayName: string;
+  homeCrest: string | null;
+  awayCrest: string | null;
   advance: number;
   low: number;
   high: number;
@@ -50,8 +52,17 @@ export interface TieProjecao {
   voltaScore: string | null;
 }
 
+/** Chance de o clube levantar a taça daquela competição. */
+export interface TituloClube {
+  competition: string;
+  team: string;
+  crest: string | null;
+  chance: number;
+}
+
 export interface ProjecaoData {
   ties: TieProjecao[];
+  titulosClube: TituloClube[];
   ranking: PoolResult | null;
   modelVersion: string;
   matchesUsed: number;
@@ -152,7 +163,12 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
             'next_tie_id, next_slot_side, ida_match_id, volta_match_id, winner_team'
         )
         .eq('tournament_id', tid ?? -1),
-      supabase.from('matches').select('id, status, score_home, score_away').eq('tournament_id', tid ?? -1),
+      // `home_iso`/`away_iso` guardam o escudo que o admin cadastrou ao montar a
+      // chave. É a mesma fonte usada em /resultados — uma imagem só por clube.
+      supabase
+        .from('matches')
+        .select('id, status, score_home, score_away, team_home, home_iso, team_away, away_iso')
+        .eq('tournament_id', tid ?? -1),
       supabase
         .from('predictions')
         .select('user_id, match_id, pred_home, pred_away, pred_pen_winner, matches!inner(tournament_id)')
@@ -168,12 +184,28 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
     ]);
 
   const placar = new Map<number, { home: number; away: number } | null>();
+  // Escudo por CHAVE canônica: `matches` grava "Vasco" numa competição e
+  // "Vasco da Gama" noutra, e só a chave junta os dois. `iso` só vale como
+  // escudo quando é URL — nos torneios de seleções a mesma coluna guardava
+  // código de país, e renderizar <img src="br"> falharia.
+  const escudoPorChave = new Map<string, string>();
+  const registrarEscudo = (nome?: string | null, url?: string | null) => {
+    if (!nome || !url || !url.startsWith('http')) return;
+    const chave = ajuste.resolver(nome);
+    if (chave && !escudoPorChave.has(chave)) escudoPorChave.set(chave, url);
+  };
   let jogosEncerrados = 0;
   for (const m of (matchesRaw ?? []) as any[]) {
     const ok = m.status === 'FINISHED' && m.score_home !== null && m.score_away !== null;
     placar.set(m.id, ok ? { home: m.score_home, away: m.score_away } : null);
     if (ok) jogosEncerrados++;
+    registrarEscudo(m.team_home, m.home_iso);
+    registrarEscudo(m.team_away, m.away_iso);
   }
+  const escudoDe = (nome: string | null): string | null => {
+    const chave = ajuste.resolver(nome);
+    return chave ? escudoPorChave.get(chave) ?? null : null;
+  };
 
   const ties: PoolTie[] = ((tiesRaw ?? []) as any[]).map((t) => ({
     tieId: t.id,
@@ -210,6 +242,8 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
       round: t.round,
       homeName: t.teamA,
       awayName: t.teamB,
+      homeCrest: escudoDe(t.teamA),
+      awayCrest: escudoDe(t.teamB),
       advance: 0.5,
       low: 0.5,
       high: 0.5,
@@ -296,6 +330,10 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
 
   return {
     ties: projecoes,
+    titulosClube: (ranking?.clubTitleChance ?? []).map((c) => ({
+      ...c,
+      crest: escudoDe(c.team),
+    })),
     ranking,
     modelVersion: MODEL_VERSION,
     matchesUsed: ajuste.matchesUsed,

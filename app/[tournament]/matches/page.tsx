@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Activity, Calendar, ChevronRight, Clock, Eye, TrendingUp, Trophy } from 'lucide-react';
+import { Activity, Calendar, ChevronRight, Clock, Eye, Trophy } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MatchCard } from '@/components/match-card';
 import { PodiumCard } from '@/components/podium-card';
@@ -227,8 +227,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
             barra inferior: a nav foi reduzida de propósito a cinco destinos
             com rótulo, e um sexto desfaria essa decisão. Aqui é onde o jogador
             já está quando pensa "como esse time vem jogando?". */}
+        {/* A projeção NÃO tem card aqui: ela mora na aba "Projeção" do ranking,
+            e o mesmo conteúdo em dois lugares só cria a dúvida de qual é o
+            certo. */}
         {temCompeticoes && (
-          <div className="mb-6 grid gap-2 sm:grid-cols-2">
+          <div className="mb-6">
             <Link
               href={`/${tournamentSlug}/resultados`}
               className="flex items-center gap-3 rounded-[12px] border border-border bg-card px-3 py-3 transition-colors hover:border-primary/40"
@@ -242,24 +245,6 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                 </span>
                 <span className="block text-xs text-muted-foreground">
                   Últimos resultados em todas as competições
-                </span>
-              </span>
-              <ChevronRight className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />
-            </Link>
-
-            <Link
-              href={`/${tournamentSlug}/projecao`}
-              className="flex items-center gap-3 rounded-[12px] border border-border bg-card px-3 py-3 transition-colors hover:border-primary/40"
-            >
-              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-surface-sunken">
-                <TrendingUp className="h-4 w-4 text-primary" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-card-foreground">
-                  Quem tem mais chance
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  Projeção de classificação, com a margem de erro
                 </span>
               </span>
               <ChevronRight className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />

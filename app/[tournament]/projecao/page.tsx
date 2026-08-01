@@ -32,7 +32,7 @@ export default async function ProjecaoPage({ params }: ProjecaoPageProps) {
         <div className="mb-6">
           <h1 className="mb-2 text-4xl font-bold text-foreground">Projeção</h1>
           <p className="text-muted-foreground">
-            Chance de cada clube avançar, a partir da força medida em jogos oficiais
+            Quem leva a taça, como o bolão pode terminar e a chance de cada clube avançar
           </p>
         </div>
 
