@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDown, Info, Medal, Sparkles, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowDown, Info, Medal, Sparkles, TrendingUp, Trophy, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { COMPETITIONS, competitionName } from '@/lib/competitions';
 import type { PoolPlayerResult } from '@/lib/club-model';
@@ -23,9 +23,22 @@ import type { ProjecaoData, TieProjecao, TituloClube } from './actions';
 // clubes têm desvio-padrão de 3,35 pontos no Opta — são muito parecidos — e o
 // modelo começou a acumular evidência há pouco. "53%" sozinho passaria uma
 // confiança que o dado não sustenta, então cada número vem com a faixa dele.
+//
+// DUAS ABAS, porque são duas perguntas diferentes. "Como eu estou no bolão?"
+// e "quem ganha a Libertadores?" saem da mesma simulação, mas quem abre a tela
+// quer uma OU outra — empilhadas, eram quatro telas de rolagem para chegar aos
+// confrontos. Tudo continua vindo do mesmo cálculo, feito uma vez no servidor:
+// a aba só escolhe o que mostrar.
 // ============================================================================
 
 type Metrica = 'campeao' | 'podio' | 'lanterna';
+
+type Aba = 'bolao' | 'torneios';
+
+const ABAS: { key: Aba; rotulo: string; icone: typeof Trophy }[] = [
+  { key: 'bolao', rotulo: 'Bolão', icone: Users },
+  { key: 'torneios', rotulo: 'Torneios', icone: Trophy },
+];
 
 const METRICAS: {
   key: Metrica;
@@ -405,6 +418,10 @@ export function ProjecaoContent({
   palpitesEmAberto,
   palpitesDePodio,
 }: ProjecaoData) {
+  // Sem ranking não há aba de bolão para mostrar — cai direto nos torneios e a
+  // barra some, em vez de oferecer uma aba vazia.
+  const [aba, setAba] = useState<Aba>(ranking ? 'bolao' : 'torneios');
+
   const porCompeticao = COMPETITIONS.map((c) => ({
     key: c.key as string,
     nome: c.name,
@@ -434,7 +451,29 @@ export function ProjecaoContent({
         </div>
       </div>
 
+      {/* Abas, no padrão de Partidas, Ranking e Resultados. */}
       {ranking && (
+        <div className="mb-4 grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+          {ABAS.map(({ key, rotulo, icone: Icone }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setAba(key)}
+              aria-pressed={aba === key}
+              className={`flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-xs font-semibold transition-colors ${
+                aba === key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icone className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+              <span className="truncate">{rotulo}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {aba === 'bolao' && ranking && (
         <RankingProjetado
           r={ranking}
           palpitesEmAberto={palpitesEmAberto}
@@ -442,28 +481,32 @@ export function ProjecaoContent({
         />
       )}
 
-      <Titulos itens={titulosClube} />
+      {aba === 'torneios' && (
+        <>
+          <Titulos itens={titulosClube} />
 
-      <Secao icon={Medal}>Chance de classificação</Secao>
-      <div className="space-y-4">
-        {porCompeticao.map((g) => (
-          <section key={g.key}>
-            <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
-              {competitionName(g.key) || g.nome}
-            </p>
-            <div className="overflow-hidden rounded-[12px] border border-border bg-card">
-              {g.itens.map((t) => (
-                <Confronto key={t.tieId} t={t} />
-              ))}
+          <Secao icon={Medal}>Chance de classificação</Secao>
+          <div className="space-y-4">
+            {porCompeticao.map((g) => (
+              <section key={g.key}>
+                <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
+                  {competitionName(g.key) || g.nome}
+                </p>
+                <div className="overflow-hidden rounded-[12px] border border-border bg-card">
+                  {g.itens.map((t) => (
+                    <Confronto key={t.tieId} t={t} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          {ties.length === 0 && (
+            <div className="rounded-[12px] border border-border bg-card px-4 py-10 text-center">
+              <p className="text-sm text-muted-foreground">Nenhum confronto cadastrado.</p>
             </div>
-          </section>
-        ))}
-      </div>
-
-      {ties.length === 0 && (
-        <div className="rounded-[12px] border border-border bg-card px-4 py-10 text-center">
-          <p className="text-sm text-muted-foreground">Nenhum confronto cadastrado.</p>
-        </div>
+          )}
+        </>
       )}
     </div>
   );
