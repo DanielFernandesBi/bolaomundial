@@ -312,6 +312,92 @@ function Forma({ ultimos, tamanho = 'md' }: { ultimos: string; tamanho?: 'sm' | 
  * que "1 vitória" e "0,00 gols contra por jogo" competiam pela mesma atenção.
  * Em lista, o olho percorre rótulos e para no que interessa.
  */
+
+// ── Cor por dominância ──────────────────────────────────────────────────────
+//
+// A régua é sempre a mesma: colore-se o número que MANDA na linha, e o resto
+// fica neutro. Pintar tudo não destaca nada, e pintar por valor fixo (verde
+// para vitória, vermelho para derrota, sempre) faria um time de 1 vitória e 9
+// derrotas parecer bom por causa do verde.
+//
+// Empate não tem cor própria: ele não é bom nem ruim. Quando domina, ganha só
+// o peso do texto.
+const VERDE = 'text-state-open';
+const VERMELHO = 'text-destructive';
+const NEUTRO = 'text-foreground';
+const APAGADO = 'text-muted-foreground';
+
+/** Vitórias-empates-derrotas, com destaque no que predomina. */
+function VED({ v, e, d }: { v: number; e: number; d: number }) {
+  const max = Math.max(v, e, d);
+  // Empate numérico entre duas categorias não elege ninguém: não há o que
+  // destacar quando 3 vitórias e 3 derrotas convivem.
+  const quantosNoMaximo = [v, e, d].filter((x) => x === max).length;
+  const manda = (x: number) => quantosNoMaximo === 1 && x === max && max > 0;
+  return (
+    <span className="tabular-nums">
+      <span className={manda(v) ? `${VERDE} font-bold` : APAGADO}>{v}</span>
+      <span className="text-[hsl(var(--faint))]">-</span>
+      <span className={manda(e) ? `${NEUTRO} font-bold` : APAGADO}>{e}</span>
+      <span className="text-[hsl(var(--faint))]">-</span>
+      <span className={manda(d) ? `${VERMELHO} font-bold` : APAGADO}>{d}</span>
+    </span>
+  );
+}
+
+/**
+ * Dois números que se opõem (feitos × sofridos, viradas × entregues).
+ * `bomEhMaior` diz de que lado está a coisa boa.
+ */
+function Par({
+  a,
+  b,
+  bomEhMaior = true,
+  formatar = (x: number) => String(x),
+}: {
+  a: number;
+  b: number;
+  bomEhMaior?: boolean;
+  formatar?: (x: number) => string;
+}) {
+  const aMelhor = bomEhMaior ? a > b : a < b;
+  const bMelhor = bomEhMaior ? b > a : b < a;
+  return (
+    <span className="tabular-nums">
+      <span className={aMelhor ? `${VERDE} font-bold` : bMelhor ? VERMELHO : APAGADO}>
+        {formatar(a)}
+      </span>
+      <span className="text-[hsl(var(--faint))]"> · </span>
+      <span className={bMelhor ? `${VERDE} font-bold` : aMelhor ? VERMELHO : APAGADO}>
+        {formatar(b)}
+      </span>
+    </span>
+  );
+}
+
+/** Um número só, que é bom ou ruim conforme o sinal. */
+function Sinal({ valor, bomEhPositivo = true }: { valor: number; bomEhPositivo?: boolean }) {
+  const bom = bomEhPositivo ? valor > 0 : valor < 0;
+  const ruim = bomEhPositivo ? valor < 0 : valor > 0;
+  return (
+    <span className={`tabular-nums ${bom ? `${VERDE} font-bold` : ruim ? VERMELHO : APAGADO}`}>
+      {valor > 0 ? '+' : ''}
+      {valor}
+    </span>
+  );
+}
+
+/** Contagem em que zero é neutro e qualquer valor acima tem sinal próprio. */
+function Contagem({ valor, bom }: { valor: number; bom: boolean }) {
+  return (
+    <span
+      className={`tabular-nums ${valor === 0 ? APAGADO : bom ? `${VERDE} font-bold` : `${VERMELHO} font-bold`}`}
+    >
+      {valor}
+    </span>
+  );
+}
+
 function Stat({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode; nota?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-t border-hairline px-3.5 py-2.5 first:border-t-0">
@@ -347,7 +433,6 @@ function PainelClube({ s }: { s: ClubeStats }) {
 
   const aproveitamento = Math.round(((s.v * 3 + s.e) / (s.jogos * 3)) * 100);
   const saldo = s.gols_pro - s.gols_contra;
-  const temHt = s.ht_pro + s.ht_contra > 0 || s.virou + s.entregou > 0;
 
   return (
     <div className="mb-4 overflow-hidden rounded-[12px] border border-border bg-card">
@@ -380,27 +465,37 @@ function PainelClube({ s }: { s: ClubeStats }) {
         </div>
       </div>
 
-      <Stat rotulo="Vitórias · empates · derrotas" valor={`${s.v}-${s.e}-${s.d}`} />
-      <Stat rotulo="Em casa" valor={`${s.casa_v}-${s.casa_e}-${s.casa_d}`} />
-      <Stat rotulo="Fora" valor={`${s.fora_v}-${s.fora_e}-${s.fora_d}`} />
-      <Stat rotulo="Gols pró · contra" valor={`${s.gols_pro} · ${s.gols_contra}`} />
-      <Stat rotulo="Saldo de gols" valor={`${saldo > 0 ? '+' : ''}${saldo}`} />
+      <Stat rotulo="Vitórias · empates · derrotas" valor={<VED v={s.v} e={s.e} d={s.d} />} />
+      <Stat rotulo="Em casa" valor={<VED v={s.casa_v} e={s.casa_e} d={s.casa_d} />} />
+      <Stat rotulo="Fora" valor={<VED v={s.fora_v} e={s.fora_e} d={s.fora_d} />} />
+      <Stat rotulo="Gols pró · contra" valor={<Par a={s.gols_pro} b={s.gols_contra} />} />
+      <Stat rotulo="Saldo de gols" valor={<Sinal valor={saldo} />} />
       <Stat
         rotulo="Média por jogo"
         nota="pró · contra"
-        valor={`${n2(s.gols_pro / s.jogos)} · ${n2(s.gols_contra / s.jogos)}`}
+        valor={<Par a={s.gols_pro / s.jogos} b={s.gols_contra / s.jogos} formatar={n2} />}
       />
-      <Stat rotulo="Jogos sem sofrer gol" valor={s.sem_sofrer} />
-      <Stat rotulo="Jogos sem marcar" valor={s.nao_marcou} />
-      {temHt && (
+      <Stat rotulo="Jogos sem sofrer gol" valor={<Contagem valor={s.sem_sofrer} bom />} />
+      <Stat rotulo="Jogos sem marcar" valor={<Contagem valor={s.nao_marcou} bom={false} />} />
+      {/* O bloco do 1º tempo aparece quando o dado EXISTE, e não quando ele é
+          diferente de zero: 0–0 no intervalo é placar, não ausência. */}
+      {s.com_intervalo > 0 && (
         <>
-          {/* Estes dois só existem porque a resposta da API traz o placar do
-              INTERVALO — que a gente vinha descartando. */}
-          <Stat rotulo="Gols no 1º tempo" nota="pró · contra" valor={`${s.ht_pro} · ${s.ht_contra}`} />
+          <Stat
+            rotulo="Gols no 1º tempo"
+            nota="pró · contra"
+            valor={<Par a={s.ht_pro} b={s.ht_contra} />}
+          />
           <Stat
             rotulo="Viradas · vantagens entregues"
             nota="a partir do intervalo"
-            valor={`${s.virou} · ${s.entregou}`}
+            valor={
+              <span className="tabular-nums">
+                <Contagem valor={s.virou} bom />
+                <span className="text-[hsl(var(--faint))]"> · </span>
+                <Contagem valor={s.entregou} bom={false} />
+              </span>
+            }
           />
         </>
       )}

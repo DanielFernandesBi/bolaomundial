@@ -70,6 +70,8 @@ export interface ClubeStats {
   nao_marcou: number;
   casa_v: number; casa_e: number; casa_d: number;
   fora_v: number; fora_e: number; fora_d: number;
+  /** Em quantos jogos o placar do intervalo é conhecido. */
+  com_intervalo: number;
   ht_pro: number;
   ht_contra: number;
   /** Estava perdendo no intervalo e venceu. */

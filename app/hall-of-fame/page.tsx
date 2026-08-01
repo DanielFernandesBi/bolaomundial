@@ -202,6 +202,15 @@ export default async function HallOfFamePage() {
       .slice(0, 2);
   }
 
+  // Mais recente primeiro. A ordem vinha de `tournaments.created_at`, que é
+  // quando o bolão foi CRIADO — não quando terminou. Um bolão criado antes e
+  // encerrado depois aparecia fora de ordem.
+  tournamentsResults.sort((a, b) => {
+    const da = a.encerradoEm ? new Date(a.encerradoEm).getTime() : 0;
+    const db = b.encerradoEm ? new Date(b.encerradoEm).getTime() : 0;
+    return db - da;
+  });
+
   const totalDistribuido = tournamentsResults.reduce(
     (soma, t) => soma + t.top3.reduce((s, r) => s + r.prize_money, 0),
     0

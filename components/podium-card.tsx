@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Trophy, Lock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Lock, Trophy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { getFlagUrl } from '@/lib/utils/flags';
 import { savePodiumPrediction } from '@/app/[tournament]/matches/actions';
@@ -63,6 +63,17 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
   });
   const [activeSlot, setActiveSlot] = useState<SlotKey>('champion');
   const [isSaving, setIsSaving] = useState(false);
+  // O que está GRAVADO no banco, para a tela distinguir "salvo" de "alterado e
+  // ainda não salvo". Sem isso o botão dizia "Salvar Pódio" para sempre, e o
+  // único retorno era um toast que some em 3 segundos — o palpite ia para o
+  // banco e o jogador ficava sem saber.
+  const [persistido, setPersistido] = useState(() =>
+    JSON.stringify({
+      c: userPick?.championTeam ?? null,
+      v: userPick?.viceTeam ?? null,
+      t: userPick?.thirdTeam ?? null,
+    })
+  );
   const [toast, setToast] = useState<string | null>(null);
   const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
 
@@ -101,12 +112,30 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
     } else {
       setToastTone('success');
       setToast('Pódio salvo com sucesso!');
+      setPersistido(
+        JSON.stringify({
+          c: picks.champion?.name ?? null,
+          v: picks.vice?.name ?? null,
+          t: mode === 'legacy' ? picks.third?.name ?? null : null,
+        })
+      );
     }
     setTimeout(() => setToast(null), 3000);
     setIsSaving(false);
   }
 
   const hasAnyPick = slotKeys.some((k) => picks[k]);
+
+  const atual = JSON.stringify({
+    c: picks.champion?.name ?? null,
+    v: picks.vice?.name ?? null,
+    t: mode === 'legacy' ? picks.third?.name ?? null : null,
+  });
+  const salvo = hasAnyPick && atual === persistido;
+  // "Completo" pede campeão E vice (e o 3º no formato antigo). Um pódio pela
+  // metade está salvo, mas vale menos — e dizer isso evita a descoberta tardia.
+  const completo =
+    !!picks.champion && !!picks.vice && (mode !== 'legacy' || !!picks.third);
 
   return (
     <Card className="relative border-primary/30 bg-primary/5">
@@ -194,7 +223,32 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
               })}
             </div>
 
-            {hasAnyPick && (
+            {/* Mesmo desenho de confirmação dos palpites de partida: caixa
+                tracejada verde quando está salvo e completo, âmbar quando
+                está salvo pela metade. O botão só reaparece quando há
+                alteração pendente. */}
+            {hasAnyPick && salvo && (
+              <div
+                className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border px-3 ${
+                  completo
+                    ? 'border-dashed border-state-open/40 bg-state-open/10 text-state-open'
+                    : 'border-dashed border-primary/45 bg-primary/10 text-primary'
+                }`}
+              >
+                {completo ? (
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                )}
+                <span className="text-sm font-semibold">
+                  {completo
+                    ? 'Pódio completo e salvo'
+                    : `Salvo · falta ${!picks.champion ? 'o campeão' : 'o vice'}`}
+                </span>
+              </div>
+            )}
+
+            {hasAnyPick && !salvo && (
               <button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -204,7 +258,7 @@ export function PodiumCard({ tournamentSlug, competitionKey, competitionName, mo
                     : 'bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]'
                 }`}
               >
-                {isSaving ? 'Salvando...' : 'Salvar Pódio'}
+                {isSaving ? 'Salvando...' : persistido === '{"c":null,"v":null,"t":null}' ? 'Salvar Pódio' : 'Salvar alteração'}
               </button>
             )}
           </>
