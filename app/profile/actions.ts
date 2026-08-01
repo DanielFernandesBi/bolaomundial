@@ -1,6 +1,7 @@
 'use server';
 
 import { createServerSupabaseClient } from '@/lib/supabase';
+import { distribuicaoPorFaixa, faixaDePontos } from '@/lib/scoring-ui';
 
 export async function getGeneralProfile() {
   const supabase = await createServerSupabaseClient();
@@ -59,7 +60,9 @@ export async function getGeneralProfile() {
   const correctPredictions = allPredictions?.filter((p) => p.points_earned > 0).length || 0;
   
   // Calcular estatísticas adicionais
-  const exactMatchesCount = allPredictions?.filter((p) => p.points_regular === 30).length || 0;
+  // Mesma armadilha do bloco de distribuição: a cravada valia 25 no Paulistão.
+  const exactMatchesCount =
+    allPredictions?.filter((p) => faixaDePontos(p.points_regular) === 'exata').length || 0;
   const exactMatchesPercentage = totalPredictions > 0 
     ? Math.round((exactMatchesCount / totalPredictions) * 100 * 10) / 10 
     : 0;
@@ -70,15 +73,23 @@ export async function getGeneralProfile() {
   
   const bestScore = allPredictions?.reduce((max, p) => Math.max(max, p.points_earned || 0), 0) || 0;
   
-  // Distribuição de pontos por categoria
+  // Distribuição de pontos por FAIXA, e não por valor literal.
+  //
+  // Contar `points_regular === 30` perdia as cravadas de 25 do Paulistão, e
+  // `=== 10` perdia os "vencedor seco" de 9 da Copa 2026 — a soma da
+  // distribuição não fechava com o total de palpites, e o card do topo (que lê
+  // tournament_rankings.exact_matches, este sim ciente das duas escalas) dizia
+  // 20 cravadas enquanto a distribuição dizia 11.
+  const faixas = distribuicaoPorFaixa((allPredictions ?? []).map((p) => p.points_regular));
   const pointsDistribution = {
-    exact: allPredictions?.filter((p) => p.points_regular === 30).length || 0,
-    category17: allPredictions?.filter((p) => p.points_regular === 17).length || 0,
-    category15: allPredictions?.filter((p) => p.points_regular === 15).length || 0,
-    category12: allPredictions?.filter((p) => p.points_regular === 12).length || 0,
-    category9: allPredictions?.filter((p) => p.points_regular === 10).length || 0,
-    category3: allPredictions?.filter((p) => p.points_regular === 3).length || 0,
-    zero: allPredictions?.filter((p) => (p.points_regular ?? 0) === 0).length || 0,
+    exact: faixas.exata,
+    category17: faixas.p17,
+    category15: faixas.p15,
+    category12: faixas.p12,
+    category9: faixas.seca,
+    category3: faixas.consolacao,
+    zero: faixas.zero,
+    outras: faixas.outra,
   };
 
   // Formatar dados dos torneios
@@ -233,7 +244,9 @@ export async function getPublicProfile(userId: string) {
   const correctPredictions = allPredictions?.filter((p) => p.points_earned > 0).length || 0;
   
   // Calcular estatísticas adicionais
-  const exactMatchesCount = allPredictions?.filter((p) => p.points_regular === 30).length || 0;
+  // Mesma armadilha do bloco de distribuição: a cravada valia 25 no Paulistão.
+  const exactMatchesCount =
+    allPredictions?.filter((p) => faixaDePontos(p.points_regular) === 'exata').length || 0;
   const exactMatchesPercentage = totalPredictions > 0 
     ? Math.round((exactMatchesCount / totalPredictions) * 100 * 10) / 10 
     : 0;
@@ -244,15 +257,23 @@ export async function getPublicProfile(userId: string) {
   
   const bestScore = allPredictions?.reduce((max, p) => Math.max(max, p.points_earned || 0), 0) || 0;
   
-  // Distribuição de pontos por categoria
+  // Distribuição de pontos por FAIXA, e não por valor literal.
+  //
+  // Contar `points_regular === 30` perdia as cravadas de 25 do Paulistão, e
+  // `=== 10` perdia os "vencedor seco" de 9 da Copa 2026 — a soma da
+  // distribuição não fechava com o total de palpites, e o card do topo (que lê
+  // tournament_rankings.exact_matches, este sim ciente das duas escalas) dizia
+  // 20 cravadas enquanto a distribuição dizia 11.
+  const faixas = distribuicaoPorFaixa((allPredictions ?? []).map((p) => p.points_regular));
   const pointsDistribution = {
-    exact: allPredictions?.filter((p) => p.points_regular === 30).length || 0,
-    category17: allPredictions?.filter((p) => p.points_regular === 17).length || 0,
-    category15: allPredictions?.filter((p) => p.points_regular === 15).length || 0,
-    category12: allPredictions?.filter((p) => p.points_regular === 12).length || 0,
-    category9: allPredictions?.filter((p) => p.points_regular === 10).length || 0,
-    category3: allPredictions?.filter((p) => p.points_regular === 3).length || 0,
-    zero: allPredictions?.filter((p) => (p.points_regular ?? 0) === 0).length || 0,
+    exact: faixas.exata,
+    category17: faixas.p17,
+    category15: faixas.p15,
+    category12: faixas.p12,
+    category9: faixas.seca,
+    category3: faixas.consolacao,
+    zero: faixas.zero,
+    outras: faixas.outra,
   };
 
   // Formatar dados dos torneios

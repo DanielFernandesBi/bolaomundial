@@ -175,11 +175,29 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
         </div>
 
         {/* Últimos 8 jogos: forma recente num relance, pela escala de 3 níveis */}
-        {profile.history && profile.history.length > 0 && (
-          <div className="mb-8 rounded-[16px] border border-border bg-card p-4">
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
-              Últimos jogos
+        {/* Renderiza mesmo sem histórico: some-lo fazia parecer que o card
+            tinha quebrado, quando na verdade o bolão ainda não pontuou nada —
+            que é o caso de todo torneio recém-começado. */}
+        <div className="mb-8 rounded-[16px] border border-border bg-card p-4">
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">
+              Últimos {Math.min(profile.history?.length ?? 0, 8) || ''} jogos
             </p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[hsl(var(--faint))]">
+              mais recente à direita
+            </p>
+          </div>
+          {!profile.history || profile.history.length === 0 ? (
+            <div className="flex gap-1.5">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="h-[34px] flex-1 rounded-[8px] bg-surface-sunken"
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
+          ) : (
             <div className="flex gap-1.5">
               {profile.history.slice(0, 8).reverse().map((h: any) => {
                 const pts = h.points_earned ?? 0;
@@ -201,8 +219,13 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+          {(!profile.history || profile.history.length === 0) && (
+            <p className="mt-2 text-[11px] text-[hsl(var(--faint))]">
+              Nenhum jogo pontuado ainda neste bolão.
+            </p>
+          )}
+        </div>
 
         {/* Regras de Pontuação */}
         <ScoringLegend variant={scoringVariant} />

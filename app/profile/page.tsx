@@ -90,15 +90,25 @@ export default async function GeneralProfilePage() {
       ? Math.round((profile.correct_predictions / profile.total_predictions) * 100)
       : 0;
 
+  // Rótulos por FAIXA, e não por valor: o mesmo acerto valeu 25 no Paulistão e
+  // 30 na Copa, 9 numa época e 10 depois. Rotular "30 pts" faria a linha
+  // mentir sobre metade do histórico.
   const distribuicao = [
-    ['Cravadas (30 pts)', profile.points_distribution?.exact || 0, 'text-score-exact'],
-    ['17 pts', profile.points_distribution?.category17 || 0, 'text-score-partial'],
-    ['15 pts', profile.points_distribution?.category15 || 0, 'text-score-partial'],
-    ['12 pts', profile.points_distribution?.category12 || 0, 'text-score-partial'],
-    ['10 pts', profile.points_distribution?.category9 || 0, 'text-score-partial'],
-    ['3 pts', profile.points_distribution?.category3 || 0, 'text-score-partial'],
-    ['0 pts', profile.points_distribution?.zero || 0, 'text-score-none'],
+    ['Cravada — placar exato', profile.points_distribution?.exact || 0, 'text-score-exact'],
+    ['Vencedor + gols do vencedor', profile.points_distribution?.category17 || 0, 'text-score-partial'],
+    ['Vencedor + saldo, ou empate', profile.points_distribution?.category15 || 0, 'text-score-partial'],
+    ['Vencedor + gols do perdedor', profile.points_distribution?.category12 || 0, 'text-score-partial'],
+    ['Só o vencedor', profile.points_distribution?.category9 || 0, 'text-score-partial'],
+    ['Consolação', profile.points_distribution?.category3 || 0, 'text-score-partial'],
+    ['Sem pontos', profile.points_distribution?.zero || 0, 'text-score-none'],
+    ...(profile.points_distribution?.outras
+      ? ([['Outras', profile.points_distribution.outras, 'text-score-partial']] as const)
+      : []),
   ] as const;
+
+  // A soma TEM de bater com o total de palpites. Quando não bate, é sinal de
+  // faixa nova aparecendo — e aparecer na tela é melhor do que sumir.
+  const somaDistribuicao = distribuicao.reduce((s, [, n]) => s + (n as number), 0);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
@@ -164,15 +174,25 @@ export default async function GeneralProfilePage() {
 
         {/* Distribuição de pontos */}
         <div className="mb-6 rounded-[16px] border border-border bg-card p-4">
-          <p className={`mb-2 ${legenda}`}>Distribuição de pontos</p>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <p className={legenda}>Distribuição de pontos</p>
+            {/* O total à vista é o que denuncia se a conta parou de fechar. */}
+            <p className="font-mono text-[10px] tabular-nums text-[hsl(var(--faint))]">
+              {somaDistribuicao} de {profile.total_predictions}
+            </p>
+          </div>
           <div className="space-y-2">
             {distribuicao.map(([label, valor, tom]) => (
-              <div key={label} className="flex items-center justify-between text-sm">
-                <span className="text-card-foreground">{label}</span>
-                <span className={`font-semibold tabular-nums ${tom}`}>{valor}</span>
+              <div key={label} className="flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 flex-1 text-card-foreground">{label}</span>
+                <span className={`flex-shrink-0 font-semibold tabular-nums ${tom}`}>{valor}</span>
               </div>
             ))}
           </div>
+          <p className="mt-3 text-[11px] leading-relaxed text-[hsl(var(--faint))]">
+            Agrupado por tipo de acerto, não pelo valor em pontos: a régua mudou entre os bolões —
+            a cravada já valeu 25 e hoje vale 30, o acerto seco já valeu 9 e hoje vale 10.
+          </p>
         </div>
 
         {/* Bolões que você jogou — uma linha por torneio */}
