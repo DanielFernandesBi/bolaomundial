@@ -5,9 +5,12 @@
 // A calibração está documentada em MODELO_CLUBES_PLANO.md §1.3 e §2.2.
 // ============================================================================
 
+// v3: as baselines estimadas encolhem para um prior fixo, e não para a média
+// da própria amostra — e a estimativa passou a ser contínua, sem o degrau dos
+// 20 jogos. Ver PRIOR_MU_HOME abaixo.
 // v2: baseline própria do mata-mata (o mando do Paulistão engolia o rating) e
 // os 7 pontos de pênalti só quando há disputa de pênaltis.
-export const MODEL_VERSION = 'clubs-2026-v2';
+export const MODEL_VERSION = 'clubs-2026-v3';
 
 /**
  * Sensibilidade da força ao rating Opta, na escala CRUA do Opta (0–100).
@@ -77,6 +80,43 @@ export const DEFAULT_MU_AWAY = 0.819;
  */
 export const KNOCKOUT_MU_HOME = 1.3;
 export const KNOCKOUT_MU_AWAY = 0.95;
+
+/**
+ * Âncora do encolhimento em estimateBaselines(): o que o modelo acredita sobre
+ * gols ANTES de olhar a amostra.
+ *
+ * Existe por causa de um erro observado em 01/08/2026. Até então a estimativa
+ * encolhia para a média global da PRÓPRIA amostra — o que iguala as categorias
+ * entre si mas não protege contra a amostra inteira estar torta. Com 26 jogos
+ * capturados (Primera Nacional, Primera B chilena, Intermedia paraguaia, Peru,
+ * Uruguai), o modelo concluiu mu_H 1,10 contra mu_A 1,22: mando de campo
+ * NEGATIVO na América do Sul. É ruído de amostra pequena — e mexeu na chance de
+ * título de clubes que não entraram em campo, porque mudou o quanto valia a
+ * vitória fora dos adversários deles (Cruzeiro caiu 2,1 p.p. num dia sem jogo).
+ *
+ * Valor: mesma ordem de grandeza do prior de mata-mata (total ~2,25 gols, mando
+ * ~1,37). NÃO é o par do Paulistão (1,468/0,819, mando 1,79) — aquele descreve
+ * estadual com clube do interior recebendo grande, não liga sul-americana.
+ *
+ * Repetimos os literais em vez de apontar para KNOCKOUT_MU_*: são parâmetros
+ * diferentes que hoje coincidem, e amarrá-los faria uma futura recalibração de
+ * um mover o outro sem ninguém pedir.
+ */
+export const PRIOR_MU_HOME = 1.3;
+export const PRIOR_MU_AWAY = 0.95;
+
+/**
+ * Pesos do encolhimento, em jogos equivalentes.
+ *
+ * SHRINK_K_PRIOR ancora a média GLOBAL da amostra no prior acima: com 26 jogos
+ * a amostra vale 26/(26+40) = 39% e o prior 61%; com 300, a amostra vale 88% e
+ * manda. É a passagem gradual que o degrau dos 20 jogos não fazia.
+ *
+ * SHRINK_K_COMPETITION ancora cada categoria na global já encolhida — é o
+ * empréstimo entre competições que já existia (§16 da especificação).
+ */
+export const SHRINK_K_PRIOR = 40;
+export const SHRINK_K_COMPETITION = 20;
 
 /** Competições do bolão de clubes, pelas chaves usadas em `ties.competition`. */
 const MATA_MATA = new Set(['libertadores', 'sudamericana', 'copa_do_brasil']);

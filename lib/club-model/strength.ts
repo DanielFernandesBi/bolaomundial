@@ -33,6 +33,10 @@ import {
   HALF_LIFE_DAYS,
   FIT_MAX_ITERATIONS,
   FIT_TOLERANCE,
+  PRIOR_MU_HOME,
+  PRIOR_MU_AWAY,
+  SHRINK_K_PRIOR,
+  SHRINK_K_COMPETITION,
   assertBeta,
 } from './constants';
 import type {
@@ -244,10 +248,19 @@ export function fitStrengths(
 export function estimateBaselines(
   matches: ModelMatch[],
   strengths: Map<string, ClubStrength>,
-  opts: { halfLifeDays?: number; shrinkK?: number; weights?: Map<string, number> } = {}
+  opts: {
+    halfLifeDays?: number;
+    shrinkK?: number;
+    weights?: Map<string, number>;
+    /** Âncora do encolhimento. Ver PRIOR_MU_HOME em constants.ts. */
+    prior?: { muHome: number; muAway: number };
+    shrinkKPrior?: number;
+  } = {}
 ): Map<string, CompetitionBaseline> {
   const halfLife = opts.halfLifeDays ?? HALF_LIFE_DAYS;
-  const shrinkK = opts.shrinkK ?? 20;
+  const shrinkK = opts.shrinkK ?? SHRINK_K_COMPETITION;
+  const shrinkKPrior = opts.shrinkKPrior ?? SHRINK_K_PRIOR;
+  const prior = opts.prior ?? { muHome: PRIOR_MU_HOME, muAway: PRIOR_MU_AWAY };
 
   interface Bucket {
     golsH: number;
@@ -280,8 +293,22 @@ export function estimateBaselines(
     }
   }
 
-  const muHGlobal = global.espH > 0 ? global.golsH / global.espH : 1;
-  const muAGlobal = global.espA > 0 ? global.golsA / global.espA : 1;
+  // Encolhimento em DOIS níveis.
+  //
+  // 1. A média global da amostra é ancorada no PRIOR. Antes ela era usada crua,
+  //    e isso não protegia contra a amostra inteira estar torta: com 26 jogos de
+  //    segunda divisão sul-americana o modelo chegou a "mando de campo
+  //    negativo" e mexeu na chance de título de clubes que não jogaram.
+  // 2. Cada categoria é ancorada nessa global já corrigida — o empréstimo entre
+  //    competições, que é o que sempre esteve certo aqui.
+  //
+  // Sem degrau: com pouca amostra o resultado é praticamente o prior, e a
+  // transição para o dado é contínua conforme a base cresce.
+  const nGlobal = global.n;
+  const muHAmostra = global.espH > 0 ? global.golsH / global.espH : prior.muHome;
+  const muAAmostra = global.espA > 0 ? global.golsA / global.espA : prior.muAway;
+  const muHGlobal = (nGlobal * muHAmostra + shrinkKPrior * prior.muHome) / (nGlobal + shrinkKPrior);
+  const muAGlobal = (nGlobal * muAAmostra + shrinkKPrior * prior.muAway) / (nGlobal + shrinkKPrior);
 
   const out = new Map<string, CompetitionBaseline>();
   for (const [comp, b] of buckets) {

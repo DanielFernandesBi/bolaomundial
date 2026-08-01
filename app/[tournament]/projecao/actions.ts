@@ -121,9 +121,16 @@ async function ajustarForcas(supabase: any): Promise<Ajuste> {
 
   let fit = fitStrengths(priors, observados, baselines, { anchorKeys, kappa: KAPPA });
   // Alterna força e baseline: é o que impede o viés por competição descrito em
-  // §2.1 do plano. Só vale a pena com amostra — abaixo disso o encolhimento de
-  // estimateBaselines devolveria praticamente a média global.
-  for (let i = 0; i < 3 && observados.length >= 20; i++) {
+  // §2.1 do plano.
+  //
+  // Roda SEMPRE. Havia aqui um `observados.length >= 20`, e ele produzia um
+  // degrau: no jogo de número 20 — que em 01/08/2026 foi um Colegiales x
+  // Gimnasia Jujuy da segunda divisão argentina — o modelo trocava de uma vez
+  // o mando congelado do Paulistão pela estimativa da amostra, e a chance de
+  // título de clubes que não jogaram se mexia sozinha. Agora estimateBaselines
+  // encolhe para um prior fixo, então com pouca amostra ele devolve o próprio
+  // prior e a transição é contínua. A trava deixou de ter função.
+  for (let i = 0; i < 3; i++) {
     const novas = estimateBaselines(observados, fit.strengths, { weights: pesos });
     for (const [k, v] of novas) baselines.set(k, v);
     fit = fitStrengths(priors, observados, baselines, { anchorKeys, kappa: KAPPA });
