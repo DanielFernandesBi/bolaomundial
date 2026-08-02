@@ -1009,9 +1009,16 @@ export interface ResultadoSugerido {
   provider_fixture_id: number;
 }
 
+/** Quando um resultado foi lançado sem clique humano. */
+export interface LancamentoAutomatico {
+  match_id: number;
+  aplicado_em: string;
+}
+
 async function lerSugestoes(tournamentSlug: string): Promise<{
   sugestoes: ResultadoSugerido[];
   ultimaSincronizacao: string | null;
+  automaticos: LancamentoAutomatico[];
   error?: string;
 }> {
   const supabase = await createServerSupabaseClient();
@@ -1022,9 +1029,10 @@ async function lerSugestoes(tournamentSlug: string): Promise<{
     .eq('slug', tournamentSlug)
     .single();
 
-  if (!tournament) return { sugestoes: [], ultimaSincronizacao: null, error: 'Torneio não encontrado' };
+  if (!tournament)
+    return { sugestoes: [], ultimaSincronizacao: null, automaticos: [], error: 'Torneio não encontrado' };
 
-  const [{ data, error }, { data: log }] = await Promise.all([
+  const [{ data, error }, { data: log }, { data: auto }] = await Promise.all([
     supabase.rpc('resultados_sugeridos', { p_tournament_id: (tournament as any).id }),
     supabase
       .from('club_sync_log')
@@ -1032,20 +1040,32 @@ async function lerSugestoes(tournamentSlug: string): Promise<{
       .eq('status', 'ok')
       .order('finished_at', { ascending: false, nullsFirst: false })
       .limit(1),
+    // Quem lançou o quê. Numa aba de conferência é o dado que decide se o
+    // admin precisa olhar a linha ou só passar o olho.
+    supabase
+      .from('resultado_automatico_log')
+      .select('match_id, aplicado_em')
+      .order('aplicado_em', { ascending: false }),
   ]);
 
-  if (error) return { sugestoes: [], ultimaSincronizacao: null, error: error.message };
+  if (error) return { sugestoes: [], ultimaSincronizacao: null, automaticos: [], error: error.message };
 
   return {
     sugestoes: (data ?? []) as ResultadoSugerido[],
     ultimaSincronizacao: (log?.[0] as any)?.finished_at ?? null,
+    automaticos: (auto ?? []) as LancamentoAutomatico[],
   };
 }
 
 export async function getResultadosSugeridos(tournamentSlug: string) {
   const accessCheck = await checkAdminAccess();
   if (!accessCheck.isAdmin) {
-    return { sugestoes: [], ultimaSincronizacao: null, error: accessCheck.error || 'Acesso negado' };
+    return {
+      sugestoes: [],
+      ultimaSincronizacao: null,
+      automaticos: [],
+      error: accessCheck.error || 'Acesso negado',
+    };
   }
   return lerSugestoes(tournamentSlug);
 }

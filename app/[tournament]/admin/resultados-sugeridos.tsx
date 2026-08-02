@@ -2,14 +2,25 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ArrowLeftRight, Check, Clock, RefreshCw, Zap } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  Check,
+  CheckCheck,
+  Clock,
+  Inbox,
+  RefreshCw,
+  Zap,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Toast } from '@/components/toast';
 import { competitionName } from '@/lib/competitions';
 import {
   aplicarResultadoSugerido,
   aplicarTodosResultadosSugeridos,
+  type LancamentoAutomatico,
   type ResultadoSugerido,
 } from './actions';
 
@@ -21,8 +32,16 @@ import {
 //
 // A tela mostra os avisos ANTES do clique, não depois: placar invertido em
 // relação ao nosso cadastro, prorrogação que este bolão não pontua, e
-// divergência com o que já foi lançado. É o que decide se o admin confere
-// antes ou aplica direto.
+// divergência com o que já foi lançado.
+//
+// POR QUE ABAS: a lista era uma só, e o jogo lançado continuava nela — só
+// trocava o botão por um "lançado". A cada rodada a tela crescia, e o que
+// exigia ação ia afundando no meio do que já estava resolvido. Agora o que
+// pede ação fica na primeira aba e o resto vira conferência.
+//
+// "Divergências" só existe quando há alguma. É de propósito: o aparecimento da
+// aba é o aviso. Guardar uma divergência dentro de "Lançados" seria esconder
+// um problema no arquivo.
 // ============================================================================
 
 function hora(iso: string): string {
@@ -40,7 +59,7 @@ function Etiqueta({
   icon: Icon,
   children,
 }: {
-  tone: 'aviso' | 'neutro' | 'erro';
+  tone: 'aviso' | 'neutro' | 'erro' | 'auto';
   icon: typeof Zap;
   children: React.ReactNode;
 }) {
@@ -48,6 +67,7 @@ function Etiqueta({
     aviso: 'border-state-closing/40 bg-state-closing/10 text-state-closing',
     neutro: 'border-border bg-surface-sunken text-muted-foreground',
     erro: 'border-destructive/40 bg-destructive/10 text-destructive',
+    auto: 'border-primary/40 bg-primary/10 text-primary',
   }[tone];
   return (
     <span
@@ -59,21 +79,39 @@ function Etiqueta({
   );
 }
 
+function Vazio({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-md border border-hairline bg-surface-sunken px-3 py-4 text-sm text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+
+const ABA_TRIGGER =
+  'flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[9px] text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:text-sm';
+
 export function ResultadosSugeridos({
   sugestoes,
   ultimaSincronizacao,
+  automaticos = [],
   tournamentSlug,
 }: {
   sugestoes: ResultadoSugerido[];
   ultimaSincronizacao: string | null;
+  automaticos?: LancamentoAutomatico[];
   tournamentSlug: string;
 }) {
   const router = useRouter();
   const [aplicando, setAplicando] = useState<number | 'todos' | null>(null);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
 
+  // Três conjuntos que não se sobrepõem. Divergente é sempre um jogo JÁ
+  // lançado, então precisa sair de "Lançados" para não ser dado como resolvido.
   const pendentes = sugestoes.filter((s) => s.status !== 'FINISHED');
   const divergentes = sugestoes.filter((s) => s.divergente);
+  const conferidos = sugestoes.filter((s) => s.status === 'FINISHED' && !s.divergente);
+
+  const autoPorJogo = new Map(automaticos.map((a) => [Number(a.match_id), a.aplicado_em]));
 
   function avisar(message: string, tone: 'success' | 'error', ms = 4000) {
     setToast({ message, tone });
@@ -111,6 +149,96 @@ export function ResultadosSugeridos({
     router.refresh();
   }
 
+  function Linha({ s, modo }: { s: ResultadoSugerido; modo: 'acao' | 'conferencia' }) {
+    const auto = autoPorJogo.get(Number(s.match_id));
+    return (
+      <div
+        className={`rounded-md border p-3 ${
+          s.divergente
+            ? 'border-destructive/40 bg-destructive/5'
+            : modo === 'conferencia'
+              ? 'border-hairline bg-surface-sunken'
+              : 'border-border bg-background'
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">
+              {s.team_home} <span className="text-muted-foreground">x</span> {s.team_away}
+            </p>
+            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              {competitionName(s.competition)}
+              {s.leg ? ` · ${s.leg}` : ''} · {hora(s.match_date)}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <span className="font-mono text-xl font-bold tabular-nums text-foreground">
+                {s.sug_home}–{s.sug_away}
+              </span>
+              {s.sug_pen_winner && (
+                <p className="font-mono text-[10px] uppercase tracking-wider text-primary">
+                  pên: {s.sug_pen_winner === 'home' ? s.team_home : s.team_away}
+                </p>
+              )}
+            </div>
+
+            {modo === 'conferencia' ? (
+              <span className="inline-flex items-center gap-1 text-xs text-state-open">
+                <Check className="h-4 w-4" aria-hidden="true" />
+                lançado
+              </span>
+            ) : (
+              <Button
+                onClick={() => aplicarUm(s)}
+                disabled={aplicando !== null}
+                size="sm"
+                variant={s.divergente ? 'destructive' : 'default'}
+                className={
+                  s.divergente
+                    ? ''
+                    : 'bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]'
+                }
+              >
+                {aplicando === Number(s.match_id)
+                  ? 'Lançando...'
+                  : s.divergente
+                    ? 'Corrigir'
+                    : 'Lançar'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {(s.divergente || s.invertido || s.teve_prorrogacao || auto) && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {s.divergente && (
+              <Etiqueta tone="erro" icon={AlertTriangle}>
+                lançado {s.score_home}–{s.score_away}, API diz {s.sug_home}–{s.sug_away}
+              </Etiqueta>
+            )}
+            {auto && (
+              <Etiqueta tone="auto" icon={Zap}>
+                lançado automaticamente em {hora(auto)}
+              </Etiqueta>
+            )}
+            {s.invertido && (
+              <Etiqueta tone="aviso" icon={ArrowLeftRight}>
+                mando invertido na API — placar já virado para o nosso cadastro
+              </Etiqueta>
+            )}
+            {s.teve_prorrogacao && (
+              <Etiqueta tone="aviso" icon={Clock}>
+                teve prorrogação — o placar sugerido é o dos 90 minutos
+              </Etiqueta>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       {toast && <Toast message={toast.message} tone={toast.tone} />}
@@ -124,7 +252,7 @@ export function ResultadosSugeridos({
                 Resultado sugerido
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Placar oficial que a API-Football já registrou. Nada é lançado sem o seu clique.
+                Placar oficial que a API-Football já registrou.
               </p>
             </div>
             {pendentes.length > 1 && (
@@ -147,98 +275,66 @@ export function ResultadosSugeridos({
           </div>
 
           {sugestoes.length === 0 ? (
-            <p className="rounded-md border border-hairline bg-surface-sunken px-3 py-4 text-sm text-muted-foreground">
-              Nenhum jogo do bolão encerrado na API ainda. A varredura roda de hora em hora entre
-              14h e 2h, e a janela do plano gratuito é de três dias.
-            </p>
+            <Vazio>
+              Nenhum jogo do bolão encerrado na API ainda. A varredura roda de 20 em 20 minutos
+              entre 14h e 2h, e a janela do plano gratuito é de três dias.
+            </Vazio>
           ) : (
-            <div className="space-y-2">
-              {sugestoes.map((s) => {
-                const jaLancado = s.status === 'FINISHED';
-                return (
-                  <div
-                    key={s.match_id}
-                    className={`rounded-md border p-3 ${
-                      s.divergente
-                        ? 'border-destructive/40 bg-destructive/5'
-                        : jaLancado
-                          ? 'border-hairline bg-surface-sunken'
-                          : 'border-border bg-background'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-foreground">
-                          {s.team_home} <span className="text-muted-foreground">x</span> {s.team_away}
-                        </p>
-                        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {competitionName(s.competition)}
-                          {s.leg ? ` · ${s.leg}` : ''} · {hora(s.match_date)}
-                        </p>
-                      </div>
+            <Tabs defaultValue="pendentes" className="w-full">
+              <TabsList className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
+                <TabsTrigger value="pendentes" className={ABA_TRIGGER}>
+                  <Inbox className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+                  <span className="truncate">Pendentes</span>
+                  <span className="hidden sm:inline">({pendentes.length})</span>
+                </TabsTrigger>
+                {divergentes.length > 0 && (
+                  <TabsTrigger value="divergencias" className={ABA_TRIGGER}>
+                    <AlertTriangle className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+                    <span className="truncate">Divergências</span>
+                    <span className="hidden sm:inline">({divergentes.length})</span>
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="conferidos" className={ABA_TRIGGER}>
+                  <CheckCheck className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+                  <span className="truncate">Lançados</span>
+                  <span className="hidden sm:inline">({conferidos.length})</span>
+                </TabsTrigger>
+              </TabsList>
 
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <span className="font-mono text-xl font-bold tabular-nums text-foreground">
-                            {s.sug_home}–{s.sug_away}
-                          </span>
-                          {s.sug_pen_winner && (
-                            <p className="font-mono text-[10px] uppercase tracking-wider text-primary">
-                              pên: {s.sug_pen_winner === 'home' ? s.team_home : s.team_away}
-                            </p>
-                          )}
-                        </div>
+              {/* Pendentes — o que ainda espera decisão */}
+              <TabsContent value="pendentes" className="mt-4 space-y-2">
+                {pendentes.length === 0 ? (
+                  <Vazio>
+                    Nada aguardando lançamento. Os jogos que a API já confirmou estão em
+                    &ldquo;Lançados&rdquo;.
+                  </Vazio>
+                ) : (
+                  pendentes.map((s) => <Linha key={s.match_id} s={s} modo="acao" />)
+                )}
+              </TabsContent>
 
-                        {jaLancado && !s.divergente ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-state-open">
-                            <Check className="h-4 w-4" aria-hidden="true" />
-                            lançado
-                          </span>
-                        ) : (
-                          <Button
-                            onClick={() => aplicarUm(s)}
-                            disabled={aplicando !== null}
-                            size="sm"
-                            variant={s.divergente ? 'destructive' : 'default'}
-                            className={
-                              s.divergente
-                                ? ''
-                                : 'bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]'
-                            }
-                          >
-                            {aplicando === Number(s.match_id)
-                              ? 'Lançando...'
-                              : s.divergente
-                                ? 'Corrigir'
-                                : 'Lançar'}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+              {/* Divergências — já lançado, mas com placar diferente do da fonte */}
+              {divergentes.length > 0 && (
+                <TabsContent value="divergencias" className="mt-4 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Jogos já lançados cujo placar não bate com o da API. Corrigir reabre a partida,
+                    o que devolve os pontos antes de recalcular.
+                  </p>
+                  {divergentes.map((s) => (
+                    <Linha key={s.match_id} s={s} modo="acao" />
+                  ))}
+                </TabsContent>
+              )}
 
-                    {(s.divergente || s.invertido || s.teve_prorrogacao) && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {s.divergente && (
-                          <Etiqueta tone="erro" icon={AlertTriangle}>
-                            lançado {s.score_home}–{s.score_away}, API diz {s.sug_home}–{s.sug_away}
-                          </Etiqueta>
-                        )}
-                        {s.invertido && (
-                          <Etiqueta tone="aviso" icon={ArrowLeftRight}>
-                            mando invertido na API — placar já virado para o nosso cadastro
-                          </Etiqueta>
-                        )}
-                        {s.teve_prorrogacao && (
-                          <Etiqueta tone="aviso" icon={Clock}>
-                            teve prorrogação — o placar sugerido é o dos 90 minutos
-                          </Etiqueta>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+              {/* Lançados — conferência, sem ação */}
+              <TabsContent value="conferidos" className="mt-4 space-y-2">
+                {conferidos.length === 0 ? (
+                  <Vazio>Nenhum jogo lançado ainda.</Vazio>
+                ) : (
+                  conferidos.map((s) => <Linha key={s.match_id} s={s} modo="conferencia" />)
+                )}
+              </TabsContent>
+            </Tabs>
           )}
 
           <p className="mt-3 flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
@@ -246,7 +342,7 @@ export function ResultadosSugeridos({
             {ultimaSincronizacao
               ? `última varredura em ${hora(ultimaSincronizacao)}`
               : 'nenhuma varredura registrada'}
-            {divergentes.length > 0 && ` · ${divergentes.length} divergência(s)`}
+            {autoPorJogo.size > 0 && ` · ${autoPorJogo.size} lançado(s) automaticamente`}
           </p>
         </CardContent>
       </Card>

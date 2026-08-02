@@ -64,7 +64,7 @@ export default async function AdminPage({ params }: AdminPageProps) {
   // nos torneios que têm competições mapeadas — nos de seleções não há fonte.
   const sugeridos = hasCompetitions
     ? await getResultadosSugeridos(tournamentSlug)
-    : { sugestoes: [], ultimaSincronizacao: null, error: undefined };
+    : { sugestoes: [], ultimaSincronizacao: null, automaticos: [], error: undefined };
   // Nomes que a API usa e o nosso mapa não conhece. Dado global, mas só faz
   // sentido no bolão que consome a API.
   const apelidos = hasCompetitions
@@ -133,6 +133,7 @@ export default async function AdminPage({ params }: AdminPageProps) {
                     <ResultadosSugeridos
                       sugestoes={sugeridos.sugestoes}
                       ultimaSincronizacao={sugeridos.ultimaSincronizacao}
+                      automaticos={sugeridos.automaticos}
                       tournamentSlug={tournamentSlug}
                     />
                   )}
