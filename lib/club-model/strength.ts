@@ -81,13 +81,19 @@ export function buildPriors(
   return out;
 }
 
-/** Peso de uma partida: recência × importância da competição. */
+/**
+ * Peso de uma partida: recência × importância da competição.
+ *
+ * O peso é da LIGA, e a baseline é da CATEGORIA — que agrupa ligas de pesos
+ * diferentes (`segunda_divisao` vai de 0,60 a 0,80). Por isso o peso da própria
+ * partida manda, e o da baseline é só o resto para quem não o informa.
+ */
 export function matchWeight(
   match: ModelMatch,
   baseline: CompetitionBaseline | undefined,
   halfLifeDays: number = HALF_LIFE_DAYS
 ): number {
-  const wComp = baseline?.weight ?? 1;
+  const wComp = match.weight ?? baseline?.weight ?? 1;
   if (wComp <= 0) return 0;
   const idade = Math.max(0, match.ageDays);
   return Math.pow(2, -idade / halfLifeDays) * wComp;
@@ -276,7 +282,9 @@ export function estimateBaselines(
     const h = strengths.get(m.homeKey);
     const a = strengths.get(m.awayKey);
     if (!h || !a) continue;
-    const wComp = opts.weights?.get(m.competition) ?? 1;
+    // Mesmo critério de matchWeight: o peso da partida vem antes do da
+    // categoria, senão as duas contas ponderam a mesma partida diferente.
+    const wComp = m.weight ?? opts.weights?.get(m.competition) ?? 1;
     if (wComp <= 0) continue;
     const w = Math.pow(2, -Math.max(0, m.ageDays) / halfLife) * wComp;
 
