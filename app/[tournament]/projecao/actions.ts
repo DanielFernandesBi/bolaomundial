@@ -109,10 +109,26 @@ async function ajustarForcas(supabase: any): Promise<Ajuste> {
     goalsAway: m.goals_away,
     competition: m.competition,
     ageDays: Number(m.age_days),
+    // O peso é da LIGA e viaja com a partida. Ver abaixo por que ele não pode
+    // ficar só na categoria.
+    weight: Number(m.weight),
   }));
 
+  // Peso por CATEGORIA — hoje só o resto, para quem não informa peso próprio.
+  //
+  // `club_model_matches()` devolve a categoria em `competition` e o peso da
+  // liga em `weight`, e uma categoria MISTURA pesos: `segunda_divisao` tem
+  // Brasileirão B e Primera Nacional a 0,80 e Série D, Primera B Metro e Chile
+  // Segunda a 0,60. Este mapa era montado com `set` a cada linha, então a
+  // categoria inteira acabava com o peso da última liga que aparecesse no
+  // resultado — um jogo da Série D podia pesar 0,80 e um do Brasileirão B,
+  // 0,60, dependendo da ordem. Agora o peso certo vai em cada partida e aqui
+  // fica o maior da categoria, que é determinístico.
   const pesos = new Map<string, number>();
-  for (const m of (matchesRaw ?? []) as any[]) pesos.set(m.competition, Number(m.weight));
+  for (const m of (matchesRaw ?? []) as any[]) {
+    const p = Number(m.weight);
+    pesos.set(m.competition, Math.max(pesos.get(m.competition) ?? 0, p));
+  }
 
   const baselines = new Map<string, CompetitionBaseline>();
   for (const [comp, weight] of pesos) {

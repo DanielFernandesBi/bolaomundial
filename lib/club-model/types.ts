@@ -24,10 +24,22 @@ export interface ModelMatch {
   awayKey: string;
   goalsHome: number;
   goalsAway: number;
-  /** Chave da baseline de competição. */
+  /** Chave da baseline de competição (a categoria: continental, estadual, …). */
   competition: string;
   /** Idade da partida em dias, no instante do cálculo. Nunca negativa. */
   ageDays: number;
+  /**
+   * Peso da competição DESTA partida (`club_competition_weights.model_weight`).
+   *
+   * Existe porque a baseline é por CATEGORIA e o peso é por LIGA — e uma
+   * categoria mistura pesos: `segunda_divisao` tem Brasileirão B e Primera
+   * Nacional a 0,80 e Série D, Primera B Metro e Chile Segunda a 0,60. Sem
+   * este campo, todas as partidas da categoria herdavam o peso de UMA delas,
+   * escolhida por ordem de chegada.
+   *
+   * Ausente, cai no peso da baseline — o comportamento antigo.
+   */
+  weight?: number;
   /** Campo neutro: o rótulo mandante é operacional e não deve gerar vantagem. */
   neutral?: boolean;
 }
