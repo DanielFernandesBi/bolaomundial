@@ -9,7 +9,9 @@ import {
   CheckCheck,
   Clock,
   Inbox,
+  Link2Off,
   RefreshCw,
+  Tags,
   Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,9 +20,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Toast } from '@/components/toast';
 import { competitionName } from '@/lib/competitions';
 import {
+  aplicarApelido,
   aplicarResultadoSugerido,
   aplicarTodosResultadosSugeridos,
   type LancamentoAutomatico,
+  type ResultadoNaoPareado,
   type ResultadoSugerido,
 } from './actions';
 
@@ -94,15 +98,18 @@ export function ResultadosSugeridos({
   sugestoes,
   ultimaSincronizacao,
   automaticos = [],
+  naoPareados = [],
   tournamentSlug,
 }: {
   sugestoes: ResultadoSugerido[];
   ultimaSincronizacao: string | null;
   automaticos?: LancamentoAutomatico[];
+  naoPareados?: ResultadoNaoPareado[];
   tournamentSlug: string;
 }) {
   const router = useRouter();
   const [aplicando, setAplicando] = useState<number | 'todos' | null>(null);
+  const [mapeando, setMapeando] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
 
   // Três conjuntos que não se sobrepõem. Divergente é sempre um jogo JÁ
@@ -145,6 +152,19 @@ export function ResultadosSugeridos({
         : `${aplicados} ${aplicados === 1 ? 'jogo lançado' : 'jogos lançados'}.`,
       avisos?.length ? 'error' : 'success',
       7000
+    );
+    router.refresh();
+  }
+
+  async function mapear(o: ResultadoNaoPareado) {
+    setMapeando(o.nome_na_api);
+    const r = await aplicarApelido(o.nome_na_api, o.team_key_deduzida, tournamentSlug);
+    setMapeando(null);
+    if ((r as any)?.error) return avisar((r as any).error, 'error', 6000);
+    avisar(
+      `"${o.nome_na_api}" mapeado para ${o.nome_do_clube}. O jogo foi para "Pendentes".`,
+      'success',
+      6000
     );
     router.refresh();
   }
@@ -274,19 +294,33 @@ export function ResultadosSugeridos({
             )}
           </div>
 
-          {sugestoes.length === 0 ? (
+          {/* A condição inclui `naoPareados`: um jogo órfão pode existir SEM
+              nenhuma sugestão, e foi exatamente assim que Athletico-PR × Vitória
+              ficou invisível. Se a tela só considerasse `sugestoes`, a aba nova
+              não apareceria justo no caso que ela existe para mostrar. */}
+          {sugestoes.length === 0 && naoPareados.length === 0 ? (
             <Vazio>
               Nenhum jogo do bolão encerrado na API ainda. A varredura roda de 20 em 20 minutos
               entre 14h e 2h, e a janela do plano gratuito é de três dias.
             </Vazio>
           ) : (
-            <Tabs defaultValue="pendentes" className="w-full">
+            <Tabs
+              defaultValue={naoPareados.length > 0 && pendentes.length === 0 ? 'orfaos' : 'pendentes'}
+              className="w-full"
+            >
               <TabsList className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-[12px] border border-border bg-card p-1">
                 <TabsTrigger value="pendentes" className={ABA_TRIGGER}>
                   <Inbox className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
                   <span className="truncate">Pendentes</span>
                   <span className="hidden sm:inline">({pendentes.length})</span>
                 </TabsTrigger>
+                {naoPareados.length > 0 && (
+                  <TabsTrigger value="orfaos" className={ABA_TRIGGER}>
+                    <Link2Off className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+                    <span className="truncate">Não pareados</span>
+                    <span className="hidden sm:inline">({naoPareados.length})</span>
+                  </TabsTrigger>
+                )}
                 {divergentes.length > 0 && (
                   <TabsTrigger value="divergencias" className={ABA_TRIGGER}>
                     <AlertTriangle className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
@@ -312,6 +346,59 @@ export function ResultadosSugeridos({
                   pendentes.map((s) => <Linha key={s.match_id} s={s} modo="acao" />)
                 )}
               </TabsContent>
+
+              {/* Não pareados — a API tem o jogo, nós não reconhecemos um dos clubes */}
+              {naoPareados.length > 0 && (
+                <TabsContent value="orfaos" className="mt-4 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    A API já tem estes jogos encerrados, mas um dos clubes veio com um nome que não
+                    reconhecemos — então eles não viram sugestão e não são lançados. O clube abaixo
+                    é <strong className="text-foreground">deduzido pelo confronto</strong>, não por
+                    semelhança de nome: como o outro lado bate com o nosso time, o nome que sobrou
+                    só pode ser este.
+                  </p>
+                  {naoPareados.map((o) => (
+                    <div
+                      key={o.match_id}
+                      className="rounded-md border border-state-closing/40 bg-state-closing/5 p-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            {o.team_home} <span className="text-muted-foreground">x</span>{' '}
+                            {o.team_away}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                            {competitionName(o.competition)}
+                            {o.leg ? ` · ${o.leg}` : ''} · {hora(o.match_date)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-xl font-bold tabular-nums text-foreground">
+                            {o.sug_home}–{o.sug_away}
+                          </span>
+                          <Button
+                            onClick={() => mapear(o)}
+                            disabled={mapeando !== null}
+                            size="sm"
+                            className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))]"
+                          >
+                            {mapeando === o.nome_na_api ? 'Mapeando...' : 'Mapear clube'}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <Etiqueta tone="aviso" icon={Link2Off}>
+                          a API chama de &ldquo;{o.nome_na_api}&rdquo;
+                        </Etiqueta>
+                        <Etiqueta tone="auto" icon={Tags}>
+                          deve ser {o.nome_do_clube}
+                        </Etiqueta>
+                      </div>
+                    </div>
+                  ))}
+                </TabsContent>
+              )}
 
               {/* Divergências — já lançado, mas com placar diferente do da fonte */}
               {divergentes.length > 0 && (

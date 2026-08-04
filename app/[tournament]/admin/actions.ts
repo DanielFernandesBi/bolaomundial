@@ -1015,10 +1015,41 @@ export interface LancamentoAutomatico {
   aplicado_em: string;
 }
 
+/**
+ * Jogo do bolão que a API tem encerrado e que NÃO pareou, porque um dos clubes
+ * não foi reconhecido pelo nome.
+ *
+ * `team_key_deduzida` não vem de semelhança de texto: sai do confronto. Se um
+ * lado da partida da API bate com um dos nossos dois times, o outro nome só
+ * pode ser o time que sobrou. Foi o que faltou no caso do Athletico-PR, em que
+ * a API escreve "Atletico Paranaense" e os três candidatos por similaridade
+ * eram todos clubes errados.
+ */
+export interface ResultadoNaoPareado {
+  match_id: number;
+  team_home: string;
+  team_away: string;
+  match_date: string;
+  competition: string;
+  leg: string | null;
+  provider_fixture_id: number;
+  fonte_status: string;
+  fonte_kickoff: string;
+  sug_home: number;
+  sug_away: number;
+  /** O nome que a API usou e que não reconhecemos. */
+  nome_na_api: string;
+  /** A chave do nosso clube que ele deve ser. */
+  team_key_deduzida: string;
+  /** O nome desse clube, como o app o escreve. */
+  nome_do_clube: string;
+}
+
 async function lerSugestoes(tournamentSlug: string): Promise<{
   sugestoes: ResultadoSugerido[];
   ultimaSincronizacao: string | null;
   automaticos: LancamentoAutomatico[];
+  naoPareados: ResultadoNaoPareado[];
   error?: string;
 }> {
   const supabase = await createServerSupabaseClient();
@@ -1030,9 +1061,15 @@ async function lerSugestoes(tournamentSlug: string): Promise<{
     .single();
 
   if (!tournament)
-    return { sugestoes: [], ultimaSincronizacao: null, automaticos: [], error: 'Torneio não encontrado' };
+    return {
+      sugestoes: [],
+      ultimaSincronizacao: null,
+      automaticos: [],
+      naoPareados: [],
+      error: 'Torneio não encontrado',
+    };
 
-  const [{ data, error }, { data: log }, { data: auto }] = await Promise.all([
+  const [{ data, error }, { data: log }, { data: auto }, { data: orfaos }] = await Promise.all([
     supabase.rpc('resultados_sugeridos', { p_tournament_id: (tournament as any).id }),
     supabase
       .from('club_sync_log')
@@ -1046,14 +1083,20 @@ async function lerSugestoes(tournamentSlug: string): Promise<{
       .from('resultado_automatico_log')
       .select('match_id, aplicado_em')
       .order('aplicado_em', { ascending: false }),
+    // O jogo que a API tem e que nós não conseguimos parear. Sem isto, ele
+    // simplesmente não aparece em lugar nenhum — foi o que aconteceu com
+    // Athletico-PR × Vitória, encerrado 2×0 e invisível no painel.
+    supabase.rpc('resultados_nao_pareados', { p_tournament_id: (tournament as any).id } as any),
   ]);
 
-  if (error) return { sugestoes: [], ultimaSincronizacao: null, automaticos: [], error: error.message };
+  if (error)
+    return { sugestoes: [], ultimaSincronizacao: null, automaticos: [], naoPareados: [], error: error.message };
 
   return {
     sugestoes: (data ?? []) as ResultadoSugerido[],
     ultimaSincronizacao: (log?.[0] as any)?.finished_at ?? null,
     automaticos: (auto ?? []) as LancamentoAutomatico[],
+    naoPareados: (orfaos ?? []) as ResultadoNaoPareado[],
   };
 }
 
@@ -1064,6 +1107,7 @@ export async function getResultadosSugeridos(tournamentSlug: string) {
       sugestoes: [],
       ultimaSincronizacao: null,
       automaticos: [],
+      naoPareados: [],
       error: accessCheck.error || 'Acesso negado',
     };
   }
