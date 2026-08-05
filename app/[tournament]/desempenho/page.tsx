@@ -12,6 +12,7 @@ import { AvatarUploadDialog } from '@/components/avatar-upload-dialog';
 import { HistoryList } from './history-list';
 import { ScoringLegend } from '@/components/scoring-legend';
 import { createServerSupabaseClient } from '@/lib/supabase';
+import { mapaDeLinksDeClube } from '@/lib/club-links';
 import { notFound } from 'next/navigation';
 import { scoreTier } from '@/lib/scoring-ui';
 
@@ -85,6 +86,17 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
       </div>
     );
   }
+
+  // Link de cada clube do histórico. Só no bolão de clubes: em torneio de
+  // seleções o "time" é um país e não há página dele para abrir.
+  const clubHrefs =
+    scoringVariant === 'clubs'
+      ? await mapaDeLinksDeClube(
+          supabase,
+          tournamentSlug,
+          (profile.history ?? []).flatMap((h: any) => [h.team_home, h.team_away])
+        )
+      : undefined;
 
   const initials = profile.username
     .split(' ')
@@ -243,6 +255,7 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
               history={profile.history}
               userAvatarUrl={profile.avatar_url}
               username={profile.username}
+              clubHrefs={clubHrefs}
             />
           </CardContent>
         </Card>

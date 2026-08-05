@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { getResultados } from './actions';
@@ -38,7 +39,13 @@ export default async function ResultadosPage({ params }: ResultadosPageProps) {
           </p>
         </div>
 
-        <ResultadosContent {...dados} />
+        {/* Suspense porque o conteúdo lê `?clube=` para abrir já no clube que
+            veio do link. Sem a fronteira, o `useSearchParams` obrigaria a
+            página inteira a virar dinâmica e o revalidate acima perderia o
+            efeito. */}
+        <Suspense fallback={null}>
+          <ResultadosContent {...dados} tournamentSlug={tournamentSlug} />
+        </Suspense>
       </div>
     </div>
   );

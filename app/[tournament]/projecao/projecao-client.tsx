@@ -59,5 +59,5 @@ export function ProjecaoClient({ tournamentSlug }: { tournamentSlug: string }) {
     );
   }
 
-  return <ProjecaoContent {...data} />;
+  return <ProjecaoContent {...data} tournamentSlug={tournamentSlug} />;
 }

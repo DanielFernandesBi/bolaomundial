@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { ArrowDown, Info, Medal, Sparkles, TrendingUp, Trophy, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { COMPETITIONS, competitionName } from '@/lib/competitions';
@@ -99,6 +100,50 @@ function Escudo({ src, nome, tamanho = 20 }: { src: string | null; nome: string;
   );
 }
 
+/**
+ * Escudo + nome do clube, levando para a página do time.
+ *
+ * O destino é /resultados?clube=<chave> — é lá que mora o retrospecto do
+ * clube, e a chave é o que o recorte entende. Sem chave (clube que o mapa não
+ * conhece) o nome fica como texto: link que não filtra nada é pior que link
+ * nenhum.
+ */
+function Clube({
+  nome,
+  chave,
+  crest,
+  tournamentSlug,
+  tamanho = 20,
+  className = '',
+}: {
+  nome: string;
+  chave: string | null;
+  crest: string | null;
+  tournamentSlug: string;
+  tamanho?: number;
+  className?: string;
+}) {
+  if (!chave) {
+    return (
+      <span className="flex min-w-0 items-center gap-2">
+        <Escudo src={crest} nome={nome} tamanho={tamanho} />
+        <span className={`truncate ${className}`}>{nome}</span>
+      </span>
+    );
+  }
+  return (
+    <Link
+      href={`/${tournamentSlug}/resultados?clube=${encodeURIComponent(chave)}`}
+      className="group flex min-w-0 items-center gap-2 rounded"
+    >
+      <Escudo src={crest} nome={nome} tamanho={tamanho} />
+      {/* O hover vai no group e não no <a>: o nome carrega cor própria
+          (text-card-foreground), que venceria uma cor herdada do pai. */}
+      <span className={`truncate transition-colors group-hover:text-primary ${className}`}>{nome}</span>
+    </Link>
+  );
+}
+
 /** Cabeçalho de seção, no mesmo peso das outras telas do bolão. */
 function Secao({ icon: Icon, children }: { icon: typeof Trophy; children: React.ReactNode }) {
   return (
@@ -112,7 +157,7 @@ function Secao({ icon: Icon, children }: { icon: typeof Trophy; children: React.
 // ── Quem leva a taça ────────────────────────────────────────────────────────
 const VISIVEIS = 8;
 
-function Titulos({ itens }: { itens: TituloClube[] }) {
+function Titulos({ itens, tournamentSlug }: { itens: TituloClube[]; tournamentSlug: string }) {
   const [abertas, setAbertas] = useState<string[]>([]);
 
   const grupos = COMPETITIONS.map((c) => ({
@@ -142,10 +187,13 @@ function Titulos({ itens }: { itens: TituloClube[] }) {
                 {mostrar.map((t) => (
                   <div key={t.team}>
                     <div className="mb-1 flex items-center justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Escudo src={t.crest} nome={t.team} />
-                        <span className="truncate text-[13px] text-card-foreground">{t.team}</span>
-                      </span>
+                      <Clube
+                        nome={t.team}
+                        chave={t.teamKey}
+                        crest={t.crest}
+                        tournamentSlug={tournamentSlug}
+                        className="text-[13px] text-card-foreground"
+                      />
                       <span className="flex-shrink-0 font-mono text-[13px] font-bold tabular-nums text-primary">
                         {pct(t.chance)}
                       </span>
@@ -178,12 +226,14 @@ function Destaque({
   jogador,
   valor,
   cor,
+  tournamentSlug,
 }: {
   icon: typeof Trophy;
   titulo: string;
   jogador: PoolPlayerResult | undefined;
   valor: string;
   cor: string;
+  tournamentSlug: string;
 }) {
   return (
     <div className="rounded-[12px] border border-border bg-card px-3 py-3">
@@ -201,9 +251,12 @@ function Destaque({
               {iniciais(jogador.username)}
             </AvatarFallback>
           </Avatar>
-          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-card-foreground">
+          <Link
+            href={`/${tournamentSlug}/desempenho/${jogador.userId}`}
+            className="min-w-0 flex-1 truncate text-[13px] font-semibold text-card-foreground transition-colors hover:text-primary"
+          >
             {jogador.username}
-          </span>
+          </Link>
           <span className={`flex-shrink-0 font-mono text-sm font-bold tabular-nums ${cor}`}>{valor}</span>
         </div>
       ) : (
@@ -218,10 +271,12 @@ function RankingProjetado({
   r,
   palpitesEmAberto,
   palpitesDePodio,
+  tournamentSlug,
 }: {
   r: NonNullable<ProjecaoData['ranking']>;
   palpitesEmAberto: number;
   palpitesDePodio: number;
+  tournamentSlug: string;
 }) {
   const [metrica, setMetrica] = useState<Metrica>('campeao');
   const ativa = METRICAS.find((m) => m.key === metrica)!;
@@ -245,6 +300,7 @@ function RankingProjetado({
           jogador={favTitulo}
           valor={favTitulo ? pct(favTitulo.titleChance) : '—'}
           cor="text-primary"
+          tournamentSlug={tournamentSlug}
         />
         <Destaque
           icon={Sparkles}
@@ -252,6 +308,7 @@ function RankingProjetado({
           jogador={maisPontos}
           valor={maisPontos ? `${Math.round(maisPontos.meanPoints)} pts` : '—'}
           cor="text-state-open"
+          tournamentSlug={tournamentSlug}
         />
         <Destaque
           icon={ArrowDown}
@@ -259,6 +316,7 @@ function RankingProjetado({
           jogador={favLanterna}
           valor={favLanterna ? pct(favLanterna.lastChance) : '—'}
           cor="text-destructive"
+          tournamentSlug={tournamentSlug}
         />
       </div>
 
@@ -306,9 +364,12 @@ function RankingProjetado({
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate text-sm font-semibold text-card-foreground">
+                    <Link
+                      href={`/${tournamentSlug}/desempenho/${p.userId}`}
+                      className="min-w-0 truncate text-sm font-semibold text-card-foreground transition-colors hover:text-primary"
+                    >
                       {p.username}
-                    </span>
+                    </Link>
                     <span className={`flex-shrink-0 font-mono text-sm font-bold tabular-nums ${ativa.cor}`}>
                       {pct(valor)}
                     </span>
@@ -347,7 +408,7 @@ function RankingProjetado({
 }
 
 // ── Chance de classificação ─────────────────────────────────────────────────
-function Confronto({ t }: { t: TieProjecao }) {
+function Confronto({ t, tournamentSlug }: { t: TieProjecao; tournamentSlug: string }) {
   const favorito = t.advance >= 0.5;
   const nomeFav = favorito ? t.homeName : t.awayName;
   const pFav = favorito ? t.advance : 1 - t.advance;
@@ -358,11 +419,23 @@ function Confronto({ t }: { t: TieProjecao }) {
     <div className="border-t border-hairline px-3 py-3 first:border-t-0">
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] text-card-foreground">
-          <Escudo src={t.homeCrest} nome={t.homeName} tamanho={16} />
-          <span className={`truncate ${favorito ? 'font-semibold' : ''}`}>{t.homeName}</span>
+          <Clube
+            nome={t.homeName}
+            chave={t.homeKey}
+            crest={t.homeCrest}
+            tournamentSlug={tournamentSlug}
+            tamanho={16}
+            className={favorito ? 'font-semibold' : ''}
+          />
           <span className="flex-shrink-0 text-[hsl(var(--faint))]">×</span>
-          <Escudo src={t.awayCrest} nome={t.awayName} tamanho={16} />
-          <span className={`truncate ${!favorito ? 'font-semibold' : ''}`}>{t.awayName}</span>
+          <Clube
+            nome={t.awayName}
+            chave={t.awayKey}
+            crest={t.awayCrest}
+            tournamentSlug={tournamentSlug}
+            tamanho={16}
+            className={!favorito ? 'font-semibold' : ''}
+          />
         </span>
         {t.decided ? (
           <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-state-locked">
@@ -417,7 +490,8 @@ export function ProjecaoContent({
   jogosEmAberto,
   palpitesEmAberto,
   palpitesDePodio,
-}: ProjecaoData) {
+  tournamentSlug,
+}: ProjecaoData & { tournamentSlug: string }) {
   // Sem ranking não há aba de bolão para mostrar — cai direto nos torneios e a
   // barra some, em vez de oferecer uma aba vazia.
   const [aba, setAba] = useState<Aba>(ranking ? 'bolao' : 'torneios');
@@ -478,12 +552,13 @@ export function ProjecaoContent({
           r={ranking}
           palpitesEmAberto={palpitesEmAberto}
           palpitesDePodio={palpitesDePodio}
+          tournamentSlug={tournamentSlug}
         />
       )}
 
       {aba === 'torneios' && (
         <>
-          <Titulos itens={titulosClube} />
+          <Titulos itens={titulosClube} tournamentSlug={tournamentSlug} />
 
           <Secao icon={Medal}>Chance de classificação</Secao>
           <div className="space-y-4">
@@ -494,7 +569,7 @@ export function ProjecaoContent({
                 </p>
                 <div className="overflow-hidden rounded-[12px] border border-border bg-card">
                   {g.itens.map((t) => (
-                    <Confronto key={t.tieId} t={t} />
+                    <Confronto key={t.tieId} t={t} tournamentSlug={tournamentSlug} />
                   ))}
                 </div>
               </section>

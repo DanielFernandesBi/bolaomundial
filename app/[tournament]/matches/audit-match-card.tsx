@@ -33,6 +33,46 @@ interface AuditMatchCardProps {
     all_predictions: Prediction[];
   };
   tournamentSlug: string;
+  /** Página de cada clube, quando existe. Nulo nos torneios de seleções. */
+  homeHref?: string | null;
+  awayHref?: string | null;
+}
+
+/** Escudo + nome de um dos lados, clicável quando o clube tem página. */
+function TimeLinha({ nome, iso, href }: { nome: string; iso: string | null; href?: string | null }) {
+  const conteudo = (
+    <>
+      {iso &&
+        (iso.toLowerCase().startsWith('http') ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={iso}
+            alt={nome}
+            className="w-6 h-6 sm:w-8 sm:h-8 rounded object-contain flex-shrink-0"
+            loading="lazy"
+          />
+        ) : (
+          <Image
+            src={getFlagUrl(iso)}
+            alt={nome}
+            width={32}
+            height={32}
+            className="w-6 h-auto sm:w-8 sm:h-auto rounded flex-shrink-0"
+          />
+        ))}
+      <span className="text-foreground font-semibold text-sm sm:text-base truncate flex-1 transition-colors group-hover:text-primary">
+        {nome}
+      </span>
+    </>
+  );
+  if (!href) {
+    return <div className="flex items-center gap-2">{conteudo}</div>;
+  }
+  return (
+    <Link href={href} aria-label={`Ver os jogos do ${nome}`} className="group flex items-center gap-2">
+      {conteudo}
+    </Link>
+  );
 }
 
 function getInitials(name: string): string {
@@ -51,7 +91,7 @@ function extraLabel(r: 'home' | 'draw' | 'away' | null | undefined, home: string
   return null;
 }
 
-export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
+export function AuditMatchCard({ match, tournamentSlug, homeHref, awayHref }: AuditMatchCardProps) {
   const matchDate = new Date(match.match_date);
   const formattedDate = matchDate.toLocaleString('pt-BR', {
     day: '2-digit',
@@ -68,55 +108,15 @@ export function AuditMatchCard({ match, tournamentSlug }: AuditMatchCardProps) {
           {/* Layout Mobile-First: Times em coluna */}
           <div className="flex flex-col gap-3 mb-2">
             {/* Time Casa */}
-            <div className="flex items-center gap-2">
-              {match.home_iso && (
-                match.home_iso.toLowerCase().startsWith('http') ? (
-                  <img
-                    src={match.home_iso}
-                    alt={match.team_home}
-                    className="w-6 h-6 sm:w-8 sm:h-8 rounded object-contain flex-shrink-0"
-                    loading="lazy"
-                  />
-                ) : (
-                  <Image
-                    src={getFlagUrl(match.home_iso)}
-                    alt={match.team_home}
-                    width={32}
-                    height={32}
-                    className="w-6 h-auto sm:w-8 sm:h-auto rounded flex-shrink-0"
-                  />
-                )
-              )}
-              <span className="text-foreground font-semibold text-sm sm:text-base truncate flex-1">{match.team_home}</span>
-            </div>
-            
+            <TimeLinha nome={match.team_home} iso={match.home_iso} href={homeHref} />
+
             {/* Separador VS */}
             <div className="flex items-center justify-center">
               <span className="text-muted-foreground text-xs sm:text-sm">vs</span>
             </div>
             
             {/* Time Visitante */}
-            <div className="flex items-center gap-2">
-              {match.away_iso && (
-                match.away_iso.toLowerCase().startsWith('http') ? (
-                  <img
-                    src={match.away_iso}
-                    alt={match.team_away}
-                    className="w-6 h-6 sm:w-8 sm:h-8 rounded object-contain flex-shrink-0"
-                    loading="lazy"
-                  />
-                ) : (
-                  <Image
-                    src={getFlagUrl(match.away_iso)}
-                    alt={match.team_away}
-                    width={32}
-                    height={32}
-                    className="w-6 h-auto sm:w-8 sm:h-auto rounded flex-shrink-0"
-                  />
-                )
-              )}
-              <span className="text-foreground font-semibold text-sm sm:text-base truncate flex-1">{match.team_away}</span>
-            </div>
+            <TimeLinha nome={match.team_away} iso={match.away_iso} href={awayHref} />
           </div>
           
           {/* Data */}
