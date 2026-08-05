@@ -123,6 +123,26 @@ export interface ResultadosData {
 /** IDs das três competições do bolão na API-Football. */
 const LIGAS_DAS_COPAS = [13, 11, 73];
 
+/** Quantos dias de histórico a lista mostra, contando hoje. */
+const DIAS_NA_TELA = 7;
+
+/**
+ * Início da janela: 00:00 de Brasília do primeiro dia que aparece.
+ *
+ * O corte é por DIA e não por "168 horas atrás" — senão o card mais antigo
+ * viria pela metade, com os jogos da noite e sem os da tarde, o que pareceria
+ * dado faltando. O Brasil não tem mais horário de verão, então o -03:00 fixo
+ * vale o ano inteiro (mesma premissa de lib/utils/datetime.ts).
+ */
+function inicioDaJanela(): string {
+  const hojeBrasilia = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date());
+  const inicio = new Date(`${hojeBrasilia}T00:00:00-03:00`);
+  inicio.setDate(inicio.getDate() - (DIAS_NA_TELA - 1));
+  return inicio.toISOString();
+}
+
 export async function getResultados(tournamentId: number): Promise<ResultadosData> {
   const supabase = await createServerSupabaseClient();
 
@@ -147,12 +167,20 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
             'goals_home_extra, goals_away_extra, ' +
             'penalties_home, penalties_away, venue_name, venue_city, referee'
         )
+        // Sete dias corridos, contando hoje. A agenda (amanhã) não é cortada:
+        // o filtro só tem piso.
+        //
+        // O teto de 1000 linhas que existia aqui era uma bomba-relógio: a
+        // captura guarda ~90 jogos por dia, então em duas semanas a lista
+        // começaria a ser truncada em silêncio, e o card mais antigo apareceria
+        // pela metade sem nada avisar. Uma janela por DIA é previsível — o que
+        // cai fora é sempre um dia inteiro, e o usuário sabe qual.
+        //
+        // Cortar aqui é seguro porque nada mais depende desta lista: as
+        // estatísticas de clube e de liga são agregadas em SQL, sobre a base
+        // inteira (estatisticas_clubes / estatisticas_ligas).
+        .gte('kickoff_at', inicioDaJanela())
         .order('kickoff_at', { ascending: false, nullsFirst: false })
-        // O retrospecto por clube é calculado no cliente, sobre esta lista.
-        // Enquanto o histórico couber aqui, ele é exato; quando o teto começar
-        // a cortar, o número vira "dos últimos N jogos carregados" sem avisar.
-        // O sinal para migrar a conta para SQL é esta contagem encostar no
-        // limite — hoje são 94 linhas.
         .limit(1000),
       // TODOS os clubes, não só os do bolão: o nome que a API devolve vem sem
       // acento e abreviado ("Rubio NU", "Tecnico Universitario", "Sportivo

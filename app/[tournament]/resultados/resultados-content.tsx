@@ -811,16 +811,23 @@ export function ResultadosContent({
       itens: itens.sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at)),
     }));
 
-    // Quem abre esta tela quer saber o que JÁ aconteceu — por isso hoje e
-    // ontem vêm primeiro, do mais recente para o mais antigo, e só depois a
-    // agenda, do mais próximo para o mais distante. Uma ordenação única por
-    // data não dá isso: ou enterra o passado, ou inverte a agenda.
-    const passado = todos.filter((g) => !g.futuro).sort((a, b) => b.dia.localeCompare(a.dia));
-    const futuro = todos.filter((g) => g.futuro).sort((a, b) => a.dia.localeCompare(b.dia));
-    return [...passado, ...futuro];
+    // Ordem: HOJE, AMANHÃ, e daí para trás.
+    //
+    // A agenda ficava no fim da tela, depois de todo o histórico — ou seja, o
+    // jogo de amanhã era a informação mais difícil de alcançar, quando é uma
+    // das duas que mais importam. Hoje e amanhã são o presente; o resto é
+    // consulta.
+    //
+    // Uma ordenação única por data não resolve: ou enterra a agenda no fim, ou
+    // inverte o histórico. São três blocos com critérios diferentes.
+    const doHoje = todos.filter((g) => g.dia === hoje);
+    const futuro = todos.filter((g) => g.dia > hoje).sort((a, b) => a.dia.localeCompare(b.dia));
+    const anteriores = todos.filter((g) => g.dia < hoje).sort((a, b) => b.dia.localeCompare(a.dia));
+    return [...doHoje, ...futuro, ...anteriores];
   }, [filtrados, dias]);
 
-  const primeiroFuturo = grupos.find((g) => g.futuro)?.dia;
+  const primeiroFuturo = grupos.find((g) => g.dia > dias[0])?.dia;
+  const primeiroAnterior = grupos.find((g) => g.dia < dias[0])?.dia;
   const statsDoClube = clube ? stats.find((s) => s.id === clube) : undefined;
   const ligaAberta = liga !== null ? ligas.find((l) => l.league_id === liga) : undefined;
 
@@ -973,20 +980,32 @@ export function ResultadosContent({
             <div className="rounded-[12px] border border-border bg-card px-4 py-10 text-center">
               <p className="text-sm text-muted-foreground">Nenhum jogo com esses filtros.</p>
               <p className="mt-1 text-xs text-[hsl(var(--faint))]">
-                O histórico começa em 31/07/2026 e cresce a cada dia.
+                Esta lista mostra os últimos 7 dias e a agenda de amanhã. O retrospecto completo de
+                cada clube está na aba Times.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               {grupos.map(({ dia, itens }) => (
                 <section key={dia}>
-                  {/* Marca onde o passado termina e a agenda começa. Sem isto,
-                      sair de "Ontem" direto para "Amanhã" parece erro. */}
+                  {/* Dois divisores, porque agora a tela muda de assunto duas
+                      vezes: de hoje para a agenda, e da agenda para o
+                      histórico. Sem eles, "Hoje → Amanhã → Ontem" parece uma
+                      lista fora de ordem. */}
                   {dia === primeiroFuturo && (
                     <div className="mb-3 mt-1 flex items-center gap-2">
                       <span className="h-px flex-1 bg-hairline" />
                       <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[hsl(var(--faint))]">
                         Próximos jogos
+                      </span>
+                      <span className="h-px flex-1 bg-hairline" />
+                    </div>
+                  )}
+                  {dia === primeiroAnterior && (
+                    <div className="mb-3 mt-1 flex items-center gap-2">
+                      <span className="h-px flex-1 bg-hairline" />
+                      <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[hsl(var(--faint))]">
+                        Dias anteriores
                       </span>
                       <span className="h-px flex-1 bg-hairline" />
                     </div>
