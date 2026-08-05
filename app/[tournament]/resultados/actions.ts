@@ -29,6 +29,13 @@ export interface ClubFixture {
   away_crest_url: string | null;
   goals_home_90: number | null;
   goals_away_90: number | null;
+  /** Minuto de jogo no instante da varredura. */
+  elapsed: number | null;
+  /** Placar corrente, preenchido enquanto a bola rola. Só exibição. */
+  goals_home_agora: number | null;
+  goals_away_agora: number | null;
+  /** Quando esta linha foi atualizada — o parcial é sempre "até este instante". */
+  synced_at: string;
   goals_home_ht: number | null;
   goals_away_ht: number | null;
   goals_home_extra: number | null;
@@ -136,6 +143,7 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
             'home_crest_url, away_crest_url, league_country, ' +
             'home_provider_id, away_provider_id, ' +
             'goals_home_90, goals_away_90, goals_home_ht, goals_away_ht, ' +
+            'goals_home_agora, goals_away_agora, elapsed, synced_at, ' +
             'goals_home_extra, goals_away_extra, ' +
             'penalties_home, penalties_away, venue_name, venue_city, referee'
         )

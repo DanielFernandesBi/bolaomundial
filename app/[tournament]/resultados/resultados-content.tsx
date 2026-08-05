@@ -202,7 +202,21 @@ function Lado({
 }
 
 function LinhaJogo({ f }: { f: ClubFixture }) {
-  const temPlacar = f.goals_home_90 !== null && f.goals_away_90 !== null;
+  // Placar PARCIAL, enquanto a bola rola.
+  //
+  // Vem de `goals_*_agora` e não de `goals_*_90`: o campo dos 90 minutos é nulo
+  // até o apito final — era por isso que o card mostrava "2º tempo" sem placar,
+  // apesar de o número já vir na mesma resposta que a varredura baixa.
+  //
+  // Nunca é "ao vivo": é o retrato da última varredura, que roda a cada 10–20
+  // minutos. Daí a etiqueta com a hora — um 0×0 de vinte minutos atrás pode já
+  // ser outro jogo, e esconder isso seria mentir para quem lê.
+  const aoVivo = AO_VIVO.has(f.status);
+  const temParcial = aoVivo && f.goals_home_agora !== null && f.goals_away_agora !== null;
+
+  const temPlacar = temParcial || (f.goals_home_90 !== null && f.goals_away_90 !== null);
+  const golsCasa = temParcial ? f.goals_home_agora : f.goals_home_90;
+  const golsFora = temParcial ? f.goals_away_agora : f.goals_away_90;
 
   // Prorrogação e pênaltis vivem SEPARADOS do tempo regulamentar no banco. O
   // placar grande é sempre o de 90 minutos; o desempate vira etiqueta, senão
@@ -214,13 +228,17 @@ function LinhaJogo({ f }: { f: ClubFixture }) {
   // vencedor, e marcar só o placar de 90 minutos esconderia isso.
   const somaCasa = (f.goals_home_90 ?? 0) + (f.goals_home_extra ?? 0);
   const somaFora = (f.goals_away_90 ?? 0) + (f.goals_away_extra ?? 0);
+  // Jogo em andamento não tem vencedor: destacar quem está na frente sugeriria
+  // um resultado que ainda não existe.
   const venceuCasa =
     temPlacar &&
+    !aoVivo &&
     (somaCasa !== somaFora
       ? somaCasa > somaFora
       : tevePenaltis && (f.penalties_home ?? 0) > (f.penalties_away ?? 0));
   const venceuFora =
     temPlacar &&
+    !aoVivo &&
     (somaCasa !== somaFora
       ? somaFora > somaCasa
       : tevePenaltis && (f.penalties_away ?? 0) > (f.penalties_home ?? 0));
@@ -243,7 +261,7 @@ function LinhaJogo({ f }: { f: ClubFixture }) {
         <Lado
           nome={f.home_display}
           escudo={f.home_crest}
-          gols={f.goals_home_90}
+          gols={golsCasa}
           ehBolao={f.home_is_bolao}
           venceu={venceuCasa}
           temPlacar={temPlacar}
@@ -251,12 +269,20 @@ function LinhaJogo({ f }: { f: ClubFixture }) {
         <Lado
           nome={f.away_display}
           escudo={f.away_crest}
-          gols={f.goals_away_90}
+          gols={golsFora}
           ehBolao={f.away_is_bolao}
           venceu={venceuFora}
           temPlacar={temPlacar}
         />
       </div>
+
+      {temParcial && (
+        <div className="mt-2">
+          <span className="rounded-full bg-state-urgent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-state-urgent">
+            parcial · {f.elapsed ? `${f.elapsed}' ` : ''}às {hora(f.synced_at)}
+          </span>
+        </div>
+      )}
 
       {(teveProrrogacao || tevePenaltis) && (
         <div className="mt-2 flex flex-wrap gap-1.5">
