@@ -351,11 +351,12 @@ export function ResultadosSugeridos({
               {naoPareados.length > 0 && (
                 <TabsContent value="orfaos" className="mt-4 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    A API já tem estes jogos encerrados, mas um dos clubes veio com um nome que não
-                    reconhecemos — então eles não viram sugestão e não são lançados. O clube abaixo
-                    é <strong className="text-foreground">deduzido pelo confronto</strong>, não por
+                    A API tem estes jogos, mas um dos clubes veio com um nome que não reconhecemos —
+                    então eles não viram sugestão e não seriam lançados. O clube abaixo é{' '}
+                    <strong className="text-foreground">deduzido pelo confronto</strong>, não por
                     semelhança de nome: como o outro lado bate com o nosso time, o nome que sobrou
-                    só pode ser este.
+                    só pode ser este. Jogo que ainda não começou aparece aqui de propósito — dá para
+                    resolver antes da bola rolar.
                   </p>
                   {naoPareados.map((o) => (
                     <div
@@ -374,9 +375,18 @@ export function ResultadosSugeridos({
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-xl font-bold tabular-nums text-foreground">
-                            {o.sug_home}–{o.sug_away}
-                          </span>
+                          {/* Sem placar quando a partida ainda não terminou: o
+                              aviso agora chega antes do jogo, e aí o que
+                              importa é o status, não um "null–null". */}
+                          {o.sug_home !== null && o.sug_away !== null ? (
+                            <span className="font-mono text-xl font-bold tabular-nums text-foreground">
+                              {o.sug_home}–{o.sug_away}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                              {o.fonte_status}
+                            </span>
+                          )}
                           <Button
                             onClick={() => mapear(o)}
                             disabled={mapeando !== null}

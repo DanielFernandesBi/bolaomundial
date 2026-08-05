@@ -1035,8 +1035,9 @@ export interface ResultadoNaoPareado {
   provider_fixture_id: number;
   fonte_status: string;
   fonte_kickoff: string;
-  sug_home: number;
-  sug_away: number;
+  /** Nulos quando a partida ainda não terminou — o aviso chega antes do jogo. */
+  sug_home: number | null;
+  sug_away: number | null;
   /** O nome que a API usou e que não reconhecemos. */
   nome_na_api: string;
   /** A chave do nosso clube que ele deve ser. */
