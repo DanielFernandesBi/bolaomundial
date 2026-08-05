@@ -45,6 +45,14 @@ export interface TieProjecao {
   awayName: string;
   homeCrest: string | null;
   awayCrest: string | null;
+  /**
+   * Chave canônica do clube, quando ele é conhecido. Serve para linkar o time
+   * para a página dele (/resultados?clube=…) — o NOME não serviria: `ties`
+   * grava "Vasco" numa competição e "Vasco da Gama" noutra, e é a chave que
+   * junta as duas.
+   */
+  homeKey: string | null;
+  awayKey: string | null;
   advance: number;
   low: number;
   high: number;
@@ -59,6 +67,8 @@ export interface TituloClube {
   team: string;
   crest: string | null;
   chance: number;
+  /** Chave canônica, quando conhecida — para linkar o clube. */
+  teamKey: string | null;
 }
 
 export interface ProjecaoData {
@@ -282,6 +292,8 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
       awayName: t.teamB,
       homeCrest: escudoDe(t.teamA),
       awayCrest: escudoDe(t.teamB),
+      homeKey: t.keyA,
+      awayKey: t.keyB,
       advance: 0.5,
       low: 0.5,
       high: 0.5,
@@ -377,6 +389,7 @@ export async function getProjecao(tournamentSlug: string): Promise<ProjecaoData>
     titulosClube: (ranking?.clubTitleChance ?? []).map((c) => ({
       ...c,
       crest: escudoDe(c.team),
+      teamKey: ajuste.resolver(c.team),
     })),
     ranking,
     modelVersion: MODEL_VERSION,

@@ -8,6 +8,8 @@ import { getFlagUrl } from '@/lib/utils/flags';
 import { scoreTier, tierRow } from '@/lib/scoring-ui';
 import { PredictionSummary } from '@/components/prediction-summary';
 import { getMatchResultDetail } from '../actions';
+import { createServerSupabaseClient } from '@/lib/supabase';
+import { criarResolvedorDeClube, hrefDoClube } from '@/lib/club-links';
 
 interface PageProps {
   params: Promise<{ tournament: string; matchId: string }>;
@@ -35,6 +37,30 @@ function TeamLogo({ iso, alt }: { iso: string | null; alt: string }) {
   return <Image src={getFlagUrl(iso)} alt={alt} width={40} height={40} className="w-10 h-auto rounded" />;
 }
 
+/** Escudo + nome, virando link quando o clube tem página própria. */
+function TeamIdentity({ nome, iso, href }: { nome: string; iso: string | null; href: string | null }) {
+  const conteudo = (
+    <>
+      <TeamLogo iso={iso} alt={nome} />
+      <span className="text-foreground font-bold text-center text-sm transition-colors group-hover:text-primary">
+        {nome}
+      </span>
+    </>
+  );
+  if (!href) {
+    return <div className="flex flex-col items-center gap-2 flex-1">{conteudo}</div>;
+  }
+  return (
+    <Link
+      href={href}
+      aria-label={`Ver os jogos do ${nome}`}
+      className="group flex flex-col items-center gap-2 flex-1"
+    >
+      {conteudo}
+    </Link>
+  );
+}
+
 export default async function MatchResultDetailPage({ params }: PageProps) {
   const { tournament: tournamentSlug, matchId } = await params;
   const id = parseInt(matchId);
@@ -47,6 +73,16 @@ export default async function MatchResultDetailPage({ params }: PageProps) {
   }
 
   const isKnockout = !!match.is_knockout;
+
+  // Link para a página do clube. Só no bolão de clubes — reconhecido pela
+  // partida ter competição —, porque nos torneios de seleções o "time" é um
+  // país e /resultados não teria o que mostrar.
+  const supabase = await createServerSupabaseClient();
+  const resolverClube = (match as any).competition ? await criarResolvedorDeClube(supabase) : null;
+  const linkDoClube = (nome?: string | null): string | null => {
+    const chave = resolverClube?.(nome) ?? null;
+    return chave ? hrefDoClube(tournamentSlug, chave) : null;
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -62,10 +98,11 @@ export default async function MatchResultDetailPage({ params }: PageProps) {
         <Card className="bg-card border-border mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <div className="flex flex-col items-center gap-2 flex-1">
-                <TeamLogo iso={match.home_iso} alt={match.team_home} />
-                <span className="text-foreground font-bold text-center text-sm">{match.team_home}</span>
-              </div>
+              <TeamIdentity
+                nome={match.team_home}
+                iso={match.home_iso}
+                href={linkDoClube(match.team_home)}
+              />
               <div className="flex flex-col items-center gap-1 mx-4">
                 <div className="flex items-center gap-2">
                   <span className="text-3xl font-bold text-foreground bg-muted px-4 py-2 rounded">{match.score_home ?? '-'}</span>
@@ -91,10 +128,11 @@ export default async function MatchResultDetailPage({ params }: PageProps) {
                   </span>
                 )}
               </div>
-              <div className="flex flex-col items-center gap-2 flex-1">
-                <TeamLogo iso={match.away_iso} alt={match.team_away} />
-                <span className="text-foreground font-bold text-center text-sm">{match.team_away}</span>
-              </div>
+              <TeamIdentity
+                nome={match.team_away}
+                iso={match.away_iso}
+                href={linkDoClube(match.team_away)}
+              />
             </div>
           </CardContent>
         </Card>

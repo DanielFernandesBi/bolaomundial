@@ -21,6 +21,7 @@ import {
 } from './actions';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { COMPETITIONS } from '@/lib/competitions';
+import { criarResolvedorDeClube, hrefDoClube } from '@/lib/club-links';
 import { notFound } from 'next/navigation';
 
 interface MatchesPageProps {
@@ -157,6 +158,16 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   // agora sobre os jogos que faltam palpitar. Vazio em torneio de competição
   // única — ali a etiqueta única já basta e nada muda.
   const missingByCompetition = temCompeticoes ? chipsDe(missingMatches) : [];
+
+  // Link do time para a página dele. Só no bolão de clubes: nos torneios de
+  // seleções o "time" é um país, e /resultados — que existe para os clubes —
+  // não teria o que mostrar. Sem competições, `linkDoClube` devolve sempre
+  // null e nenhum nome vira link.
+  const resolverClube = temCompeticoes ? await criarResolvedorDeClube(supabase) : null;
+  const linkDoClube = (nome?: string | null): string | null => {
+    const chave = resolverClube?.(nome) ?? null;
+    return chave ? hrefDoClube(tournamentSlug, chave) : null;
+  };
 
   // Transparência: palpites de todos, revelados quando a FASE começa (jogo com
   // resultado lançado sai daqui e vai para "Encerradas")
@@ -332,7 +343,13 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {g.items.map((match: any) => (
-                      <MatchCard key={match.id} match={match} group={match.phase ?? 'Fase de Grupos'} />
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        group={match.phase ?? 'Fase de Grupos'}
+                        homeHref={linkDoClube(match.team_home)}
+                        awayHref={linkDoClube(match.team_away)}
+                      />
                     ))}
                   </div>
                 </section>
@@ -382,7 +399,13 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {g.items.map((match: any) => (
-                        <AuditMatchCard key={match.id} match={match} tournamentSlug={tournamentSlug} />
+                        <AuditMatchCard
+                          key={match.id}
+                          match={match}
+                          tournamentSlug={tournamentSlug}
+                          homeHref={linkDoClube(match.team_home)}
+                          awayHref={linkDoClube(match.team_away)}
+                        />
                       ))}
                     </div>
                   </section>

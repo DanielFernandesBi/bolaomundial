@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,6 +45,48 @@ interface HistoryListProps {
   /** false na página de OUTRO jogador — troca "Seu palpite" por "Palpitou".
       Opcional e com default true: quem já usava o componente não muda. */
   isOwn?: boolean;
+  /**
+   * Nome do clube → endereço da página dele. Vem pronto do servidor porque só
+   * lá dá para resolver nome → chave canônica; ausente nos torneios de
+   * seleções, onde nenhum nome vira link.
+   */
+  clubHrefs?: Record<string, string>;
+}
+
+/** Escudo + nome de um dos lados, clicável quando o clube tem página. */
+function TeamIdentity({ nome, iso, href }: { nome: string; iso: string | null; href?: string }) {
+  const conteudo = (
+    <>
+      {iso &&
+        (iso.toLowerCase().startsWith('http') ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={iso} alt={nome} className="w-12 h-12 rounded object-contain" loading="lazy" />
+        ) : (
+          <Image
+            src={getFlagUrl(iso)}
+            alt={nome}
+            width={48}
+            height={48}
+            className="w-12 h-auto rounded"
+          />
+        ))}
+      <span className="text-foreground text-sm font-semibold text-center truncate w-full transition-colors group-hover:text-primary">
+        {nome}
+      </span>
+    </>
+  );
+  if (!href) {
+    return <div className="flex flex-col items-center gap-2 flex-1">{conteudo}</div>;
+  }
+  return (
+    <Link
+      href={href}
+      aria-label={`Ver os jogos do ${nome}`}
+      className="group flex flex-col items-center gap-2 flex-1 min-w-0"
+    >
+      {conteudo}
+    </Link>
+  );
 }
 
 // Etiqueta da pontuação regular (tempo normal) — mesma lógica dos cards de "Encerradas"
@@ -59,7 +102,13 @@ function regularBadge(pts: number) {
   );
 }
 
-export function HistoryList({ history, userAvatarUrl, username, isOwn = true }: HistoryListProps) {
+export function HistoryList({
+  history,
+  userAvatarUrl,
+  username,
+  isOwn = true,
+  clubHrefs,
+}: HistoryListProps) {
   const [sharingId, setSharingId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
@@ -156,29 +205,11 @@ export function HistoryList({ history, userAvatarUrl, username, isOwn = true }: 
                 {/* Cabeçalho: Confronto */}
                 <div className="flex items-center justify-center gap-3 mb-4">
                   {/* Time Casa */}
-                  <div className="flex flex-col items-center gap-2 flex-1">
-                    {match.home_iso && (
-                      match.home_iso.toLowerCase().startsWith('http') ? (
-                        <img
-                          src={match.home_iso}
-                          alt={match.team_home}
-                          className="w-12 h-12 rounded object-contain"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <Image
-                          src={getFlagUrl(match.home_iso)}
-                          alt={match.team_home}
-                          width={48}
-                          height={48}
-                          className="w-12 h-auto rounded"
-                        />
-                      )
-                    )}
-                    <span className="text-foreground text-sm font-semibold text-center truncate w-full">
-                      {match.team_home}
-                    </span>
-                  </div>
+                  <TeamIdentity
+                    nome={match.team_home}
+                    iso={match.home_iso}
+                    href={clubHrefs?.[match.team_home]}
+                  />
 
                   {/* Placar Real */}
                   <div className="flex flex-col items-center gap-1">
@@ -189,29 +220,11 @@ export function HistoryList({ history, userAvatarUrl, username, isOwn = true }: 
                   </div>
 
                   {/* Time Visitante */}
-                  <div className="flex flex-col items-center gap-2 flex-1">
-                    {match.away_iso && (
-                      match.away_iso.toLowerCase().startsWith('http') ? (
-                        <img
-                          src={match.away_iso}
-                          alt={match.team_away}
-                          className="w-12 h-12 rounded object-contain"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <Image
-                          src={getFlagUrl(match.away_iso)}
-                          alt={match.team_away}
-                          width={48}
-                          height={48}
-                          className="w-12 h-auto rounded"
-                        />
-                      )
-                    )}
-                    <span className="text-foreground text-sm font-semibold text-center truncate w-full">
-                      {match.team_away}
-                    </span>
-                  </div>
+                  <TeamIdentity
+                    nome={match.team_away}
+                    iso={match.away_iso}
+                    href={clubHrefs?.[match.team_away]}
+                  />
                 </div>
 
                 {/* Resultado real de prorrogação/pênaltis (mata-mata) */}

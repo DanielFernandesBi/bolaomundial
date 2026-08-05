@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Lock, ChevronRight, ChevronLeft, Check, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { getFlagUrl } from '@/lib/utils/flags';
@@ -66,6 +67,41 @@ interface MatchCardProps {
     } | null;
   };
   group?: string;
+  /**
+   * Endereço da página de cada clube, quando ele é conhecido. Vem pronto do
+   * servidor porque só lá dá para resolver nome → chave — e vem nulo nos
+   * torneios de seleções, onde não há página de time para abrir.
+   */
+  homeHref?: string | null;
+  awayHref?: string | null;
+}
+
+/**
+ * Identidade do time no topo do card: nome + escudo, virando link quando há
+ * página para abrir.
+ *
+ * O alvo é o conjunto, e não o nome sozinho: o escudo é a parte que a mão
+ * procura, e dois alvos colados seriam um teste de pontaria no celular.
+ */
+function TeamIdentity({ nome, iso, href }: { nome: string; iso: string | null; href?: string | null }) {
+  const conteudo = (
+    <>
+      <span className="text-sm font-bold text-foreground text-center">{nome}</span>
+      <TeamLogo iso={iso} alt={nome} />
+    </>
+  );
+  if (!href) {
+    return <div className="flex flex-col items-center gap-2 flex-1">{conteudo}</div>;
+  }
+  return (
+    <Link
+      href={href}
+      aria-label={`Ver os jogos do ${nome}`}
+      className="flex flex-col items-center gap-2 flex-1 rounded transition-opacity hover:opacity-70"
+    >
+      {conteudo}
+    </Link>
+  );
 }
 
 function TeamLogo({ iso, alt }: { iso: string | null; alt: string }) {
@@ -151,7 +187,7 @@ function ScoreStepper({
   );
 }
 
-export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
+export function MatchCard({ match, group = 'Fase de Grupos', homeHref, awayHref }: MatchCardProps) {
   const pathname = usePathname();
   const tournamentSlug = pathname?.split('/')[1] || '';
 
@@ -470,10 +506,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
 
         {/* Centro: times + (placar quando finalizado ou jogo de grupos) */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex flex-col items-center gap-2 flex-1">
-            <div className="text-sm font-bold text-foreground text-center">{match.team_home}</div>
-            <TeamLogo iso={match.home_iso} alt={match.team_home} />
-          </div>
+          <TeamIdentity nome={match.team_home} iso={match.home_iso} href={homeHref} />
 
           <div className="flex items-center gap-2 mx-4">
             {isFinished ? (
@@ -490,10 +523,7 @@ export function MatchCard({ match, group = 'Fase de Grupos' }: MatchCardProps) {
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-2 flex-1">
-            <div className="text-sm font-bold text-foreground text-center">{match.team_away}</div>
-            <TeamLogo iso={match.away_iso} alt={match.team_away} />
-          </div>
+          <TeamIdentity nome={match.team_away} iso={match.away_iso} href={awayHref} />
         </div>
 
         {/* Placar em linha própria: entre as colunas dos times não cabia no

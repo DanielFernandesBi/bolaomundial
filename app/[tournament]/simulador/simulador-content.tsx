@@ -12,6 +12,7 @@ import {
   Info,
 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getFlagUrl } from '@/lib/utils/flags';
@@ -165,6 +166,7 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
               player={favTitle}
               value={favTitle ? pct(favTitle.chance_title) : '—'}
               accent="text-primary"
+              tournamentSlug={tournamentSlug}
             />
             <HighlightCard
               icon={<Sparkles className="w-5 h-5 text-state-open" />}
@@ -172,6 +174,7 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
               player={topPoints}
               value={topPoints ? topPoints.projected_points.toFixed(0) + ' pts' : '—'}
               accent="text-state-open"
+              tournamentSlug={tournamentSlug}
             />
             <HighlightCard
               icon={<ArrowDown className="w-5 h-5 text-destructive" />}
@@ -179,6 +182,7 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
               player={favLanterna}
               value={favLanterna ? pct(favLanterna.chance_lanterna) : '—'}
               accent="text-destructive"
+              tournamentSlug={tournamentSlug}
             />
           </div>
 
@@ -227,7 +231,12 @@ export function SimuladorContent({ tournamentSlug, tournamentName }: { tournamen
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-foreground font-medium truncate">{p.username}</span>
+                          <Link
+                            href={`/${tournamentSlug}/desempenho/${p.user_id}`}
+                            className="text-foreground font-medium truncate transition-colors hover:text-primary"
+                          >
+                            {p.username}
+                          </Link>
                           <span className={`font-bold tabular-nums flex-shrink-0 ${activeMetric.chip}`}>{pct(metricVal)}</span>
                         </div>
                         {/* Barra da métrica selecionada */}
@@ -272,12 +281,14 @@ function HighlightCard({
   player,
   value,
   accent,
+  tournamentSlug,
 }: {
   icon: React.ReactNode;
   title: string;
   player: PlayerResult | undefined;
   value: string;
   accent: string;
+  tournamentSlug: string;
 }) {
   return (
     <Card className="bg-card border-border">
@@ -292,7 +303,12 @@ function HighlightCard({
               <AvatarImage src={player.avatar_url || undefined} />
               <AvatarFallback className="bg-muted text-foreground text-xs">{getInitials(player.username)}</AvatarFallback>
             </Avatar>
-            <span className="text-foreground font-semibold truncate flex-1">{player.username}</span>
+            <Link
+              href={`/${tournamentSlug}/desempenho/${player.user_id}`}
+              className="text-foreground font-semibold truncate flex-1 transition-colors hover:text-primary"
+            >
+              {player.username}
+            </Link>
             <span className={`font-bold ${accent}`}>{value}</span>
           </div>
         ) : (

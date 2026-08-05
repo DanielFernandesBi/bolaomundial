@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   CalendarDays,
   ChevronDown,
@@ -159,7 +160,7 @@ function Estado({ status }: { status: string }) {
   );
 }
 
-/** Um lado do confronto. */
+/** Um lado do confronto. Escudo + nome viram um alvo só quando clicáveis. */
 function Lado({
   nome,
   escudo,
@@ -167,6 +168,7 @@ function Lado({
   ehBolao,
   venceu,
   temPlacar,
+  aoClicar,
 }: {
   nome: string;
   escudo: string | null;
@@ -174,13 +176,14 @@ function Lado({
   ehBolao: boolean;
   venceu: boolean;
   temPlacar: boolean;
+  aoClicar?: () => void;
 }) {
-  return (
-    <div className="flex items-center gap-2.5">
+  {/* Duas ênfases diferentes, de propósito, porque são duas informações
+      diferentes: o NOME em destaque diz "este é clube do bolão" — que é o
+      assunto da tela —, e o PLACAR em destaque diz quem venceu. */}
+  const identidade = (
+    <>
       <Escudo url={escudo} />
-      {/* Duas ênfases diferentes, de propósito, porque são duas informações
-          diferentes: o NOME em destaque diz "este é clube do bolão" — que é o
-          assunto da tela —, e o PLACAR em destaque diz quem venceu. */}
       <span
         className={`min-w-0 flex-1 truncate text-sm ${
           ehBolao ? 'font-semibold text-foreground' : 'text-muted-foreground'
@@ -188,6 +191,26 @@ function Lado({
       >
         {nome}
       </span>
+    </>
+  );
+
+  return (
+    <div className="flex items-center gap-2.5">
+      {/* O alvo do clique é o conjunto escudo+nome, não cada um separado: são a
+          mesma informação, e dois alvos colados de 28px seriam um teste de
+          pontaria no celular. */}
+      {aoClicar ? (
+        <button
+          type="button"
+          onClick={aoClicar}
+          aria-label={`Ver os jogos do ${nome}`}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded text-left transition-opacity hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          {identidade}
+        </button>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">{identidade}</div>
+      )}
       {temPlacar && (
         <span
           className={`w-5 flex-shrink-0 text-right font-mono text-base tabular-nums ${
@@ -201,7 +224,21 @@ function Lado({
   );
 }
 
-function LinhaJogo({ f }: { f: ClubFixture }) {
+/**
+ * Identidade do clube do jeito que `estatisticas_clubes` a devolve: a chave do
+ * mapa quando o time é conhecido, senão '#<id da API>'. É por ela que o recorte
+ * casa — por isso a fórmula tem de ser a MESMA das duas pontas.
+ *
+ * Devolve null quando o time não tem nem chave nem ID: sem identidade não há
+ * página para abrir, e o nome deixa de ser clicável em vez de virar um link que
+ * não filtra nada.
+ */
+function identidadeDoClube(key: string | null, providerId: number | null): string | null {
+  if (key) return key;
+  return providerId !== null ? `#${providerId}` : null;
+}
+
+function LinhaJogo({ f, aoEscolherClube }: { f: ClubFixture; aoEscolherClube: (id: string) => void }) {
   // Placar PARCIAL, enquanto a bola rola.
   //
   // Vem de `goals_*_agora` e não de `goals_*_90`: o campo dos 90 minutos é nulo
@@ -243,6 +280,9 @@ function LinhaJogo({ f }: { f: ClubFixture }) {
       ? somaFora > somaCasa
       : tevePenaltis && (f.penalties_away ?? 0) > (f.penalties_home ?? 0));
 
+  const identCasa = identidadeDoClube(f.home_team_key, f.home_provider_id);
+  const identFora = identidadeDoClube(f.away_team_key, f.away_provider_id);
+
   return (
     <div className="border-t border-hairline px-3.5 py-3 first:border-t-0">
       {/* Linha de contexto, no mesmo desenho do topo do card de Partidas:
@@ -265,6 +305,7 @@ function LinhaJogo({ f }: { f: ClubFixture }) {
           ehBolao={f.home_is_bolao}
           venceu={venceuCasa}
           temPlacar={temPlacar}
+          aoClicar={identCasa ? () => aoEscolherClube(identCasa) : undefined}
         />
         <Lado
           nome={f.away_display}
@@ -273,6 +314,7 @@ function LinhaJogo({ f }: { f: ClubFixture }) {
           ehBolao={f.away_is_bolao}
           venceu={venceuFora}
           temPlacar={temPlacar}
+          aoClicar={identFora ? () => aoEscolherClube(identFora) : undefined}
         />
       </div>
 
@@ -757,11 +799,36 @@ export function ResultadosContent({
   ligas,
   ultimaSincronizacao,
   ligasDasCopas,
-}: ResultadosData) {
-  const [aba, setAba] = useState<Aba>('jogos');
-  const [clube, setClube] = useState<string>('');
+  tournamentSlug,
+}: ResultadosData & { tournamentSlug: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // O clube escolhido vive na URL, e não só no estado. É o que transforma esta
+  // tela no "endereço do time": qualquer lugar do app pode linkar para cá com
+  // `?clube=<chave>`, e o botão voltar do navegador funciona.
+  const clubeDaUrl = searchParams.get('clube') ?? '';
+
+  const [aba, setAba] = useState<Aba>(clubeDaUrl ? 'jogos' : 'jogos');
+  const [clube, setClube] = useState<string>(clubeDaUrl);
   const [liga, setLiga] = useState<number | null>(null);
   const [soCopas, setSoCopas] = useState(false);
+
+  // Navegar de outra tela para cá (ou usar voltar/avançar) troca o parâmetro
+  // sem remontar o componente — então o estado precisa acompanhar.
+  useEffect(() => {
+    setClube(clubeDaUrl);
+    if (clubeDaUrl) setLiga(null);
+  }, [clubeDaUrl]);
+
+  /** Espelha a escolha na URL, sem empilhar histórico a cada clique de filtro. */
+  const sincronizarUrl = useCallback(
+    (novoClube: string) => {
+      const qs = novoClube ? `?clube=${encodeURIComponent(novoClube)}` : '';
+      router.replace(`/${tournamentSlug}/resultados${qs}`, { scroll: false });
+    },
+    [router, tournamentSlug]
+  );
 
   const copas = useMemo(() => new Set(ligasDasCopas), [ligasDasCopas]);
 
@@ -775,11 +842,18 @@ export function ResultadosContent({
       if (clube) {
         // Time do mapa casa pela chave; time descoberto pela captura só tem o
         // ID da API, então é por ele que a partida é encontrada.
+        //
+        // Sem ficha em `stats` a identidade ainda vale: é a mesma fórmula
+        // (chave, ou '#<id>' quando não há chave), então dá para casar direto
+        // com a partida. Antes isto devolvia lista vazia — e clicar num
+        // adversário que ainda não tem jogo ENCERRADO mostrava "nenhum jogo"
+        // mesmo com o jogo dele na tela.
         const s = stats.find((x) => x.id === clube);
-        if (!s) return false;
-        return s.team_key
-          ? f.home_team_key === s.team_key || f.away_team_key === s.team_key
-          : f.home_provider_id === s.provider_id || f.away_provider_id === s.provider_id;
+        const chave = s?.team_key ?? (clube.startsWith('#') ? null : clube);
+        const providerId = s?.provider_id ?? (clube.startsWith('#') ? Number(clube.slice(1)) : null);
+        return chave
+          ? f.home_team_key === chave || f.away_team_key === chave
+          : f.home_provider_id === providerId || f.away_provider_id === providerId;
       }
       if (!f.home_is_bolao && !f.away_is_bolao) return false;
       if (soCopas && !(f.league_id !== null && copas.has(f.league_id))) return false;
@@ -829,22 +903,42 @@ export function ResultadosContent({
   const primeiroFuturo = grupos.find((g) => g.dia > dias[0])?.dia;
   const primeiroAnterior = grupos.find((g) => g.dia < dias[0])?.dia;
   const statsDoClube = clube ? stats.find((s) => s.id === clube) : undefined;
+
+  // Nome do recorte. Sem ficha em `stats`, tira do primeiro jogo do próprio
+  // clube — mostrar a chave crua ("atletico paranaense") ou "#127" no lugar do
+  // nome seria vazar o identificador para a tela.
+  const nomeDoClube = useMemo(() => {
+    if (!clube) return '';
+    if (statsDoClube) return statsDoClube.nome;
+    for (const f of filtrados) {
+      if (identidadeDoClube(f.home_team_key, f.home_provider_id) === clube) return f.home_display;
+      if (identidadeDoClube(f.away_team_key, f.away_provider_id) === clube) return f.away_display;
+    }
+    return clube;
+  }, [clube, statsDoClube, filtrados]);
   const ligaAberta = liga !== null ? ligas.find((l) => l.league_id === liga) : undefined;
 
-  /** Escolher na aba Times/Ligas leva para os jogos daquele recorte. */
+  /** Escolher na aba Times/Ligas — ou clicar num time da lista — abre o recorte. */
   function abrirClube(id: string) {
     setClube(id);
     setLiga(null);
     setAba('jogos');
+    sincronizarUrl(id);
+    // Sobe a tela. Clicar num time no meio da lista troca TODO o conteúdo
+    // acima do clique (o painel do clube entra no topo); ficar parado onde
+    // estava daria a impressão de que nada aconteceu.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function abrirLiga(id: number) {
     setLiga(id);
     setClube('');
     setAba('jogos');
+    sincronizarUrl('');
   }
   function limparRecorte() {
     setClube('');
     setLiga(null);
+    sincronizarUrl('');
   }
 
   return (
@@ -879,7 +973,7 @@ export function ResultadosContent({
           {(clube || liga !== null) && (
             <div className="mb-3 flex items-center justify-between gap-3 rounded-[12px] border border-primary/40 bg-primary/10 px-3.5 py-2.5">
               <span className="min-w-0 truncate text-[13px] font-semibold text-foreground">
-                {ligaAberta ? ligaAberta.nome : (statsDoClube?.nome ?? clube)}
+                {ligaAberta ? ligaAberta.nome : nomeDoClube}
               </span>
               <button
                 type="button"
@@ -928,7 +1022,11 @@ export function ResultadosContent({
                 <span className="relative min-w-0 flex-1">
                   <select
                     value={clube}
-                    onChange={(e) => setClube(e.target.value)}
+                    onChange={(e) => {
+                      setClube(e.target.value);
+                      setLiga(null);
+                      sincronizarUrl(e.target.value);
+                    }}
                     className="w-full cursor-pointer appearance-none truncate bg-transparent pr-6 text-right text-sm font-semibold text-foreground focus:outline-none"
                   >
                     <option value="">Todos do bolão</option>
@@ -1020,7 +1118,7 @@ export function ResultadosContent({
                   </div>
                   <div className="overflow-hidden rounded-[12px] border border-border bg-card">
                     {itens.map((f) => (
-                      <LinhaJogo key={f.id} f={f} />
+                      <LinhaJogo key={f.id} f={f} aoEscolherClube={abrirClube} />
                     ))}
                   </div>
                 </section>

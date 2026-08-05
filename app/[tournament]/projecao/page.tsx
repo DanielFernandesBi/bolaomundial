@@ -36,7 +36,7 @@ export default async function ProjecaoPage({ params }: ProjecaoPageProps) {
           </p>
         </div>
 
-        <ProjecaoContent {...dados} />
+        <ProjecaoContent {...dados} tournamentSlug={tournamentSlug} />
       </div>
     </div>
   );
