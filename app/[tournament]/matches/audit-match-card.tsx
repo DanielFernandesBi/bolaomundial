@@ -50,6 +50,9 @@ function TimeLinha({ nome, iso, href }: { nome: string; iso: string | null; href
             alt={nome}
             className="w-6 h-6 sm:w-8 sm:h-8 rounded object-contain flex-shrink-0"
             loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
           />
         ) : (
           <Image

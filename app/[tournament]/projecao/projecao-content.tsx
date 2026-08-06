@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowDown, Info, Medal, Sparkles, TrendingUp, Trophy, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -77,8 +77,39 @@ function Barra({ valor, cor = 'bg-primary' }: { valor: number; cor?: string }) {
   );
 }
 
+/**
+ * Escudo do clube, com as iniciais como reserva.
+ *
+ * Esta era a ÚNICA imagem do app sem `loading="lazy"` e sem `onError` — e por
+ * isso a única tela onde apareciam escudos quebrados. As duas faltas se somam:
+ *
+ *   sem lazy — a aba Torneios monta ~50 escudos de uma vez (8 clubes × 3
+ *   competições nos títulos, mais dois por confronto), todos do mesmo host.
+ *   O navegador dispara a rajada inteira e o CDN recusa parte dela. Daí serem
+ *   "alguns" times, arbitrários e diferentes a cada carregamento — e não
+ *   sempre os mesmos, que é o que uma URL ruim produziria. Conferido: as URLs
+ *   que falharam devolvem 200 e PNG íntegro quando pedidas sozinhas.
+ *
+ *   sem onError — quando uma falha, não havia reserva, e o navegador desenhava
+ *   o próprio ícone de imagem quebrada. Todas as outras telas caem no
+ *   placeholder.
+ *
+ * A tentativa extra existe porque a recusa é passageira: o parâmetro na URL
+ * evita que o navegador sirva o próprio erro do cache. Uma só — insistir mais
+ * seria bater na mesma porta que acabou de fechar.
+ */
 function Escudo({ src, nome, tamanho = 20 }: { src: string | null; nome: string; tamanho?: number }) {
-  if (!src) {
+  const [tentativa, setTentativa] = useState(0);
+  const [falhou, setFalhou] = useState(false);
+
+  // Um clube pode trocar de escudo entre renders (a projeção recarrega na aba
+  // do ranking); sem isto, o estado de falha de um grudaria no outro.
+  useEffect(() => {
+    setTentativa(0);
+    setFalhou(false);
+  }, [src]);
+
+  if (!src || falhou) {
     return (
       <span
         className="flex flex-shrink-0 items-center justify-center rounded-full bg-surface-sunken font-mono text-[9px] text-[hsl(var(--faint))]"
@@ -89,11 +120,15 @@ function Escudo({ src, nome, tamanho = 20 }: { src: string | null; nome: string;
       </span>
     );
   }
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={tentativa === 0 ? src : `${src}${src.includes('?') ? '&' : '?'}r=${tentativa}`}
       alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => (tentativa === 0 ? setTentativa(1) : setFalhou(true))}
       className="flex-shrink-0 object-contain"
       style={{ width: tamanho, height: tamanho }}
     />
