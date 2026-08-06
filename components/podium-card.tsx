@@ -38,7 +38,21 @@ function TeamFlag({ iso, alt, size = 32 }: { iso: string | null; alt: string; si
   const trimmed = iso.trim();
   if (trimmed.toLowerCase().startsWith('http')) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={trimmed} alt={alt} style={{ width: size, height: size }} className="rounded object-contain bg-muted" loading="lazy" />;
+    // O onError esconde a imagem que não carregou, no lugar de deixar o
+    // navegador desenhar o próprio ícone de quebrada. Mesmo tratamento do
+    // match-card — aqui são até 16 escudos por competição.
+    return (
+      <img
+        src={trimmed}
+        alt={alt}
+        style={{ width: size, height: size }}
+        className="rounded object-contain bg-muted"
+        loading="lazy"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+    );
   }
   return <Image src={getFlagUrl(iso)} alt={alt} width={size} height={size} className="rounded" style={{ height: 'auto' }} />;
 }

@@ -55,12 +55,24 @@ interface HistoryListProps {
 
 /** Escudo + nome de um dos lados, clicável quando o clube tem página. */
 function TeamIdentity({ nome, iso, href }: { nome: string; iso: string | null; href?: string }) {
+  // Sem isto, um escudo que não carrega vira o ícone de imagem quebrada do
+  // navegador. Some com a imagem e o nome fica sozinho — que é o que o card
+  // já faz quando o clube não tem escudo cadastrado.
+  const [semEscudo, setSemEscudo] = useState(false);
+
   const conteudo = (
     <>
       {iso &&
+        !semEscudo &&
         (iso.toLowerCase().startsWith('http') ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={iso} alt={nome} className="w-12 h-12 rounded object-contain" loading="lazy" />
+          <img
+            src={iso}
+            alt={nome}
+            className="w-12 h-12 rounded object-contain"
+            loading="lazy"
+            onError={() => setSemEscudo(true)}
+          />
         ) : (
           <Image
             src={getFlagUrl(iso)}
