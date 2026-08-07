@@ -62,6 +62,8 @@ export interface FaseAGuardar {
   competition: string | null;
   round: string | null;
   palpites: number;
+  /** Jogos da fase ainda sem palpite. Só é > 0 quando o prazo está perto. */
+  faltando: number;
   fecha_em: string | null;
   codigo: string;
 }
@@ -196,6 +198,7 @@ export async function getFasesAGuardar(tournamentSlug: string): Promise<FaseAGua
     competition: f.competition,
     round: f.round,
     palpites: Number(f.palpites),
+    faltando: Number(f.faltando ?? 0),
     fecha_em: f.fecha_em,
     codigo: f.codigo,
   }));
