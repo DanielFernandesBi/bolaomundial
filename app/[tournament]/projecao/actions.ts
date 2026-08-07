@@ -166,7 +166,10 @@ async function ajustarForcas(supabase: any): Promise<Ajuste> {
   for (const a of (apelidosRaw ?? []) as any[]) apelidos.set(a.alias, a.team_key);
   const chaves = new Set(priors.map((p) => p.teamKey));
 
-  // Escudo que a própria API-Football manda. Chega sozinho para todo clube que
+  // Escudo do clube, servido pelo NOSSO Storage. A coluna se chama crest_url
+  // desde quando guardava a URL da API-Football; hoje ela guarda o endereço do
+  // arquivo que baixamos uma vez (migração `escudos_hospedados_por_nos`), e a
+  // procedência ficou em crest_origem_url. Chega sozinho para todo clube que
   // entra em campo — não depende de ninguém cadastrar.
   const escudoDaApi = new Map<string, string>();
   for (const e of (escudosRaw ?? []) as any[]) escudoDaApi.set(e.team_key, e.crest_url);
