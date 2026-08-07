@@ -27,10 +27,26 @@ import type { FaseAGuardar } from '@/app/[tournament]/comprovante/actions';
 // a dispensa deixa de valer e o aviso volta — porque o comprovante que a
 // pessoa guardou ficou desatualizado, e ela precisa saber disso. Um "não ver
 // mais" que ignorasse isso daria uma falsa sensação de proteção.
+//
+// DUAS TRAVAS CONTRA ENCHER O SACO, aprendidas na prática:
+//
+//   1. o servidor só manda a fase quando não falta palpite nela (ver
+//      `meus_comprovantes_a_guardar`). Sem isso, quem tinha 32 jogos para
+//      palpitar via 32 avisos — um por gravação, porque cada uma muda o código
+//      e revalida a página;
+//
+//   2. e aqui, uma carência: dispensou agora, não reaparece nos próximos
+//      minutos, mesmo que o código mude. Quem termina e sai corrigindo cinco
+//      palpites seguidos receberia cinco avisos, e o quinto não diz nada que o
+//      primeiro já não tenha dito. Passada a carência ele volta, com o código
+//      final — que é o que interessa guardar.
 // ============================================================================
 
 const CHAVE_NUNCA = 'comprovante:nunca';
 const CHAVE_VISTO = 'comprovante:visto';
+const CHAVE_QUANDO = 'comprovante:quando';
+/** Carência depois de dispensar. Cobre uma sessão de correções. */
+const CARENCIA_MS = 10 * 60 * 1000;
 
 function prazo(iso: string | null): string {
   if (!iso) return 'sem data definida';
@@ -61,6 +77,9 @@ export function ComprovanteAviso({
     try {
       if (localStorage.getItem(CHAVE_NUNCA) === '1') return;
       if (localStorage.getItem(`${CHAVE_VISTO}:${tournamentSlug}`) === assinatura) return;
+      // Carência: dispensou há pouco, fica quieto mesmo com código novo.
+      const quando = Number(localStorage.getItem(`${CHAVE_QUANDO}:${tournamentSlug}`) ?? 0);
+      if (quando && Date.now() - quando < CARENCIA_MS) return;
     } catch {
       // Navegador sem localStorage (aba anônima com storage bloqueado): mostrar
       // é melhor que esconder — o aviso é curto e tem saída.
@@ -72,6 +91,7 @@ export function ComprovanteAviso({
     try {
       if (paraSempre) localStorage.setItem(CHAVE_NUNCA, '1');
       else localStorage.setItem(`${CHAVE_VISTO}:${tournamentSlug}`, assinatura);
+      localStorage.setItem(`${CHAVE_QUANDO}:${tournamentSlug}`, String(Date.now()));
     } catch {
       /* sem storage: fecha só nesta visita */
     }
@@ -137,6 +157,14 @@ export function ComprovanteAviso({
                 <span className="block font-mono text-[10px] uppercase tracking-wider text-[hsl(var(--faint))]">
                   {f.palpites} {f.palpites === 1 ? 'palpite' : 'palpites'} · fecha {prazo(f.fecha_em)}
                 </span>
+                {/* Só aparece quando o aviso veio pelo prazo curto, e não por
+                    ter terminado. Aí a pendência é a notícia mais urgente da
+                    caixa — mais que o comprovante. */}
+                {f.faltando > 0 && (
+                  <span className="block text-[11px] font-semibold text-state-missing">
+                    faltam {f.faltando} {f.faltando === 1 ? 'jogo' : 'jogos'} sem palpite
+                  </span>
+                )}
               </span>
               <span className="flex-shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.1em] text-primary">
                 {f.codigo}
