@@ -175,14 +175,33 @@ export function ComprovanteContent({
   const [tom, setTom] = useState<'success' | 'error'>('success');
   const [compartilhando, setCompartilhando] = useState(false);
 
-  // Agrupa por competição e fase: é a unidade que trava junto, e por isso a
-  // unidade em que o código de conferência para de mudar.
+  // Agrupa por competição e ROUND, não por `phase`: `phase` separa ida e volta,
+  // mas as duas TRAVAM juntas, no primeiro jogo da fase. O código precisa ser
+  // da unidade que trava — é o que faz ele congelar no fechamento e nunca mais
+  // mudar. Dois códigos para uma trava só seriam dois códigos sem significado.
   const grupos = useMemo(() => {
-    const mapa = new Map<string, { competition: string | null; phase: string | null; codigo: string; itens: ItemDoExtrato[] }>();
+    const mapa = new Map<
+      string,
+      {
+        competition: string | null;
+        round: string | null;
+        codigo: string;
+        fechaEm: string | null;
+        jaFechou: boolean;
+        itens: ItemDoExtrato[];
+      }
+    >();
     for (const it of itens) {
-      const chave = `${it.competition ?? ''}|${it.phase ?? ''}`;
+      const chave = `${it.competition ?? ''}|${it.round ?? ''}`;
       if (!mapa.has(chave)) {
-        mapa.set(chave, { competition: it.competition, phase: it.phase, codigo: it.codigo_da_fase, itens: [] });
+        mapa.set(chave, {
+          competition: it.competition,
+          round: it.round,
+          codigo: it.codigo_da_fase,
+          fechaEm: it.fecha_em,
+          jaFechou: it.ja_fechou,
+          itens: [],
+        });
       }
       mapa.get(chave)!.itens.push(it);
     }
@@ -191,7 +210,7 @@ export function ComprovanteContent({
       return i === -1 ? 99 : i;
     };
     return [...mapa.values()].sort(
-      (a, b) => ordem(a.competition) - ordem(b.competition) || (a.phase ?? '').localeCompare(b.phase ?? '')
+      (a, b) => ordem(a.competition) - ordem(b.competition) || (a.round ?? '').localeCompare(b.round ?? '')
     );
   }, [itens]);
 
@@ -270,11 +289,11 @@ export function ComprovanteContent({
         </div>
 
         {grupos.map((g) => (
-          <section key={`${g.competition}|${g.phase}`} className="mb-4">
+          <section key={`${g.competition}|${g.round}`} className="mb-4">
             <div className="mb-1.5 flex items-baseline justify-between gap-3">
               <h2 className="min-w-0 truncate font-mono text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--faint))]">
                 {competitionName(g.competition ?? '') || g.competition || 'Palpites'}
-                {g.phase ? ` · ${g.phase}` : ''}
+                {g.round ? ` · ${g.round}` : ''}
               </h2>
               <span
                 className="flex-shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.1em] text-primary"
@@ -283,6 +302,16 @@ export function ComprovanteContent({
                 {g.codigo}
               </span>
             </div>
+            {/* Fase aberta ainda dá para mudar — então o código de hoje pode não
+                ser o de amanhã, e dizer isso evita que alguém guarde um
+                comprovante achando que ele já está congelado. */}
+            <p className="mb-1.5 text-[11px] text-[hsl(var(--faint))]">
+              {g.jaFechou
+                ? 'Fase fechada: este código não muda mais.'
+                : g.fechaEm
+                  ? `Aberta até ${dataHora(g.fechaEm)} — se você alterar algum palpite, o código muda.`
+                  : 'Fase aberta — se você alterar algum palpite, o código muda.'}
+            </p>
             <div className="overflow-hidden rounded-[12px] border border-border bg-card">
               {g.itens.map((it) => (
                 <Linha key={it.match_id} item={it} />

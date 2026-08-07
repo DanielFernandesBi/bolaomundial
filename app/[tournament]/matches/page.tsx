@@ -22,6 +22,8 @@ import {
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { COMPETITIONS } from '@/lib/competitions';
 import { criarResolvedorDeClube, hrefDoClube } from '@/lib/club-links';
+import { getFasesAGuardar } from '../comprovante/actions';
+import { ComprovanteAviso } from '@/components/comprovante-aviso';
 import { notFound } from 'next/navigation';
 
 interface MatchesPageProps {
@@ -163,6 +165,9 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
   // seleções o "time" é um país, e /resultados — que existe para os clubes —
   // não teria o que mostrar. Sem competições, `linkDoClube` devolve sempre
   // null e nenhum nome vira link.
+  // Fases ainda abertas em que este jogador já palpitou. Vazio para visitante.
+  const fasesAGuardar = await getFasesAGuardar(tournamentSlug);
+
   const resolverClube = temCompeticoes ? await criarResolvedorDeClube(supabase) : null;
   const linkDoClube = (nome?: string | null): string | null => {
     const chave = resolverClube?.(nome) ?? null;
@@ -226,6 +231,10 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
             </div>
           );
         })()}
+
+        {/* O aviso do comprovante. Só aparece com fase ABERTA e palpite dado —
+            depois do fechamento ele não teria mais o que proteger. */}
+        <ComprovanteAviso fases={fasesAGuardar} tournamentSlug={tournamentSlug} />
 
         <TournamentDeadlineBanner
           nextMatchDate={nextMatchDate}

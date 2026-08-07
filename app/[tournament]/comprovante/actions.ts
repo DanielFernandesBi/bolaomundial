@@ -32,6 +32,8 @@ export interface ItemDoExtrato {
   match_id: number;
   competition: string | null;
   phase: string | null;
+  /** A fase que TRAVA junto (oitavas, quartas…). Ida e volta compartilham. */
+  round: string | null;
   team_home: string;
   team_away: string;
   match_date: string | null;
@@ -49,7 +51,19 @@ export interface ItemDoExtrato {
   alteracoes: EventoDoPalpite[];
   /** A trilha já existia quando este palpite foi gravado? */
   cobertura_completa: boolean;
+  /** Quando a fase fecha para palpite. */
+  fecha_em: string | null;
+  ja_fechou: boolean;
   codigo_da_fase: string;
+}
+
+/** Uma fase ainda aberta em que o jogador tem palpite — dá tempo de guardar. */
+export interface FaseAGuardar {
+  competition: string | null;
+  round: string | null;
+  palpites: number;
+  fecha_em: string | null;
+  codigo: string;
 }
 
 export interface ItemDoPodio {
@@ -127,4 +141,41 @@ export async function getComprovante(tournamentSlug: string): Promise<Comprovant
         }
       : null,
   };
+}
+
+/**
+ * Fases ainda abertas em que o jogador tem palpite.
+ *
+ * Alimenta o aviso, e existe separada de `getComprovante` porque é chamada em
+ * OUTRA tela (Partidas) e não pode arrastar o extrato inteiro junto.
+ *
+ * Devolve vazio para quem não está logado, em vez de erro: o aviso simplesmente
+ * não aparece, que é o comportamento certo para um visitante.
+ */
+export async function getFasesAGuardar(tournamentSlug: string): Promise<FaseAGuardar[]> {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('slug', tournamentSlug)
+    .single();
+  if (!tournament) return [];
+
+  const { data } = await supabase.rpc('meus_comprovantes_a_guardar', {
+    p_tournament_id: (tournament as any).id,
+  } as any);
+
+  return ((data ?? []) as any[]).map((f) => ({
+    competition: f.competition,
+    round: f.round,
+    palpites: Number(f.palpites),
+    fecha_em: f.fecha_em,
+    codigo: f.codigo,
+  }));
 }
