@@ -328,9 +328,26 @@ export async function getMatchesInProgressWithAllPredictions(tournamentSlug: str
     return { matches: [], error: predictionsError.message };
   }
 
+  // QUANDO cada palpite foi gravado — a fiscalização que não exige nada do
+  // jogador. A transparência já mostra o QUE cada um apostou; com a hora, um
+  // palpite alterado depois do fechamento apareceria com horário impossível
+  // para todo mundo ao mesmo tempo, sem ninguém precisar ter guardado imagem.
+  //
+  // Vem de `horarios_dos_palpites`, que repete na cláusula WHERE a mesma regra
+  // de revelação — fase que não começou não devolve nada. E devolve só horário
+  // e contagem: o conteúdo anterior continua sendo só do dono, no extrato dele.
+  const { data: horarios } = await supabase.rpc('horarios_dos_palpites', {
+    p_tournament_id: (tournament as any).id,
+  } as any);
+  const horarioDe = new Map<string, any>();
+  for (const h of ((horarios ?? []) as any[])) {
+    horarioDe.set(`${h.match_id}|${h.user_id}`, h);
+  }
+
   const predictionsByMatch = new Map<number, any[]>();
   allPredictions?.forEach((pred: any) => {
     const profile = Array.isArray(pred.profiles) ? pred.profiles[0] : pred.profiles;
+    const h = horarioDe.get(`${pred.match_id}|${pred.user_id}`);
     if (!predictionsByMatch.has(pred.match_id)) predictionsByMatch.set(pred.match_id, []);
     predictionsByMatch.get(pred.match_id)!.push({
       id: pred.id,
@@ -343,6 +360,11 @@ export async function getMatchesInProgressWithAllPredictions(tournamentSlug: str
       user_id: pred.user_id,
       username: profile?.username || 'Usuário',
       avatar_url: profile?.avatar_url || null,
+      salvo_em: h?.salvo_em ?? pred.created_at ?? null,
+      alterado_em: h?.alterado_em ?? null,
+      alteracoes: h?.alteracoes ?? 0,
+      alterado_apos_fechamento: !!h?.alterado_apos_fechamento,
+      cobertura_completa: h?.cobertura_completa ?? false,
     });
   });
 

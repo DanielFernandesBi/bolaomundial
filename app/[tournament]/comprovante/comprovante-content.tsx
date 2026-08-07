@@ -169,6 +169,7 @@ export function ComprovanteContent({
   podio,
   trilhaDesde,
   trilha,
+  lacres,
   erro,
 }: ComprovanteData) {
   const [toast, setToast] = useState<string | null>(null);
@@ -388,6 +389,36 @@ export function ComprovanteContent({
                 A trilha registra alterações desde {dia(trilhaDesde)}. Palpites gravados antes disso
                 aparecem com a hora da gravação, mas sem histórico anterior a essa data.
               </p>
+            )}
+
+            {/* Lacres publicados.
+                O lacre de hoje prova pouco sozinho: quem pode reescrever a
+                trilha inteira recalcula o lacre junto, e ele fecha certinho. O
+                que quebra esse laço é ter o lacre de uma data GUARDADO FORA
+                daqui. Por isso a lista existe e por isso ela pede para ser
+                publicada: o valor não está nesta tabela, está na cópia que sai
+                dela. */}
+            {lacres.length > 0 && (
+              <div className="mt-2.5 border-t border-hairline pt-2.5">
+                <p className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[hsl(var(--faint))]">
+                  lacres publicados
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {lacres.map((l) => (
+                    <span
+                      key={l.dia}
+                      className="rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[10px] text-muted-foreground"
+                      title={`${l.linhas} registros`}
+                    >
+                      {dia(l.dia).slice(0, 5)} <span className="text-card-foreground">{l.lacre}</span>
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-[hsl(var(--faint))]">
+                  O lacre de cada dia é publicado no grupo. Se um dia o lacre que ficou lá não bater
+                  com o desta lista, a trilha foi reescrita — e a hora daquela mensagem não é nossa.
+                </p>
+              </div>
             )}
           </div>
         )}
