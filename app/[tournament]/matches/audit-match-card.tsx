@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getFlagUrl } from '@/lib/utils/flags';
@@ -18,6 +19,57 @@ interface Prediction {
   user_id: string;
   username: string;
   avatar_url: string | null;
+  /** Quando este palpite foi gravado. */
+  salvo_em?: string | null;
+  /** Última alteração REGISTRADA. Nulo = não há registro de alteração. */
+  alterado_em?: string | null;
+  alteracoes?: number;
+  /** Alteração depois do prazo da fase. Não deveria existir: é alarme. */
+  alterado_apos_fechamento?: boolean;
+  /** A trilha já existia quando o palpite foi gravado? */
+  cobertura_completa?: boolean;
+}
+
+const FUSO = 'America/Sao_Paulo';
+
+function quando(iso: string): string {
+  return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: FUSO,
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * A hora do palpite, à vista de todos.
+ *
+ * É o que transforma a fiscalização de individual em coletiva: quem não
+ * guardou comprovante nenhum enxerga, do mesmo jeito, que aquele palpite foi
+ * gravado às 17:00 e nunca mais tocado. E se um dia aparecer alteração depois
+ * do fechamento — que `check_prediction_window` recusa —, aparece em vermelho
+ * para todo mundo ao mesmo tempo.
+ */
+function Carimbo({ p }: { p: Prediction }) {
+  if (!p.salvo_em) return null;
+  return (
+    <p className="mt-1 text-[10px] leading-tight text-[hsl(var(--faint))]">
+      <Clock className="mr-1 inline h-2.5 w-2.5 align-[-1px]" aria-hidden="true" />
+      {quando(p.salvo_em)}
+      {p.alterado_em && (
+        <span className={p.alterado_apos_fechamento ? 'font-bold text-destructive' : 'text-state-urgent'}>
+          {' · '}
+          {p.alterado_apos_fechamento ? 'ALTERADO APÓS O FECHAMENTO ' : 'alterado '}
+          {quando(p.alterado_em)}
+          {(p.alteracoes ?? 0) > 1 && ` (${p.alteracoes}×)`}
+        </span>
+      )}
+      {/* Sem alteração registrada num palpite anterior à trilha não é prova de
+          que não houve: dizer isso é o que impede a tela de afirmar demais. */}
+      {!p.alterado_em && p.cobertura_completa === false && ' · anterior à trilha'}
+    </p>
+  );
 }
 
 interface AuditMatchCardProps {
@@ -160,12 +212,15 @@ export function AuditMatchCard({ match, tournamentSlug, homeHref, awayHref }: Au
                       {getInitials(prediction.username)}
                     </AvatarFallback>
                   </Avatar>
-                  <Link
-                    href={`/${tournamentSlug}/desempenho/${prediction.user_id}`}
-                    className="text-foreground font-medium hover:text-primary transition-colors truncate flex-1"
-                  >
-                    {prediction.username}
-                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/${tournamentSlug}/desempenho/${prediction.user_id}`}
+                      className="block truncate text-foreground font-medium transition-colors hover:text-primary"
+                    >
+                      {prediction.username}
+                    </Link>
+                    <Carimbo p={prediction} />
+                  </div>
                 </div>
                 <div className="flex flex-col items-end ml-4">
                   <div className="flex items-center gap-2">

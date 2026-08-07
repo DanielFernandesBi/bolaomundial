@@ -87,6 +87,8 @@ export interface ComprovanteData {
   trilhaDesde: string | null;
   /** Estado da corrente de hashes da trilha inteira. */
   trilha: { linhas: number; intacta: boolean; lacre: string } | null;
+  /** Lacres já publicados, do mais recente para o mais antigo. */
+  lacres: { dia: string; linhas: number; lacre: string }[];
   erro?: string;
 }
 
@@ -100,6 +102,7 @@ export async function getComprovante(tournamentSlug: string): Promise<Comprovant
     podio: [],
     trilhaDesde: null,
     trilha: null,
+    lacres: [],
   };
 
   const {
@@ -116,14 +119,27 @@ export async function getComprovante(tournamentSlug: string): Promise<Comprovant
 
   const tid = (tournament as any).id as number;
 
-  const [{ data: perfil }, { data: itens }, { data: podio }, { data: desde }, { data: trilha }] =
-    await Promise.all([
-      supabase.from('profiles').select('username').eq('id', user.id).single(),
-      supabase.rpc('meu_extrato', { p_tournament_id: tid } as any),
-      supabase.rpc('meu_extrato_podio', { p_tournament_id: tid } as any),
-      supabase.rpc('trilha_comecou_em' as any),
-      supabase.rpc('conferir_trilha' as any),
-    ]);
+  const [
+    { data: perfil },
+    { data: itens },
+    { data: podio },
+    { data: desde },
+    { data: trilha },
+    { data: lacres },
+  ] = await Promise.all([
+    supabase.from('profiles').select('username').eq('id', user.id).single(),
+    supabase.rpc('meu_extrato', { p_tournament_id: tid } as any),
+    supabase.rpc('meu_extrato_podio', { p_tournament_id: tid } as any),
+    supabase.rpc('trilha_comecou_em' as any),
+    supabase.rpc('conferir_trilha' as any),
+    // Últimos lacres publicados. Sete dias bastam: quem quiser conferir uma
+    // data antiga compara com a mensagem que ficou no grupo, que é o ponto.
+    supabase
+      .from('trilha_lacre_diario')
+      .select('dia, linhas, lacre')
+      .order('dia', { ascending: false })
+      .limit(7),
+  ]);
 
   const conferencia = (trilha as any)?.[0];
 
@@ -140,6 +156,11 @@ export async function getComprovante(tournamentSlug: string): Promise<Comprovant
           lacre: conferencia.lacre as string,
         }
       : null,
+    lacres: ((lacres ?? []) as any[]).map((l) => ({
+      dia: l.dia as string,
+      linhas: Number(l.linhas),
+      lacre: l.lacre as string,
+    })),
   };
 }
 
