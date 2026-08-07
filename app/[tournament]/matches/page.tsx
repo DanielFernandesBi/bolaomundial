@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Activity, Calendar, ChevronRight, Clock, Eye, Trophy } from 'lucide-react';
+import { Activity, Calendar, ChevronRight, Clock, Eye, FileCheck, Trophy } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MatchCard } from '@/components/match-card';
 import { PodiumCard } from '@/components/podium-card';
@@ -385,6 +385,17 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                         ninguém mais pode alterá-los. Cada jogo sai daqui quando o resultado é lançado e passa
                         para "Encerradas".
                       </p>
+                      {/* A transparência prova que o ADMIN não mexe. Não prova
+                          o que VOCÊ apostou — e foi essa a dúvida que
+                          apareceu. O comprovante responde a outra, com a hora
+                          de cada gravação e cada alteração sua. */}
+                      <Link
+                        href={`/${tournamentSlug}/comprovante`}
+                        className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary underline underline-offset-4"
+                      >
+                        <FileCheck className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                        Conferir os meus palpites e horários
+                      </Link>
                     </div>
                   </div>
                 </div>
