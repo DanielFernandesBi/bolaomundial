@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   Trophy,
   TrendingUp,
@@ -5,6 +6,8 @@ import {
   User,
   Calendar,
   Award,
+  ChevronRight,
+  FileCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getUserProfile } from './actions';
@@ -238,6 +241,26 @@ export default async function DesempenhoPage({ params }: DesempenhoPageProps) {
             </p>
           )}
         </div>
+
+        {/* Porta do comprovante. Fica aqui, e não na barra inferior, pelo mesmo
+            motivo do card de resultados em Partidas: a nav foi reduzida de
+            propósito a cinco destinos. E aqui é onde o jogador já está quando
+            pensa "o que foi mesmo que eu apostei?". */}
+        <Link
+          href={`/${tournamentSlug}/comprovante`}
+          className="mb-6 flex items-center gap-3 rounded-[12px] border border-border bg-card px-3 py-3 transition-colors hover:border-primary/40"
+        >
+          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-surface-sunken">
+            <FileCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-card-foreground">Meu comprovante</span>
+            <span className="block text-xs text-muted-foreground">
+              Cada palpite com a hora da gravação e as alterações que você fez
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 flex-shrink-0 text-[hsl(var(--faint))]" aria-hidden="true" />
+        </Link>
 
         {/* Regras de Pontuação */}
         <ScoringLegend variant={scoringVariant} />
