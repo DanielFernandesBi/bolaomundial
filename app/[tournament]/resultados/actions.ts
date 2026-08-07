@@ -217,9 +217,11 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
   // quem entra no filtro e ganha destaque.
   const nomeCanonico = new Map<string, string>();
   const bolao = new Map<string, string>();
-  // Escudo que a própria API-Football manda, capturado na sincronização. Vale
-  // para QUALQUER clube que já apareceu, não só para os 40 do bolão — é o que
-  // acaba com o escudo genérico do adversário.
+  // Escudo do clube, servido pelo NOSSO Storage. A coluna se chama crest_url
+  // desde quando guardava a URL da API-Football; hoje ela guarda o endereço do
+  // arquivo que baixamos uma vez (ver a migração `escudos_hospedados_por_nos`),
+  // e a procedência ficou em crest_origem_url. Vale para qualquer clube que já
+  // apareceu, não só os 40 do bolão.
   const escudoDaApi = new Map<string, string>();
   for (const c of (clubesRaw ?? []) as any[]) {
     nomeCanonico.set(c.team_key, c.canonical_name);
@@ -252,12 +254,23 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
   }
 
   // Ordem de preferência do escudo:
-  //   1. o da própria partida (a API manda um por time, em toda resposta);
-  //   2. o canônico do clube, para quando aquela partida veio sem;
-  //   3. o que o admin cadastrou em `matches` — cobre os clubes do bolão que
-  //      ainda não jogaram desde 31/07 e por isso nunca apareceram na API.
+  //   1. o ESPELHADO no nosso Storage (club_source_ids.crest_url);
+  //   2. o da própria partida, para clube que ainda não foi espelhado;
+  //   3. o que o admin cadastrou em `matches`, última reserva.
+  //
+  // O espelho vem primeiro, e essa ordem é o ponto todo. Antes o escudo da
+  // partida ganhava — e ele é uma URL do media.api-sports.io, um host que não
+  // é nosso. Era por isso que esta tela mostrava 2 escudos de 10 mesmo com
+  // todos os arquivos íntegros e respondendo 200: a imagem dependia de aquele
+  // host atender dezenas de requisições do aparelho do jogador, a cada visita.
+  //
+  // Os dois de baixo continuam porque o espelho não cobre tudo: clube
+  // descoberto pela captura entra sem chave, e clube com URL de origem morta
+  // (há um, do Wikipedia) nunca é espelhado.
   const escudoDe = (key: string | null, daPartida: string | null): string | null =>
-    daPartida ?? (key ? escudoDaApi.get(key) ?? escudoPorChave.get(key) ?? null : null);
+    (key ? escudoDaApi.get(key) ?? null : null) ??
+    daPartida ??
+    (key ? escudoPorChave.get(key) ?? null : null);
 
   const fixtures: ClubFixture[] = ((fixturesRaw ?? []) as any[]).map((f) => ({
     ...f,
