@@ -19,8 +19,13 @@ import type { ClubeStats, ClubFixture, LigaStats, ResultadosData } from './actio
 // Resultados: jogos, times e ligas.
 //
 // A tela nasceu para uma coisa só — os últimos jogos dos 40 clubes do bolão.
-// A coleta cresceu (74 ligas capturadas, centenas de clubes descobertos) e a
-// tela precisou crescer junto, em três recortes:
+// A coleta cresceu (a Conmebol inteira mais a elite europeia, centenas de
+// clubes descobertos) e a tela precisou crescer junto, em três recortes:
+//
+// O NÚMERO DE LIGAS NÃO APARECE ESCRITO em lugar nenhum desta tela, e é de
+// propósito: ele muda quando alguém marca uma competição nova em
+// `club_competition_weights`, e um número fixo no texto envelheceria calado.
+// A aba Ligas conta o que veio de `estatisticas_ligas()`.
 //
 //   Jogos — o que aconteceu e o que vem, por dia
 //   Times — quem joga bem, ordenável, com retrospecto
@@ -731,7 +736,8 @@ function AbaLigas({ ligas, aoEscolher }: { ligas: LigaStats[]; aoEscolher: (id: 
         <p className="text-xs leading-relaxed text-muted-foreground">
           <strong className="text-foreground">{ligas.length} competições</strong> na lista de
           captura, <strong className="text-foreground">{totalJogos} jogos</strong> guardados. Só
-          acumulamos daqui para a frente — o plano da API não permite buscar data passada.
+          acumulamos daqui para a frente — o plano da API não permite buscar data passada, e é por
+          isso que competição de temporada que ainda não começou aparece com zero.
         </p>
         <button
           type="button"
