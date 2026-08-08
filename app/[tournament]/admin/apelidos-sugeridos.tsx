@@ -79,18 +79,30 @@ export function ApelidosSugeridos({
             <Tags className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
             <h2 className="text-lg font-bold text-foreground">Apelidos de clubes</h2>
           </div>
+          {/* O que esta caixa NÃO é.
+              Um número aqui já foi lido como "14 jogos do bolão não estão
+              conseguindo salvar resultado". Não é isso, e a distinção é
+              importante o bastante para vir antes do número: estes nomes são
+              das ligas que capturamos só para histórico, e o que eles custam é
+              EVIDÊNCIA PARA O MODELO. Resultado do bolão não passa por aqui —
+              os 40 clubes são ancorados por id do provedor. */}
           <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
-            Nomes que a API-Football usa e o nosso mapa não conhece. Enquanto um deles não for
-            reconhecido, <strong>toda partida em que ele aparece é descartada</strong> — o modelo
-            exige os dois clubes mapeados. A lista vem ordenada pelo prejuízo real.
+            Nomes que a API-Football usa nas ligas que capturamos para histórico e que o nosso mapa
+            não conhece. Enquanto um deles não for reconhecido,{' '}
+            <strong>a partida em que ele aparece não entra no modelo</strong> — a projeção exige os
+            dois clubes mapeados.
+            <span className="mt-1.5 block">
+              Isto <strong className="text-card-foreground">não afeta o lançamento de resultado do
+              bolão</strong>: os 40 clubes são reconhecidos pelo id do provedor, não pelo nome. A
+              lista vem ordenada pelo prejuízo real.
+            </span>
             {comPrejuizo.length > 0 && (
-              <>
-                {' '}
+              <span className="mt-1.5 block">
                 <strong className="text-state-closing">
                   {comPrejuizo.length} {comPrejuizo.length === 1 ? 'nome está' : 'nomes estão'}{' '}
-                  custando jogos agora.
+                  custando jogos ao modelo agora.
                 </strong>
-              </>
+              </span>
             )}
           </p>
 
@@ -123,8 +135,8 @@ export function ApelidosSugeridos({
                       }`}
                     >
                       {a.jogos_perdidos > 0
-                        ? `${a.jogos_perdidos} jogo(s) descartado(s)`
-                        : `${a.ocorrencias} aparição(ões), 0 descarte`}
+                        ? `${a.jogos_perdidos} jogo(s) fora do modelo`
+                        : `${a.ocorrencias} aparição(ões), 0 fora do modelo`}
                     </span>
                   </div>
 
