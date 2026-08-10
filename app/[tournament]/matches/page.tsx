@@ -25,6 +25,7 @@ import { criarResolvedorDeClube, hrefDoClube } from '@/lib/club-links';
 import { getFasesAGuardar } from '../comprovante/actions';
 import { ComprovanteAviso } from '@/components/comprovante-aviso';
 import { notFound } from 'next/navigation';
+import { exigirRotaPermitida } from '@/lib/tournament-access';
 
 interface MatchesPageProps {
   params: Promise<{
@@ -67,6 +68,12 @@ function sortGroupsByNextMatch<T extends { items: any[] }>(groups: T[]): T[] {
 
 export default async function MatchesPage({ params }: MatchesPageProps) {
   const { tournament: tournamentSlug } = await params;
+
+  // Bolão terminado não serve esta tela. O desvio precisa vir ANTES de
+  // qualquer consulta: é o que impede a pessoa de ver a página piscar antes
+  // de ser mandada embora — e de gastar consulta para montar o que não será
+  // mostrado.
+  await exigirRotaPermitida(tournamentSlug, 'matches');
 
   const supabase = await createServerSupabaseClient();
   const { data: tournament } = await supabase

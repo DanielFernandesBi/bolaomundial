@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { getResultados } from './actions';
 import { ResultadosContent } from './resultados-content';
+import { exigirRotaPermitida } from '@/lib/tournament-access';
 
 interface ResultadosPageProps {
   params: Promise<{ tournament: string }>;
@@ -15,6 +16,12 @@ export const revalidate = 300;
 
 export default async function ResultadosPage({ params }: ResultadosPageProps) {
   const { tournament: tournamentSlug } = await params;
+
+  // Bolão terminado não serve esta tela. O desvio precisa vir ANTES de
+  // qualquer consulta: é o que impede a pessoa de ver a página piscar antes
+  // de ser mandada embora — e de gastar consulta para montar o que não será
+  // mostrado.
+  await exigirRotaPermitida(tournamentSlug, 'resultados');
 
   const supabase = await createServerSupabaseClient();
   const { data: tournament } = await supabase

@@ -54,6 +54,15 @@ export interface ClubFixture {
   away_crest: string | null;
   home_is_bolao: boolean;
   away_is_bolao: boolean;
+  /**
+   * Veio da CHAVE do bolão, não da API. Ver `agendaDoBolao()`.
+   *
+   * Só existe em jogo futuro que a API ainda não entregou. Some sozinho assim
+   * que a partida é capturada — e é por isso que quem consome precisa saber
+   * distinguir: esta linha não está no `club_fixtures` e portanto não entra em
+   * nenhuma contagem agregada.
+   */
+  da_agenda_do_bolao?: boolean;
 }
 
 /** Uma linha de estatisticas_clubes(). Agregado em SQL, não no cliente. */
@@ -122,6 +131,21 @@ export interface ResultadosData {
 
 /** IDs das três competições do bolão na API-Football. */
 const LIGAS_DAS_COPAS = [13, 11, 73];
+
+/**
+ * `matches.competition` -> como a partida aparece nesta tela.
+ *
+ * Os nomes são os que a própria API-Football devolve nestas ligas, copiados
+ * letra por letra ("Sudamericana" sem hífen, "Copa Do Brasil" com D maiúsculo).
+ * Não são a grafia bonita de lib/competitions.ts de propósito: uma linha da
+ * agenda tem de ser indistinguível de uma linha capturada, senão o mesmo
+ * campeonato apareceria escrito de dois jeitos na mesma lista.
+ */
+const LIGA_DA_COMPETICAO: Record<string, { id: number; nome: string }> = {
+  libertadores: { id: 13, nome: 'CONMEBOL Libertadores' },
+  sudamericana: { id: 11, nome: 'CONMEBOL Sudamericana' },
+  copa_do_brasil: { id: 73, nome: 'Copa Do Brasil' },
+};
 
 /** Quantos dias de histórico a lista mostra, contando hoje. */
 const DIAS_NA_TELA = 7;
@@ -203,7 +227,7 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
       // o Palmeiras herdava o "br" da Copa do Mundo e ficava sem escudo.
       supabase
         .from('matches')
-        .select('team_home, home_iso, team_away, away_iso')
+        .select('id, match_date, competition, score_home, team_home, home_iso, team_away, away_iso')
         .eq('tournament_id', tournamentId),
       supabase.from('club_aliases').select('alias, team_key'),
       // Agregados em SQL. Estavam no cliente, sobre a lista já carregada — o
@@ -283,7 +307,7 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
   }));
 
   return {
-    fixtures,
+    fixtures: [...fixtures, ...agendaDoBolao(escudosRaw ?? [], fixtures, { resolver, nomeCanonico, bolao, escudoDe })],
     clubes: [...bolao.entries()]
       .map(([teamKey, nome]) => ({ teamKey, nome, crest: escudoDe(teamKey, null) }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
@@ -296,6 +320,136 @@ export async function getResultados(tournamentId: number): Promise<ResultadosDat
     ultimaSincronizacao: (logRaw?.[0] as any)?.finished_at ?? null,
     ligasDasCopas: LIGAS_DAS_COPAS,
   };
+}
+
+/**
+ * Os jogos do bolão que a API AINDA NÃO entregou, para a agenda não mentir.
+ *
+ * ============================================================================
+ * O PROBLEMA. A API-Football organiza partidas por data UTC, e o plano free só
+ * libera até "hoje + 1" nesse calendário. Jogo às 21h30 de Brasília acontece
+ * às 00h30 UTC do dia seguinte — ou seja, cai no balde de DEPOIS de amanhã, que
+ * o plano recusa com todas as letras:
+ *
+ *     "Free plans do not have access to this date, try from X to Y."
+ *
+ * Em 10/08/2026 isso deixou a tela anunciando 2 jogos para o dia seguinte
+ * quando havia 5: os três das 21h30 simplesmente não existiam no banco. Não é
+ * defeito da varredura — ela já pede exatamente o teto que o plano permite.
+ *
+ * A SAÍDA. Esses jogos já estão na CHAVE do bolão, com data e hora certas,
+ * cadastrados pelo admin. Então a agenda passa a ser completada por eles em vez
+ * de esperar pela API.
+ *
+ * ============================================================================
+ * O QUE ESTA FUNÇÃO NÃO FAZ, e é o ponto mais importante dela:
+ *
+ *  · não devolve NENHUM jogo com placar. O corte é `score_home IS NULL` mais
+ *    `match_date > agora`. Placar — final ou parcial — continua vindo só da
+ *    API, de uma fonte única. Misturar as duas origens no mesmo card é
+ *    exatamente o risco que justificaria não fazer isto;
+ *  · não entra em `estatisticas_clubes` nem em `estatisticas_ligas`. Aqueles
+ *    números são agregados em SQL sobre `club_fixtures`, e nada aqui os toca;
+ *  · não duplica. Assim que a partida é capturada, a linha da API vence e a da
+ *    agenda desaparece — o casamento é por par de clubes no mesmo dia de
+ *    Brasília, e não por horário exato, porque a Conmebol remarca horário sem
+ *    remarcar dia.
+ *
+ * O `id` sai NEGATIVO. É a chave de lista do React e precisa não colidir com
+ * `club_fixtures.id`, que é sempre positivo.
+ */
+function agendaDoBolao(
+  matchesRaw: any[],
+  jaCapturados: ClubFixture[],
+  ctx: {
+    resolver: (nome: string) => string | null;
+    nomeCanonico: Map<string, string>;
+    bolao: Map<string, string>;
+    escudoDe: (key: string | null, daPartida: string | null) => string | null;
+  }
+): ClubFixture[] {
+  const agora = Date.now();
+  const diaBrasilia = (iso: string | Date) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(iso));
+
+  // TETO: amanhã, e nem um dia a mais.
+  //
+  // A chave do bolão vai até o fim do mata-mata, então sem este corte a lista
+  // passaria a exibir as 32 partidas restantes de uma vez — e esta tela não é
+  // isso. Ela se apresenta como "os últimos 7 dias e a agenda de amanhã", e é
+  // exatamente esse horizonte que a captura alcança. O objetivo aqui é COMPLETAR
+  // o que a tela já promete, não esticá-la para outra coisa.
+  const amanha = new Date();
+  amanha.setUTCDate(amanha.getUTCDate() + 1);
+  const ultimoDia = diaBrasilia(amanha);
+
+  // Quem a API já trouxe, por "dia de Brasília + os dois clubes".
+  //
+  // Por dia, e não por horário exato, porque a Conmebol remarca horário sem
+  // remarcar dia — e uma diferença de 30 minutos entre o que o admin cadastrou e
+  // o que a API devolve faria a mesma partida aparecer duas vezes.
+  const jaTem = new Set<string>();
+  const assinatura = (dataIso: string, casa: string | null, fora: string | null) =>
+    `${diaBrasilia(dataIso)}|${casa ?? '?'}|${fora ?? '?'}`;
+  for (const f of jaCapturados) {
+    jaTem.add(assinatura(f.kickoff_at, f.home_team_key, f.away_team_key));
+  }
+
+  const saida: ClubFixture[] = [];
+  for (const m of matchesRaw) {
+    if (m.score_home !== null) continue;
+    if (!m.match_date || new Date(m.match_date).getTime() <= agora) continue;
+    if (diaBrasilia(m.match_date) > ultimoDia) continue;
+
+    const chaveCasa = ctx.resolver(m.team_home ?? '');
+    const chaveFora = ctx.resolver(m.team_away ?? '');
+    if (jaTem.has(assinatura(m.match_date, chaveCasa, chaveFora))) continue;
+
+    const liga = LIGA_DA_COMPETICAO[m.competition ?? ''] ?? null;
+
+    saida.push({
+      id: -m.id,
+      kickoff_at: m.match_date,
+      // 'NS' (not started) é o mesmo status que a API manda em jogo por
+      // começar, então a pílula de estado sai idêntica à das outras linhas.
+      status: 'NS',
+      league_id: liga?.id ?? null,
+      league_name: liga?.nome ?? null,
+      round_name: null,
+      home_team_key: chaveCasa,
+      away_team_key: chaveFora,
+      home_team_name: m.team_home,
+      away_team_name: m.team_away,
+      home_provider_id: null,
+      away_provider_id: null,
+      home_crest_url: null,
+      away_crest_url: null,
+      goals_home_90: null,
+      goals_away_90: null,
+      elapsed: null,
+      goals_home_agora: null,
+      goals_away_agora: null,
+      synced_at: m.match_date,
+      goals_home_ht: null,
+      goals_away_ht: null,
+      goals_home_extra: null,
+      goals_away_extra: null,
+      penalties_home: null,
+      penalties_away: null,
+      venue_name: null,
+      venue_city: null,
+      referee: null,
+      league_country: null,
+      home_display: chaveCasa ? ctx.nomeCanonico.get(chaveCasa) ?? m.team_home : m.team_home,
+      away_display: chaveFora ? ctx.nomeCanonico.get(chaveFora) ?? m.team_away : m.team_away,
+      home_crest: ctx.escudoDe(chaveCasa, m.home_iso?.startsWith('http') ? m.home_iso : null),
+      away_crest: ctx.escudoDe(chaveFora, m.away_iso?.startsWith('http') ? m.away_iso : null),
+      home_is_bolao: !!chaveCasa && ctx.bolao.has(chaveCasa),
+      away_is_bolao: !!chaveFora && ctx.bolao.has(chaveFora),
+      da_agenda_do_bolao: true,
+    });
+  }
+  return saida;
 }
 
 /** Espelha club_key_normalize() do banco. Se um mudar, o outro tem de mudar. */

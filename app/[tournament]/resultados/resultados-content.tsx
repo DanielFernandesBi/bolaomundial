@@ -844,7 +844,11 @@ export function ResultadosContent({
       // recorte original: só jogos de quem está no bolão. O banco guarda
       // também as ligas capturadas inteiras, que servem à aba Ligas e ao
       // histórico, mas encheriam esta lista de jogo que ninguém pediu.
-      if (liga !== null) return f.league_id === liga;
+      // O recorte por liga é sobre O QUE A CAPTURA GUARDOU — é assim que a aba
+      // Ligas se apresenta ("N jogos guardados"), e é dali que se chega aqui.
+      // Linha de agenda não foi capturada: deixá-la entrar faria a lista mostrar
+      // um jogo a mais do que o número anunciado no card que abriu a lista.
+      if (liga !== null) return f.league_id === liga && !f.da_agenda_do_bolao;
       if (clube) {
         // Time do mapa casa pela chave; time descoberto pela captura só tem o
         // ID da API, então é por ele que a partida é encontrada.
