@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
-import { Calendar, Award, BarChart3, Crown, User, Settings } from 'lucide-react';
+import { Calendar, Award, BarChart3, Crown, User, Settings, Archive } from 'lucide-react';
+import { getTournamentNavInfo } from '@/app/actions/tournament';
 
 // ============================================================================
 // Navegação inferior (mobile)
@@ -33,17 +35,52 @@ export function BottomNav({ isAdmin = false }: BottomNavProps) {
   const params = useParams();
   const tournamentSlug = params?.tournament as string | undefined;
 
+  // Bolão terminado tem menos destinos, e a barra precisa dizer isso.
+  //
+  // Este era o buraco: "Partidas" aparecia igual em torneio encerrado, dois
+  // jogadores entraram por ele no bolão do ano passado e reportaram que não
+  // conseguiam palpitar. O servidor agora desvia essa rota — mas mostrar um
+  // botão só para desviar quem o toca é responder tarde demais.
+  //
+  // Mesmo padrão que o MobileHeader já usa: consulta ao trocar de torneio, e
+  // `null` até responder. Enquanto não responde a barra fica como sempre foi,
+  // que é o certo — o caso comum é o torneio em disputa.
+  const [encerrado, setEncerrado] = useState(false);
+  useEffect(() => {
+    if (!tournamentSlug) {
+      setEncerrado(false);
+      return;
+    }
+    let vivo = true;
+    getTournamentNavInfo(tournamentSlug).then((info) => {
+      if (vivo) setEncerrado(!!info?.encerrado);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [tournamentSlug]);
+
   // Fora de um torneio (perfil, hall, ranking geral) não há slug: os destinos
   // do torneio apontam para a home, que é onde se escolhe o campeonato.
   const inTournament = (path: string) => (tournamentSlug ? `/${tournamentSlug}${path}` : '/');
 
   const destinations: Destination[] = [
-    {
-      href: inTournament('/matches'),
-      label: 'Partidas',
-      icon: Calendar,
-      isActive: (p) => !!tournamentSlug && p.startsWith(`/${tournamentSlug}/matches`),
-    },
+    // Num bolão encerrado, o lugar de "Partidas" passa a levar para a home —
+    // que é a resposta certa para quem procura onde palpitar. O rótulo e o
+    // ícone mudam junto, senão seria o mesmo botão fazendo outra coisa.
+    encerrado
+      ? {
+          href: '/',
+          label: 'Encerrado',
+          icon: Archive,
+          isActive: () => false,
+        }
+      : {
+          href: inTournament('/matches'),
+          label: 'Partidas',
+          icon: Calendar,
+          isActive: (p) => !!tournamentSlug && p.startsWith(`/${tournamentSlug}/matches`),
+        },
     {
       href: inTournament('/ranking'),
       label: 'Ranking',
