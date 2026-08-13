@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getFlagUrl } from '@/lib/utils/flags';
 import { PredictionSummary } from '@/components/prediction-summary';
+import { COMPETITIONS } from '@/lib/competitions';
 
 interface Prediction {
   id: number;
@@ -82,6 +83,16 @@ interface AuditMatchCardProps {
     match_date: string;
     is_knockout?: boolean;
     venue?: string | null;
+    /**
+     * Chave da competição, para a etiqueta no topo do card.
+     *
+     * Passou a ser necessária quando a Transparência deixou de agrupar por
+     * competição: a lista virou uma só, ordenada por data, e o cabeçalho de
+     * seção que dizia "CONMEBOL Libertadores · 11 jogos" desapareceu junto. Sem
+     * a etiqueta aqui, um Cruzeiro x Flamengo no meio da lista não diria de que
+     * torneio é.
+     */
+    competition?: string | null;
     all_predictions: Prediction[];
   };
   tournamentSlug: string;
@@ -147,6 +158,11 @@ function extraLabel(r: 'home' | 'draw' | 'away' | null | undefined, home: string
 }
 
 export function AuditMatchCard({ match, tournamentSlug, homeHref, awayHref }: AuditMatchCardProps) {
+  // O nome curto ("Libertadores", e não "CONMEBOL Libertadores"): é uma
+  // etiqueta de canto, e o nome longo quebraria em duas linhas no celular.
+  // `competitionName()` não serve aqui — ela devolve o longo.
+  const competicao = COMPETITIONS.find((c) => c.key === match.competition)?.short ?? null;
+
   const matchDate = new Date(match.match_date);
   const formattedDate = matchDate.toLocaleString('pt-BR', {
     day: '2-digit',
@@ -160,6 +176,19 @@ export function AuditMatchCard({ match, tournamentSlug, homeHref, awayHref }: Au
     <Card className="bg-card border-border">
       <CardHeader className="p-4">
         <CardTitle className="text-foreground">
+          {/* Competição, no alto e à direita.
+              Alinhada ao fim porque é metadado, não título: a informação que
+              manda no card continua sendo quem joga contra quem. Só aparece se
+              a partida tiver competição — nos torneios antigos de seleções o
+              campo é nulo, e uma etiqueta vazia abriria um buraco no topo. */}
+          {competicao && (
+            <div className="mb-2 flex justify-end">
+              <span className="rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.1em] text-[hsl(var(--faint))]">
+                {competicao}
+              </span>
+            </div>
+          )}
+
           {/* Layout Mobile-First: Times em coluna */}
           <div className="flex flex-col gap-3 mb-2">
             {/* Time Casa */}

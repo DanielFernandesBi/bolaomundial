@@ -415,29 +415,38 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
                     </div>
                   </div>
                 </div>
-                {groupByCompetition(inProgressMatches).map((g) => (
-                  <CompetitionSection key={g.key ?? 'all'} compKey={g.key}>
-                  <section className="space-y-4">
-                    {g.key && (
-                      <div className="flex items-baseline justify-between gap-3 border-b border-hairline pb-2">
-                        <h2 className="font-mono text-[10.5px] uppercase tracking-[0.13em] text-[hsl(var(--faint))]">{g.name}</h2>
-                        <span className="text-[11px] text-muted-foreground">{g.items.length} {g.items.length === 1 ? 'jogo' : 'jogos'}</span>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {g.items.map((match: any) => (
-                        <AuditMatchCard
-                          key={match.id}
-                          match={match}
-                          tournamentSlug={tournamentSlug}
-                          homeHref={linkDoClube(match.team_home)}
-                          awayHref={linkDoClube(match.team_away)}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                  </CompetitionSection>
-                ))}
+                {/* LISTA ÚNICA, por data — sem agrupar por competição.
+                    As outras duas abas agrupam; esta não, e a diferença é
+                    proposital. Aqui a pergunta é "o que está valendo agora", e
+                    a resposta é cronológica: o jogo de hoje à noite importa
+                    mais que o da semana que vem, seja de que torneio for.
+                    Agrupando, um jogo da Sul-Americana de hoje ficava abaixo de
+                    todos os da Libertadores, inclusive os de daqui a dez dias.
+
+                    A ordem já vem pronta de getMatchesInProgressWithAllPredictions
+                    (crescente por data, jogo sem data no fim). Aqui não se
+                    reordena nada — seriam duas regras de ordenação para a mesma
+                    lista, e um dia elas discordariam.
+
+                    O nome da competição, que era o cabeçalho de seção, passou
+                    para o canto superior direito de cada card.
+
+                    CompetitionSection envolve cada CARD, e não mais cada seção:
+                    é o que mantém a barra de filtro funcionando sem nenhuma
+                    máquina nova. Ela devolve um fragmento, então o card segue
+                    sendo filho direto do grid e o layout não muda. */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {inProgressMatches.map((match: any) => (
+                    <CompetitionSection key={match.id} compKey={match.competition}>
+                      <AuditMatchCard
+                        match={match}
+                        tournamentSlug={tournamentSlug}
+                        homeHref={linkDoClube(match.team_home)}
+                        awayHref={linkDoClube(match.team_away)}
+                      />
+                    </CompetitionSection>
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>
