@@ -104,7 +104,24 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
     return new Date(match.match_date) > now;
   });
 
-  const finishedMatches = matches.filter((match: any) => match.status === 'FINISHED');
+  // Encerradas: do MAIS RECENTE para o mais antigo.
+  //
+  // `matches` chega crescente por data, que é o certo para "Próximas" — o
+  // próximo jogo primeiro. Em Encerradas isso se inverte de sentido: a lista
+  // abria em 01/08 e o resultado de ontem ficava no fim, depois de rolar
+  // dezenas de cards. Quem abre esta aba quer o que acabou de acontecer.
+  //
+  // Aqui um segundo critério de ordenação se justifica (ao contrário da
+  // Transparência, onde eu o recusei): são duas perguntas opostas sobre a mesma
+  // lista, e a inversão é explícita e local.
+  const finishedMatches = matches
+    .filter((match: any) => match.status === 'FINISHED')
+    .slice()
+    .sort((a: any, b: any) => {
+      const da = a.match_date ? new Date(a.match_date).getTime() : 0;
+      const db = b.match_date ? new Date(b.match_date).getTime() : 0;
+      return db - da;
+    });
 
   // Predicado ÚNICO do "falta palpitar". Extraído de propósito: o total e o
   // detalhamento por competição têm de sair do mesmo critério, senão um dia as
